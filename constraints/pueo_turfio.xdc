@@ -39,7 +39,7 @@ set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN J16 } [get_ports {    LMKDA
 set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN J18 } [get_ports {    LMKLE       }]
 set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN K18 } [get_ports {    LMKCLK      }]
 set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN K15 } [get_ports {    LMKOE       }]
-#set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN J14 } [get_ports {    CLK_SYNC    }]
+set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN J14 } [get_ports {    CLK_SYNC    }]
 
 ## crate interface
 set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN M17 } [get_ports {    EN_3V3      }]
@@ -85,10 +85,10 @@ set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN N4  } [get_ports {    T_TMS
 #set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN H16 } [get_ports {    GPOE_B[1]   }]
 
 ## main interfaces
-#set_property -dict { IOSTANDARD LVDS_25 PACKAGE_PIN K17     } [get_ports {RXCLK_N[0] }]
-#set_property -dict { IOSTANDARD LVDS_25 PACKAGE_PIN L18     } [get_ports {RXCLK_P[0] }]
-#set_property -dict { IOSTANDARD LVDS_25 PACKAGE_PIN N18     } [get_ports {CIN_N[0]   }]
-#set_property -dict { IOSTANDARD LVDS_25 PACKAGE_PIN P18     } [get_ports {CIN_P[0]   }]
+set_property -dict { IOSTANDARD LVDS_25 PACKAGE_PIN K17     } [get_ports {RXCLK_N[0] }]
+set_property -dict { IOSTANDARD LVDS_25 PACKAGE_PIN L18     } [get_ports {RXCLK_P[0] }]
+set_property -dict { IOSTANDARD LVDS_25 PACKAGE_PIN N18     } [get_ports {CIN_N[0]   }]
+set_property -dict { IOSTANDARD LVDS_25 PACKAGE_PIN P18     } [get_ports {CIN_P[0]   }]
 set_property -dict { IOSTANDARD LVDS_25 PACKAGE_PIN P15     } [get_ports {CLKDIV2_P  }]
 set_property -dict { IOSTANDARD LVDS_25 PACKAGE_PIN P16     } [get_ports {CLKDIV2_N  }]
 #set_property -dict { IOSTANDARD LVDS_25 PACKAGE_PIN P14     } [get_ports {TXCLK_P[2] }]
@@ -191,3 +191,22 @@ set_property BITSTREAM.CONFIG.SPI_32BIT_ADDR NO [current_design]
 set_property BITSTREAM.CONFIG.SPI_BUSWIDTH 2 [current_design]
 
 create_clock -period 25.000 -name init_clock [get_ports -filter { NAME =~ "INITCLK" && DIRECTION == "IN" }]
+create_clock -period 8.00 -name sys_clock [get_ports -filter { NAME =~ "CLKDIV2_P" && DIRECTION == "IN" }]
+
+# for ease of use. Plus we need to grab the generated bastard
+set sysclk_pin [get_pins -hier -filter {NAME =~ *u_sysclkgen*mmcm_adv_inst/CLKOUT0}]
+set sysclk [get_clocks -of_objects $sysclk_pin]
+set initclk [get_clocks init_clock]
+
+# ignore the initclk/sysclk path
+set_max_delay -datapath_only -from $sysclk -to $initclk 25.000
+set_max_delay -datapath_only -from $initclk -to $sysclk 25.000
+
+# We don't actually have any setup/hold specs from the manufacturer.
+# So let's just say min 2.5 max 5.5 and see what it says
+set_output_delay -clock sys_clock -min 2.5 [get_ports CLK_SYNC]
+set_output_delay -clock sys_clock -max 5.5 [get_ports CLK_SYNC]
+
+connect_debug_port dbg_hub/clk [get_nets -of_objects $initclk]
+
+
