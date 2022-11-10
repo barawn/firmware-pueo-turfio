@@ -135,7 +135,7 @@ module pueo_turfio #( parameter NSURF=1, parameter SIMULATION="TRUE" )(
     
 
     generate
-        if (SIMULATION == "FALSE") begin : NS
+        if (SIMULATION == "TRUE") begin : NS
             lmk_ila u_lmkila(.clk(INITCLK),.probe0(lmk_clk_int),.probe1(lmk_data_int),.probe2(lmk_le_int));
             lmk_vio u_lmkvio(.clk(INITCLK),.probe_out0(lmk_go),.probe_out1(lmk_input),.probe_in0(lmk_busy),.probe_out2(do_sync_vio));
             jtag_ila u_ila(.clk(INITCLK),.probe0(tdi_mon),.probe1(tck_mon),.probe2(tms_mon),.probe3(tdo_mon));
