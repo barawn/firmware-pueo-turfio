@@ -1,0 +1,7 @@
+# Ignore everything.
+*
+# Don't ignore directories.
+!*/
+# Don't ignore .gitignore and .xci files.
+!.gitignore
+!*.xci
