@@ -4,7 +4,7 @@
 // This is mostly a mess right now, just trying to verify functionality
 // This will get reorganized later. We'll probably offload the clock initialization into software.
 // (Guard against effing the TURFIO clock by having "reset" feed a power-on-reset default to the LMK).
-module pueo_turfio #( parameter NSURF=1, parameter SIMULATION="TRUE" )(
+module pueo_turfio #( parameter NSURF=1, parameter SIMULATION="FALSE" )(
         input INITCLK,
         output INITCLKSTDBY,
         
@@ -35,11 +35,36 @@ module pueo_turfio #( parameter NSURF=1, parameter SIMULATION="TRUE" )(
         output CLK_SYNC,
         output DBG_LED
     );
+    
+    // OK, here's the inversion craziness. EVERYTHING is always handled at the TURFIO. It's just easier.
+    // At the SURF: DOUT, CIN, RXCLK, are all INVERTED
+    //              COUT, TXCLK are NOT
+    // At the TURFIO:
+    // RXCLK[5:0] = 001_0011
+    // CIN[5:0]   = 011_0001
+    // COUT[5:0] =  111_1001
+    // DOUT[5:0] =  010_1000
+    // TXCLK[5:0] = 001_0000                          = 7'h10
+    // We add an additional parameter to determine if it's inverted at remote.
+    // Therefore, we *logically* invert if xx_INV ^ xx_REMOTE_INV and we connect N to the P-side
+    // if xx_INV.
+    
+    localparam [5:0] RXCLK_INV = 7'b001_0011;
+    localparam [5:0] RXCLK_REMOTE_INV = {7{1'b1}};
+    localparam [5:0] CIN_INV   = 7'b011_0001;
+    localparam [5:0] CIN_REMOTE_INV = {7{1'b1}};
+    localparam [5:0] COUT_INV  = 7'b111_1001;
+    localparam [5:0] COUT_REMOTE_INV = {7{1'b0}};
+    localparam [5:0] DOUT_INV  = 7'b010_1000;
+    localparam [5:0] DOUT_REMOTE_INV = {7{1'b0}};
+    localparam [5:0] TXCLK_INV = 7'b001_0000;        
+    localparam [5:0] TXCLK_REMOTE_INV = {7{1'b0}};
             
     wire sysclk;
     wire serclk;
     wire locked;
-    sys_clk_generator u_sysclkgen(.clk_in1_p(CLKDIV2_P),.clk_in1_n(CLKDIV2_N),.reset(1'b0),.sys_clk(sysclk),.ser_clk(serclk),.locked(locked));
+    wire sysclk_reset;
+    sys_clk_generator u_sysclkgen(.clk_in1_p(CLKDIV2_P),.clk_in1_n(CLKDIV2_N),.reset(sysclk_reset),.sys_clk(sysclk),.ser_clk(serclk),.locked(locked));
     
     (* IOB="TRUE" *)
     reg do_sync = 0;
@@ -57,8 +82,14 @@ module pueo_turfio #( parameter NSURF=1, parameter SIMULATION="TRUE" )(
     end
     assign CLK_SYNC = do_sync;
     
+    wire do_led_toggle;
+    dsp_counter_terminal_count #(.FIXED_TCOUNT("TRUE"),
+                                 .FIXED_TCOUNT_VALUE(62500000))
+                                 u_ledcounter(.clk_i(sysclk),
+                                              .count_i(1'b1),
+                                              .tcount_reached_o(do_led_toggle));
     reg led = 0;    
-    always @(posedge sysclk) led <= `DLYFF ~led;
+    always @(posedge sysclk) if (do_led_toggle) led <= `DLYFF ~led;
     assign DBG_LED = led;
     
     // this is dumbass-edly inverted with no hint in the name
@@ -66,25 +97,30 @@ module pueo_turfio #( parameter NSURF=1, parameter SIMULATION="TRUE" )(
     // and this too
     assign EN_MYCLK_B = 1'b1;
     
-    assign T_JCTRL_B = 1'b1;
-    assign EN_3V3 = 1'b1;
+    wire [7:0] jtag_shift;
+    wire       jtag_load;
+    reg jtag_load_rereg = 0;
+    always @(posedge INITCLK) jtag_load_rereg <= jtag_load;
+    wire       jtag_busy;
+    wire       jtag_enable;
+    rack_jtag u_jtag(.clk(INITCLK),
+                     .load_i(jtag_load && !jtag_load_rereg),
+                     .busy_o(jtag_busy),
+                     .dat_i(jtag_shift),
+                     .jtag_enable_i(jtag_enable),
+                     .tck_i(1'b1),
+                     .tms_i(1'b1),
+                     .tdi_i(1'b1),
+                     .tdo_o(),
+                     .JTAG_EN(JTAG_EN),
+                     .T_JCTRL_B(T_JCTRL_B),
+                     .T_TCK(T_TCK),
+                     .T_TMS(T_TMS),
+                     .T_TDI(T_TDI),
+                     .T_TDO(T_TDO));
+    
     assign LMKOE = 1'b1;
-        
-    wire drive_jtag;
-
-    wire tdi_mon;
-    wire tck_mon;
-    wire tms_mon;
-    wire tdo_mon = T_TDO;
-    
-    wire int_tdi = 1'b0;
-    wire int_tck = 1'b0;
-    wire int_tms = 1'b0;
-    
-    IOBUF u_tdi(.I(int_tdi),.O(tdi_mon),.IO(T_TDI),.T(!drive_jtag));
-    IOBUF u_tck(.I(int_tck),.O(tck_mon),.IO(T_TCK),.T(!drive_jtag));
-    IOBUF u_tms(.I(int_tms),.O(tms_mon),.IO(T_TMS),.T(!drive_jtag));
-
+            
     wire lmk_clk_int;
     wire lmk_data_int;
     wire lmk_le_int;
@@ -121,25 +157,39 @@ module pueo_turfio #( parameter NSURF=1, parameter SIMULATION="TRUE" )(
     reg [1:0] done_reset_sysclk = {2{1'b0}};
     always @(posedge sysclk) done_reset_sysclk <= { done_reset_sysclk[0], done_reset };        
 
-    rackbus_to_surf_custom #(.INV_DATA(1'b1),.INV_CLK(1'b1))
-                    u_rtos(.clk_in(serclk),.clk_div_in(sysclk),
-                           .data_out_from_device( data_to_surf ),
-                           .clk_reset(clk_reset),
-                           .io_reset(io_reset),
-                           // INTENTIONAL
-                           .clk_to_pins_n( RXCLK_P[0] ),
-                           .clk_to_pins_p( RXCLK_N[0] ),
-                           .data_out_to_pins_n( CIN_P[0] ),
-                           .data_out_to_pins_p( CIN_N[0] ));
-
-    
+    generate
+        genvar i;
+        for (i=0;i<NSURF;i=i+1) begin : RB
+            wire rxclx_pos;
+            wire rxclk_neg;
+            wire cin_pos;
+            wire cin_neg;
+            assign RXCLK_P[i] = (RXCLK_INV[i]) ? rxclk_neg : rxclk_pos;
+            assign RXCLK_N[i] = (RXCLK_INV[i]) ? rxclk_pos : rxclk_neg;
+            assign CIN_P[i] = (CIN_INV[i]) ? cin_neg : cin_pos;
+            assign CIN_N[i] = (CIN_INV[i]) ? cin_pos : cin_neg;
+            rackbus_to_surf_custom #(.INV_DATA(CIN_INV[i] ^ CIN_REMOTE_INV[i]),
+                                     .INV_CLK(RXCLK_INV[i] ^ RXCLK_REMOTE_INV[i]))
+                            u_rtos(.clk_in(serclk),.clk_div_in(sysclk),
+                                   .data_out_from_device( data_to_surf ),
+                                   .clk_reset(clk_reset),
+                                   .io_reset(io_reset),
+                                   // INTENTIONAL
+                                   .clk_to_pins_n( rxclk_neg ),
+                                   .clk_to_pins_p( rxclk_pos ),
+                                   .data_out_to_pins_n( cin_neg),
+                                   .data_out_to_pins_p( cin_pos));
+        end
+    endgenerate    
 
     generate
-        if (SIMULATION == "TRUE") begin : NS
+        if (SIMULATION == "FALSE") begin : NS
+            wire disable_3v3;
             lmk_ila u_lmkila(.clk(INITCLK),.probe0(lmk_clk_int),.probe1(lmk_data_int),.probe2(lmk_le_int));
-            lmk_vio u_lmkvio(.clk(INITCLK),.probe_out0(lmk_go),.probe_out1(lmk_input),.probe_in0(lmk_busy),.probe_out2(do_sync_vio));
-            jtag_ila u_ila(.clk(INITCLK),.probe0(tdi_mon),.probe1(tck_mon),.probe2(tms_mon),.probe3(tdo_mon));
-            jtag_vio u_vio(.clk(INITCLK),.probe_out0(JTAG_EN),.probe_out1(drive_jtag));
+            lmk_vio u_lmkvio(.clk(INITCLK),.probe_out0(lmk_go),.probe_out1(lmk_input),.probe_in0(lmk_busy),.probe_out2(do_sync_vio),.probe_out3(sysclk_reset),.probe_in1(locked));
+//            jtag_ila u_ila(.clk(sysclk),.probe0(tdi_mon),.probe1(tck_mon),.probe2(tms_mon),.probe3(tdo_mon));
+            jtag_vio u_vio(.clk(INITCLK),.probe_out0(jtag_load),.probe_out1(jtag_shift),.probe_out2(jtag_enable),.probe_in0(jtag_busy),.probe_out3(disable_3v3));
+            assign EN_3V3 = !disable_3v3;
             rackbus_out_vio u_rbvio(.clk(sysclk),
                                     .probe_out0(data_to_surf),
                                     .probe_out1(clk_reset),
@@ -149,12 +199,15 @@ module pueo_turfio #( parameter NSURF=1, parameter SIMULATION="TRUE" )(
             assign lmk_go = 1'b0;
             assign lmk_input = {32{1'b0}};
             assign do_sync_vio = 1'b0;
-            assign JTAG_EN = 1'b0;
-            assign drive_jtag = 1'b0;
+            
+            assign jtag_shift = {8{1'b0}};
+            assign jtag_load = 1'b0;
+            assign jtag_enable = 1'b0;
             
             assign data_to_surf = 6'b011001;
             assign clk_reset = 1'b0;
             assign io_reset = !done_reset_sysclk[1];
+            assign EN_3V3 = 1'b1;
         end
     endgenerate
     

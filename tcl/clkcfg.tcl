@@ -70,4 +70,11 @@ commit_hw_vio $lmkgo
 set_property OUTPUT_VALUE 0 $lmkgo
 commit_hw_vio $lmkgo
 
+set_property OUTPUT_VALUE 4800000E $lmkinput
+commit_hw_vio $lmkinput
+set_property OUTPUT_VALUE 1 $lmkgo
+commit_hw_vio $lmkgo
+set_property OUTPUT_VALUE 0 $lmkgo
+commit_hw_vio $lmkgo
+
 
