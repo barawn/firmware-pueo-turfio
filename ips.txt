@@ -1,0 +1,12 @@
+ip/clock/clk200_wiz/clk200_wiz.xci
+ip/debug/jtag_ila/jtag_ila.xci
+ip/debug/jtag_vio/jtag_vio.xci
+ip/debug/lmk_ila/lmk_ila.xci
+ip/debug/lmk_vio/lmk_vio.xci
+ip/debug/rack_jtag_ila/rack_jtag_ila.xci
+ip/debug/rackbus/rackbus_out_vio/rackbus_out_vio.xci
+ip/rackbus/rackbus_to_surf/rackbus_to_surf.xci
+ip/clock/sys_clk_generator/sys_clk_generator.xci
+ip/debug/turf_ila/turf_ila.xci
+ip/clock/sys_clk_generator/turf_rxclk_clkwiz/turf_rxclk_clkwiz.xci
+ip/debug/turf_vio/turf_vio.xci

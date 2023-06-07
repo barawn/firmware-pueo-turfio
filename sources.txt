@@ -1,0 +1,10 @@
+verilog-library-barawn/hdl/dsp_counter_terminal_count.v
+verilog-library-barawn/hdl/flag_sync.v
+hdl/clock/lmk_shift_reg.sv
+hdl/rackjtag/rack_jtag.sv
+hdl/turf/turf_interface.sv
+hdl/pueo_turfio.sv
+hdl/rackbus/rackbus_to_surf_custom.v
+ip/debug/jtag_ila/jtag_ila.xci
+ip/rackbus/rackbus_to_surf/rackbus_to_surf.xci
+hdl/gen_shift_if/gen_shift_if.sv
