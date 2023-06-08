@@ -1,5 +1,4 @@
 `timescale 1ns / 1ps
-`include "radiant_debug.vh"
 module boardman_interface(
         input clk,
         input rst,
@@ -28,7 +27,7 @@ module boardman_interface(
     );
     parameter SIMULATION = "FALSE";
     
-    parameter DEBUG = `BOARDMAN_INTERFACE_DEBUG;
+    parameter DEBUG = "FALSE";
             
     parameter CLOCK_RATE = 100000000;
     parameter BAUD_RATE = 1000000;    
