@@ -24,8 +24,8 @@
 #set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN U10 } [get_ports {    TX          }]
 
 ## debug serial
-#set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN D8  } [get_ports {    DBG_RX      }]
-#set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN C9  } [get_ports {    DBG_TX      }]
+set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN D8  } [get_ports {    DBG_RX      }]
+set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN C9  } [get_ports {    DBG_TX      }]
 set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN D14 } [get_ports {    DBG_LED     }]
 
 
