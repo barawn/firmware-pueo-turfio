@@ -6,7 +6,8 @@ module turf_interface #(
         parameter COUTTIO_INV = 1'b0,
         parameter CIN_INV = 1'b0 
     )
-    (   
+    (   output rxclk_o,
+        output rxclk_x2_o,
         input RXCLK_P,
         input RXCLK_N,
         output TXCLK_P,
@@ -208,5 +209,8 @@ module turf_interface #(
     // and ILA (4 bit only)
     turf_ila u_ila(.clk(rxclk),
                    .probe0(cin_parallel));                   
+
+    assign rxclk_o = rxclk;
+    assign rxclk_x2_o = rxclk_x2;
                    
 endmodule
