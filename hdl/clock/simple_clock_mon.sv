@@ -6,15 +6,21 @@
 // TL;DR Usage Version:
 // 1) You need a running clock that's relatively fast, probably at least
 //    25 MHz ish. 
-// 2) You need to calibrate the clock counter first. Write into any
-//    address (2^24 - (clk_frequency/256)). If it's not divisible just round.
-//    The actual clock counts are often uncertain to similar amounts anyway.
+// 2) You need to calibrate the clock counter first. Write the clock frequency
+//    into any counter address. Note that the actual low 8 bits are ignored
+//    so if the clock frequency isn't divisible by 256 you might want to round,
+//    but the precision is low enough that it almost certainly doesn't matter.
 // 3) Read from any address to get the clock count. After you calibrate it
 //    you'll need to wait (NUM_CLOCKS*4 ms) before the values are accurate.
 //    Which is usually negligibly long anyway.
-// 4) The clock frequencies (by default) are measured in steps of around 16 kHz,
+// 4) The clock frequencies (by default) are measured in steps of 16.384 kHz,
 //    however they will read out in Hz correctly: the bottom 14 bits will always
-//    be 0.
+//    be 0. So when you print them out you'll notice that they tend to be quantized
+//    in weird values (e.g. 250,003,456 instead of 250 MHz, or 125,009,920 instead
+//    of 125 MHz). Intrinsically the values are only 16 bits by default, so if you 
+//    want to only store bits [29:14] that captures the entire value anyway.
+//    In addition if you want to *disable* that shift so that you just read out
+//    a 16 bit value straight, just change CLOCK_SHIFT_DAT to 0.
 // 5) You also need to implement CDC constraints, such that
 //    going from clk_32x_level -> level_cdc_ff is set to
 //    datapath_only with some reasonable value (like 10 ns).
@@ -46,18 +52,14 @@
 // consists of 156,250 ticks.
 //
 // To really simplify things, we put the burden on software to
-// calibrate the initialization clock: we use the DSP in 24-bit SIMD mode
-// and have software program in 2^24 - (1/256th)*clock, so for
-// a 40 MHz clock we program in 16,620,966. This gets loaded into the
-// 24-bit input on the A:B register input whenever on the lower DSP input.
+// calibrate the initialization clock. We use the dsp_timed_counter
+// module to get us a programmable interval to write into, and
+// shift the written value as input to it.
 //
-// When the DSP input rolls over (CARRYOUT[1] goes high) this drives
-// RSTP and also sets OPMODE[1:0] = 11. This makes P equal to the value
-// of the AB input. The upper AB input is zero, so it doesn't affect the
-// accumulator.
-//
-// This is a really, really simple way of allowing us to monitor lots of
-// clocks easily. We end up needing to upshift by 14 bits.
+// Resource-wise this is a very compact clock monitor. Each clock
+// needs an SRL16+FF as a divider, and then 3x FFs for the CDC transfer.
+// Then the distributed RAM + FFs used for the clock storage and a single DSP.
+// That's it.
 //
 // CLOCK_BITS/CLOCK_SHIFT_CNT/CLOCK_SHIFT_DAT can be adjusted for more precision but it's
 // basically pointless, it's easier to leave them as they are unless
@@ -72,9 +74,14 @@
 // clock we can really run at is 500 MHz ish, which would be like, 16 MHz.
 // Our init clock here is 40 MHz.
 //
-// Note: you CANNOT read back the clock prescale. It's internal to the DSP.
+// Note: you CANNOT read back the interval. It's internal to the DSP.
 // Deal with it.
 //
+// Note that clk_running_o is also a status bit in the clk_i domain
+// as to whether or not that clock is active. This is essentially a completely
+// separate system so if you don't use that, it'll get trimmed entirely.
+// It creates a separate interval counter based on the interface clock
+// to monitor clocks up to 1/64th the interface clock's speed.
 module simple_clock_mon #(
         parameter NUM_CLOCKS = 8,       // Number of clocks to monitor
         parameter CLOCK_BITS = 16,      // Precision to store. Can be up to 24
@@ -88,6 +95,7 @@ module simple_clock_mon #(
         input [31:0] dat_i,
         output [31:0] dat_o,
         output ack_o,
+        output [NUM_CLOCKS-1:0] clk_running_o,
         
         input [NUM_CLOCKS-1:0] clk_mon_i
     );
@@ -126,7 +134,15 @@ module simple_clock_mon #(
     reg [SELECT_BITS-1:0] clock_select = {SELECT_BITS{1'b0}};
     wire selected_clock_cnt64 = level_flag[clock_select];
     
-    // Implement the level toggles.
+    // Clock running subsystem.
+    wire clk_running_will_reset;
+    reg clk_running_reset = 0;
+    clk_div_ce #(.EXTRA_DIV2("TRUE")) u_clk_run_timer(.clk(clk_i),.ce(clk_running_will_reset));
+    always @(posedge clk_i) clk_running_reset <= clk_running_will_reset;
+    wire [NUM_CLOCKS-1:0] clk_running_status;
+    reg [NUM_CLOCKS-1:0] clk_running_status_cdc1 = {NUM_CLOCKS{1'b0}};
+    reg [NUM_CLOCKS-1:0] clk_running_status_cdc2 = {NUM_CLOCKS{1'b0}};
+    // Implement the level toggles/clock monitors
     generate
         genvar i;
         for (i=0;i<NUM_CLOCKS;i=i+1) begin : CLG
@@ -134,6 +150,8 @@ module simple_clock_mon #(
             wire srl_out;
             SRLC32E #(.INIT(32'h0)) u_srl(.D(!srl_out),.CE(1'b1),.Q31(srl_out),.CLK(clk_mon_i[i]));
             always @(posedge clk_mon_i[i]) clk_32x_level[i] <= srl_out;
+            FDCE #(.INIT(1'b0))
+                u_clkmon(.D(1),.CE(1),.C(clk_mon_i[i]),.CLR(clk_running_reset),.Q(clk_running_status[i]));              
         end
     endgenerate
 
@@ -143,64 +161,31 @@ module simple_clock_mon #(
         level_cdc_ff3 <= level_cdc_ff2;
         // Form the rising edges.
         level_flag <= ~level_cdc_ff3 & level_cdc_ff2;
+        clk_running_status_cdc1 <= clk_running_status;
+        // If a clock is continually running and is running faster than ~1/64th clk_i
+        // (which is probably pretty low if clk_i is in the neighborhood of 10-100 MHz)
+        // this should stay 1.
+        if (clk_running_will_reset) clk_running_status_cdc2 <= clk_running_status_cdc1;
     end            
 
-    wire [47:0] dspAB = { {24{1'b0}}, dat_i[0 +: 24] };
-    wire [47:0] dspC = { {23{1'b0}}, selected_clock_cnt64, {23{1'b0}}, 1'b1 };
-    wire [47:0] dspP;
-    wire        dspAB_ce = (en_i && wr_i && ack_o);
-    wire [3:0]  dsp_carryout;
-    wire [3:0]  dsp_alumode = `ALUMODE_SUM_ZXYCIN;
-    wire [2:0]  dsp_carryinsel = `CARRYINSEL_CARRYIN;    
-    wire        count_done = dsp_carryout[`DUAL_DSP_CARRY0];
-    
-    wire        count_reset = (en_i && wr_i && ack_o);
-    
-    // This makes the opmode equal to P+C+AB in the clock cycle after it completes.
-    // Otherwise it's just P+C. It happens 1 clock later because OPMODEREG is 1
-    wire [6:0]  dsp_opmode = { `Z_OPMODE_P, `Y_OPMODE_C, count_done || count_reset , count_done || count_reset };
-
-    DSP48E1 #( .ALUMODEREG(0),
-               .CARRYINSELREG(0),
-               .OPMODEREG(1),
-               .USE_SIMD("TWO24"),
-               .AREG(1),
-               .BREG(1),
-               .CREG(0),
-               .PREG(1),
-               `D_UNUSED_ATTRS,
-               `NO_MULT_ATTRS )
-               u_dsp( .CLK(clk_i),
-                      .A( `DSP_AB_A(dspAB) ),
-                      .B( `DSP_AB_B(dspAB) ),
-                      .C( dspC ),
-                      `D_UNUSED_PORTS,
-                      .CEA2( dspAB_ce ),
-                      .CEB2( dspAB_ce ),
-                      .CEP(1'b1),
-                      .CEC(1'b0),
-                      .CEM(1'b0),
-                      .CECTRL(1'b1),
-                      .CEINMODE(1'b0),
-                      .CECARRYIN(1'b0),                      
-                      .RSTA(1'b0),
-                      .RSTB(1'b0),
-                      .RSTC(1'b0),
-                      .RSTP( count_done || count_reset ),
-                      .RSTM(1'b0),
-                      .RSTCTRL(1'b0),
-                      .RSTINMODE(1'b0),
-                      .ALUMODE( dsp_alumode ),
-                      .OPMODE(  dsp_opmode ),
-                      .CARRYOUT(dsp_carryout ),
-                      .CARRYINSEL(dsp_carryinsel),
-                      .CARRYIN(1'b0),
-                      .P(dspP));
+    // use the DSP timed counter module.
+    wire [24:0] count_out;
+    wire        count_done;
+    dsp_timed_counter u_counter( .clk( clk_i ),
+                                 .count_in( selected_clock_cnt64 ),
+                                 // Grab the top 24 bits of dat_i to
+                                 // accomplish the divide by 256.
+                                 // So if you write in 40,000,000 (0x2625A00)
+                                 // you're actually writing in 156250 (0x2625A)
+                                 .interval_in( dat_i[8 +: 24] ),
+                                 .interval_load( en_i && wr_i && ack_o ),
+                                 .count_out( count_out ),
+                                 .count_out_valid( count_done ));
                       
     reg ack_ff = 0;
                       
     always @(posedge clk_i) begin
-        if (count_done) clk_count_value[clock_select] <= dspP[(24 + CLOCK_SHIFT_CNT) +: CLOCK_BITS];
+        if (count_done) clk_count_value[clock_select] <= count_out[ CLOCK_SHIFT_CNT +: CLOCK_BITS];
         if (en_i && !wr_i) clk_value_read <= clk_count_value[adr_i];
         ack_ff <= en_i;
         
@@ -212,4 +197,6 @@ module simple_clock_mon #(
 
     assign ack_o = ack_ff && en_i;
     assign dat_o = { {(CLOCK_BITS-CLOCK_SHIFT_DAT){1'b0}}, clk_value_read, {CLOCK_SHIFT_DAT{1'b0}}};
+
+    assign clk_running_o = clk_running_status_cdc2;
 endmodule

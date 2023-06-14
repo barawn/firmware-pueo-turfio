@@ -33,14 +33,18 @@
 // SPI: use a GPIO as chip select, DIN = MOSI, DOUT = MISO
 // JTAG: use AUX_OUT as TMS
 module gen_shift_if 
-      #(parameter NUM_DEVICES=1,            // number of devices to implement
+      #(parameter DEBUG = "FALSE",
+        parameter NUM_DEVICES=1,            // number of devices to implement
         parameter [7:0] USE_CLK = 8'h1,     // if 1 for device, implement CCLK as IOB
         parameter [7:0] USE_DIN = 8'h1,     // if 1 for device, implement DIN (output) as IOB
         parameter [7:0] USE_DOUT = 8'h1,    // if 1 for device, implement DOUT (input) as IOB
         parameter [7:0] USE_AUX_OUT = 8'h1, // if 1 for device, implement AUX_OUT (out) as IOB
         parameter NUM_GPIO=1,               // Number of GPIOs go implement
         parameter [NUM_GPIO-1:0] INVERT_GPIO={NUM_GPIO{1'b0}},  // Invert selected GPIO
-        parameter [NUM_GPIO-1:0] INTERNAL_GPIO={NUM_GPIO{1'b0}} // Selected GPIO is internal (no IOBUF)
+        parameter USE_SINGLE_DOUT = "FALSE" // if multiple interfaces are enabled, use only lowest-numbered
+                                            // DOUT (as opposed to taking the logical OR of all of them).
+                                            // Taking the logical OR is easier since it doesn't require
+                                            // the enabled_interface inputs.
         )
        (input clk,
         input rst,
@@ -51,13 +55,17 @@ module gen_shift_if
         input [31:0] dat_i,
         output [31:0] dat_o,
         output ack_o,
-        
+        // These are direct to pads.
         output [NUM_DEVICES-1:0] DEV_CLK,
         output [NUM_DEVICES-1:0] DEV_DIN,
         output [NUM_DEVICES-1:0] DEV_AUX_OUT,
         input [NUM_DEVICES-1:0]  DEV_DOUT,
-        inout [NUM_GPIO-1:0] DEV_GPIO
+        // GPIOs just get routed as input/output/tristate triples.
+        input [NUM_GPIO-1:0]     dev_gpio_i,
+        output [NUM_GPIO-1:0]    dev_gpio_o,
+        output [NUM_GPIO-1:0]    dev_gpio_t
     );
+    
     
     localparam [1:0] CLK_STATE_OUTPUT = 2'b01;
     localparam [1:0] CLK_STATE_HIGH = 2'b10;
@@ -93,23 +101,10 @@ module gen_shift_if
     reg [NUM_GPIO-1:0] gpio_output_reg = {NUM_GPIO{1'b0}};
     wire [NUM_GPIO-1:0] gpio_input;
     reg [NUM_GPIO-1:0] gpio_input_reg = {NUM_GPIO{1'b0}};;    
-    
-    generate
-        genvar g;
-        for (g=0;g<NUM_GPIO;g=g+1) begin : GPIO_LOOP
-            // friggin' let Xilinx figure out what to do with it
-            if (INTERNAL_GPIO[g]) begin : INT
-                assign DEV_GPIO[g] = (gpio_tristate[g]) ? 
-                    1'bZ : gpio_output_reg[g] ^ INVERT_GPIO[g];
-                assign gpio_input[g] = DEV_GPIO;
-            end else begin : IOBUF
-                IOBUF gpio_iobuf(.IO(DEV_GPIO[g]),
-                                 .I(gpio_output_reg[g] ^ INVERT_GPIO[g]),
-                                 .O(gpio_input[g]),
-                                 .T(gpio_tristate[g]));
-            end
-        end
-    endgenerate
+
+    assign dev_gpio_o = gpio_output_reg;
+    assign dev_gpio_t = gpio_tristate;
+    assign gpio_input = dev_gpio_i;    
         
     reg sequence_running = 0;
     reg enable_sequence = 0;
@@ -120,15 +115,50 @@ module gen_shift_if
     reg [7:0] din_reg = {8{1'b0}};
     reg [7:0] dout_reg = {8{1'b0}};
     reg [7:0] aux_out_reg = {8{1'b0}};
+    // This is the DOUT vector that gets selected by the priority encoder.
+    wire [NUM_DEVICES-1:0] dout_vec;
+    wire selected_dout;
+    // Generating the selected dout is done in one of two ways.
+    // Either we just do the logical OR of all of them (since deselected ones
+    // are forced to zero) or we choose only the lowest enabled one.
+    // Doing the logical OR is less resources and makes the timing easier.
+    // But we allow for the user to use the lowest enabled one.
+    function [NUM_DEVICES-1:0] dout_onehot;
+        input [NUM_DEVICES-1:0] enabled_devices;
+        reg [NUM_DEVICES-1:0] lowest_enabled;
+        integer i;
+        begin
+            lowest_enabled = {NUM_DEVICES{1'b0}};
+            for (i=0;i<NUM_DEVICES;i=i+1) begin
+                if (enabled_devices[i] && (lowest_enabled != {NUM_DEVICES{1'b0}})) lowest_enabled[i] <= 1'b1;
+            end
+            dout_onehot <= lowest_enabled;
+        end
+    endfunction
+    assign selected_dout = (USE_SINGLE_DOUT) ? |(dout_vec & dout_onehot(enable_interface)) :
+                                               |dout_vec;
+    
+    // These are the debugs. We only need one of each.
+    // We don't have debug GPIOs, just assume those work (ha)
+    // (this allows the ILA to be universal)
+    reg dbg_clk = 0;
+    reg dbg_din = 0;
+    reg dbg_aux_out = 0;    
+    wire dbg_dout = selected_dout;
     
     wire [31:0] module_config_register =
         { {16{1'b0}}, disable_tristate, clk_prescale };
+    
+    wire [7:0] gpio_out_exp = gpio_output_reg;
+    wire [7:0] gpio_in_exp = gpio_input;
+    wire [7:0] gpio_tri_exp = gpio_tristate;
+    wire [7:0] enable_if_exp = enable_interface;
 
     wire [31:0] device_config_register =
-        { gpio_output_reg,
-          gpio_input,
-          gpio_tristate,
-          enable_interface };
+        { gpio_out_exp,
+          gpio_in_exp,
+          gpio_tri_exp,
+          enable_if_exp };
     
     wire [31:0] data_register =
         { sequence_running, enable_sequence, reverse_bitorder, 2'b00, nbit_count_max,
@@ -219,10 +249,22 @@ module gen_shift_if
         if (sequence_running) begin
             if (clk_ce && CLK_STATE_IS_DONE) nbit_count <= nbit_count + 1;
         end else nbit_count <= {3{1'b0}};        
+
+        // Dout capture.
+        if (clk_ce && CLK_STATE_IS_DONE) dout_reg[nbit_count] <= selected_dout;        
+
+        // Debug logic. Same as below.
+        if (clk_ce) begin
+            if (CLK_STATE_IS_HIGH) dbg_clk <= 1'b1;
+            else if (CLK_STATE_IS_DONE) dbg_clk <= 1'b0;
+        end
+        if (clk_ce && CLK_STATE_IS_OUTPUT) dbg_din <= din_reg[nbit_count];
+        if (clk_ce && CLK_STATE_IS_OUTPUT) dbg_aux_out <= aux_out_reg[nbit_count];
+        
     end
     // Device loop!
     generate
-        genvar d;
+        genvar d, dbg;
         for (d=0;d<NUM_DEVICES;d=d+1) begin : DEV
             // Need to figure out if these are real (pack into IOBs)
             // or purely internal. Can't just let the implementation
@@ -292,13 +334,31 @@ module gen_shift_if
             
             // DOUT happens in two steps: first, capture at CLK_STATE_IS_CAPTURE
             // then transfer to the data input shift register at CLK_STATE_IS_DONE
+            // That second transfer has to happen OUTSIDE this loop, otherwise it gets multiply driven.
             always @(posedge clk) begin : DOUT_REG_LOGIC
                 if (enable_interface[d]) begin
                     if (clk_ce && CLK_STATE_IS_CAPTURE) dout_ff <= DEV_DOUT[d];
-                    if (clk_ce && CLK_STATE_IS_DONE) dout_reg[nbit_count] <= dout_ff;
+                end else begin
+                    dout_ff <= 1'b0;
                 end
             end
+            assign dout_vec[d] = dout_ff;
         end // end for (d=0;d<NUM_DEVICES;d=d+1)            
+        
+        // debug
+        if (DEBUG == "TRUE") begin : ILA
+            // need to expand the device count
+            wire [7:0] dbg_enable_interface;
+            for (dbg=0;dbg<8;dbg=dbg+1) begin : DL
+                assign dbg_enable_interface[dbg] = (dbg < NUM_DEVICES) ? enable_interface[dbg] : 1'b0;
+            end
+            gen_shift_ila u_ila(.clk(clk),
+                                .probe0(dbg_clk),
+                                .probe1(dbg_din),
+                                .probe2(dbg_aux_out),
+                                .probe3(selected_dout),
+                                .probe4(dbg_enable_interface));
+        end        
     endgenerate    
     
     assign ack_o = ack_ff;

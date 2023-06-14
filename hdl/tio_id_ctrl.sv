@@ -9,7 +9,7 @@
 // 0x000: Device ID ("TFIO")
 // 0x004: Firmware ID (standard day/month/major/minor/revision packing)
 // 0x008: DNA port
-// 0x00C: Reserved for general status/control
+// 0x00C: General status/control.
 // 0x010-0x3F: Reserved
 // 0x040: Sys clock monitor (125 MHz)
 // 0x044: Local GTP clock monitor (125 MHz)
@@ -28,7 +28,16 @@ module tio_id_ctrl(
         input gtp_clk_i,        // 125 MHz from MGT clock (LCLK, Y2)
         input rx_clk_i,         // 125 MHz from TURF receive clock
         input rx_clk_x2_i,      // 250 MHz derived from TURF receive clock
-        input clk200_i          // 200 MHz used for IDELAYCTRL
+        input clk200_i,         // 200 MHz used for IDELAYCTRL
+        // Important clock indicators. These are clock domains where
+        // the register interface crosses over into them to wait for
+        // a response, so you can imagine deadlocking. More of these
+        // may get added.
+        
+        // TURF RX clock        
+        output rx_clk_ok_o,
+        // System clock
+        output sys_clk_ok_o
     );
     
     parameter [31:0] DEVICE = "TFIO";
@@ -44,6 +53,8 @@ module tio_id_ctrl(
     
     // Status/control register
     wire [31:0] ctrlstat_reg;
+    assign ctrlstat_reg[0] = sys_clk_ok_o;
+    assign ctrlstat_reg[1] = rx_clk_ok_o;
     
     // Main internal register stuff. We have basically 64 groups of 16 registers.
     wire        sel_internal = (wb_adr_i[6 +: 6] == 0);
@@ -115,18 +126,25 @@ module tio_id_ctrl(
 
     DNA_PORT u_dina(.DIN(1'b0),.READ(dna_read),.SHIFT(dna_shift),.CLK(wb_clk_i),.DOUT(dna_data));
 
+    // Clock running monitors
+    wire [4:0] clk_running;
+    // We only care about sys_clk (0) and rx_clk (2) right now.
+    // We might care about a few others later.
+    assign sys_clk_ok_o = clk_running[0];
+    assign rx_clk_ok_o = clk_running[2];
     // Peel off the select for the clock monitor. It gets 0x40-0x7F = xxxx_x1xx_xxxx
     // But right now we grab the top 6 bits
     wire sel_clockmon = (wb_cyc_i && wb_stb_i && (wb_adr_i[6 +: 6] == 6'h01));
-    // 5 clocks needs 3 bits
+    // 5 clocks needs 3 bits    
     simple_clock_mon #(.NUM_CLOCKS(5))
         u_clockmon( .clk_i(wb_clk_i),
                     .adr_i(wb_adr_i[2 +: 3]),
                     .en_i(sel_clockmon),
-                    .we_i(wb_we_i),
+                    .wr_i(wb_we_i),
                     .dat_i(wb_dat_i),
                     .dat_o(dat_clockmon),
                     .ack_o(ack_clockmon),
+                    .clk_running_o(clk_running),
                     // From MSB to LSB
                     .clk_mon_i( { clk200_i,
                                   rx_clk_x2_i,
@@ -135,5 +153,7 @@ module tio_id_ctrl(
                                   sys_clk_i } ));
     // fix this decode if we add more
     assign wb_ack_o = (wb_adr_i[6]) ? ack_clockmon : ack_internal;
+    assign wb_err_o = 1'b0;
+    assign wb_rty_o = 1'b0;
     assign wb_dat_o = (wb_adr_i[6]) ? dat_clockmon : dat_internal;
 endmodule
