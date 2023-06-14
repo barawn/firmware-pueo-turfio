@@ -211,7 +211,12 @@ set_max_delay -datapath_only -from $initclk -to $sysclk 25.000
 # grab ALL the dumb clockmon regs
 set clockmon_level_regs [ get_cells -hier -filter {NAME =~ *u_clockmon/*clk_32x_level_reg*} ]
 set clockmon_cc_regs [ get_cells -hier -filter {NAME =~ *u_clockmon/*level_cdc_ff1_reg*}]
+set clockmon_run_reset_regs [ get_cells -hier -filter {NAME =~ *u_clockmon/clk_running_reset_reg*}]
+set clockmon_run_regs [get_cells -hier -filter {NAME=~ *u_clockmon/*u_clkmon*}]
+set clockmon_run_cc_regs [get_cells -hier -filter {NAME=~ *u_clockmon/ckk_running_status_cdc1_reg*}]
 set_max_delay -datapath_only -from $clockmon_level_regs -to $clockmon_cc_regs 10.000
+set_max_delay -datapath_only -from $clockmon_run_reset_regs -to $clockmon_run_regs 10.000
+set_max_delay -datapath_only -from $clockmon_run_regs -to $clockmon_run_cc_regs 10.000
 
 
 # We don't actually have any setup/hold specs from the manufacturer.
