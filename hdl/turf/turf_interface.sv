@@ -1,4 +1,28 @@
 `timescale 1ns / 1ps
+`include "interfaces.vh"
+// This is the TURF portion of the TURFIO serial control interface.
+// The TURF path is a bit special because it actually uses the RXCLK input.
+//
+// The overall process is:
+// step 0: make sure TURF control interface is put into training mode.
+// step 1: check if RXCLK and HSRXCLK are available. If not, stop, we do not
+//         have a usable TURF control interface.
+// step 2: reset everything I guess?
+// step 3: set the RX bit error source control to be on the RXCLK side.
+// step 4: step through the IDELAY values to find the center of the eye for RXCLK capture.
+// step 5: execute a value capture until a non-ambigous byte is acquired (skip A6, 5A, 69, and D3)
+// step 6: execute the appropriate number of bitslips based on the byte acquired
+// step 7: on the TURF-side interface, execute an eye scan 
+//         
+// Training on the TURFIO side is only needed for the CIN path.
+// register 0x00: Reset controls, sync enable, interface enable
+// register 0x04: CIN IDELAY control/readback
+// register 0x08: CIN RXCLK bit error control and readback
+// register 0x0C: CIN SYSCLK bit error control and readback
+// register 0x10: CIN value capture and bitslip control
+// register 0x14: COUT training value
+// register 0x18: COUT training enable
+// register 0x1C-0x3F: reserved
 module turf_interface #(
         parameter RXCLK_INV = 1'b0,
         parameter TXCLK_INV = 1'b0,
@@ -6,7 +30,14 @@ module turf_interface #(
         parameter COUTTIO_INV = 1'b0,
         parameter CIN_INV = 1'b0 
     )
-    (   output rxclk_o,
+    (   input wb_clk_i,
+        input wb_rst_i,
+        `TARGET_NAMED_PORTS_WB_IF(wb_ , 6, 32),
+        input  sysclk_ok_i,
+        input  sysclk_i,
+        output sync_o,
+        input rxclk_ok_i,
+        output rxclk_o,
         output rxclk_x2_o,
         input RXCLK_P,
         input RXCLK_N,
@@ -17,6 +48,12 @@ module turf_interface #(
         input CIN_P,
         input CIN_N        
     );
+
+    // just kill the WB side interface for now
+    assign ack_o = wb_cyc_i && wb_stb_i;
+    assign dat_o = {32{1'b0}};
+    assign err_o = 1'b0;
+    assign rty_o = 1'b0;
 
     // This is our first attempt just to get it working.
     // Try at 500 Mbit/s.
@@ -67,8 +104,6 @@ module turf_interface #(
     wire rxclk_x2_to_bufg_n;
     // RXCLKx2 main output (correct pol)
     wire rxclk_x2_to_bufg = (RXCLK_INV) ? rxclk_x2_to_bufg_n : rxclk_x2_to_bufg_p;
-    // RXCLK is locked
-    wire rxclk_locked;
     BUFG u_rxclk_fb(.I(rxclk_fb_to_bufg),.O(rxclk_fb_bufg));
     BUFG u_rxclk_bufg(.I(rxclk_to_bufg),.O(rxclk));
     BUFG u_rxclk_x2_bufg(.I(rxclk_x2_to_bufg),.O(rxclk_x2));
@@ -121,6 +156,16 @@ module turf_interface #(
     wire       do_cin_bitslip = cin_bitslip && !cin_bitslip_rereg;    
     // Current clock output of the ISERDES
     wire [3:0] cin_parallel;
+    // Delayed version of the output of the ISERDES, for bit-error testing.
+    wire [3:0] cin_parallel_delayed;
+    // Bit error generation.
+    wire       cin_bit_error = (cin_parallel != cin_parallel_delayed);
+    srlvec #(.NBITS(4)) u_cin_srl(.clk(rxclk),
+                                  .ce(1'b1),
+                                  .a(4'h7),
+                                  .din(cin_parallel),
+                                  .dout(cin_parallel_delayed));    
+
     // Reset ISERDES
     wire       cin_iserdes_reset;
     
@@ -208,7 +253,8 @@ module turf_interface #(
                    .probe_out3(cin_idelay_value));
     // and ILA (4 bit only)
     turf_ila u_ila(.clk(rxclk),
-                   .probe0(cin_parallel));                   
+                   .probe0(cin_parallel),
+                   .probe1(cin_bit_error));                   
 
     assign rxclk_o = rxclk;
     assign rxclk_x2_o = rxclk_x2;
