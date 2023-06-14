@@ -73,10 +73,11 @@ module turfio_intercon(
 	wire muxed_ack;
 	wire muxed_err;
 	wire muxed_rty;
+	// data TO the masters
 	wire [DATA_WIDTH-1:0] muxed_dat_i;
+
 	`define MASTER(x, y) \
 		assign requests[ y ] = x``cyc_i; \
-		assign x``gnt = grants[ y ];     \
 		assign strobes[ y ] = x``stb_i;  \
 		assign writes[ y ] = x``we_i;	 \
 		assign x``ack_o = acks[ y ];	    \
@@ -127,7 +128,7 @@ module turfio_intercon(
     assign sel = sels[m_mux_encoder(grants)];
     
     wire [NUM_SLAVES-1:0] selected;
-    wire [NUM_SLAVES-1:0] unmuxed_dat_i;
+    wire [DATA_WIDTH-1:0] unmuxed_dat_i[NUM_SLAVES-1:0];
     wire [NUM_SLAVES-1:0] s_acks;
     wire [NUM_SLAVES-1:0] s_rtys;
     wire [NUM_SLAVES-1:0] s_errs;
@@ -139,6 +140,7 @@ module turfio_intercon(
         assign s_errs[number] = prefix``err_i;              \
         assign prefix``cyc_o = cyc && selected[number];     \
         assign prefix``stb_o = stb && selected[number];     \
+        assign prefix``we_o = we;                           \
         assign prefix``adr_o = (adr & mask);                \
         assign prefix``dat_o = dat_o;                       \
         assign prefix``sel_o = sel
@@ -157,7 +159,7 @@ module turfio_intercon(
     assign muxed_ack = s_acks[s_mux_encoder(selected)];
     assign muxed_err = s_errs[s_mux_encoder(selected)];
     assign muxed_rty = s_rtys[s_mux_encoder(selected)];
-    assign muxed_dat_o = unmuxed_dat_o[s_mux_encoder(selected)];
+    assign muxed_dat_i = unmuxed_dat_i[s_mux_encoder(selected)];
 
     // END BOILERPLATE
     
@@ -167,10 +169,10 @@ module turfio_intercon(
     `MASTER( dbg_ , 2);
     `MASTER( ser_ , 3);
     // Map slaves
-    `SLAVE_MAP( tio_id_ctrl_ , 0 , TIO_ID_CTRL_BASE, TIO_ID_CTRL_MASK );
-    `SLAVE_MAP( genshift_ , 1, GENSHIFT_BASE, GENSHIFT_MASK );
-    `SLAVE_MAP( surfturf_ , 2, SURFTURF_BASE, SURFTURF_MASK );
-    `SLAVE_MAP( hski2c_ , 3, HSKI2C_BASE, HSKI2C_MASK );
+    `SLAVE_MAP( tio_id_ctrl_ , 0 , TIO_ID_CTRL_MASK, TIO_ID_CTRL_BASE );
+    `SLAVE_MAP( genshift_ , 1, GENSHIFT_MASK, GENSHIFT_BASE );
+    `SLAVE_MAP( surfturf_ , 2, SURFTURF_MASK, SURFTURF_BASE );
+    `SLAVE_MAP( hski2c_ , 3, HSKI2C_MASK, HSKI2C_BASE );
                 
     generate
         if (DEBUG == "TRUE") begin
