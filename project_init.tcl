@@ -17,5 +17,8 @@ add_include_dir [file join [get_repo_dir] "verilog-library-barawn/include"]
 # set pre-synthesis script
 set_pre_synthesis_tcl [file join [get_repo_dir] "pre_synthesis.tcl"]
 
+# set post-implementation init script
+set_post_implementation_init_tcl [file join [get_repo_dir] "post_implementation_init.tcl"]
+
 # And check if everything's loaded.
 check_all
