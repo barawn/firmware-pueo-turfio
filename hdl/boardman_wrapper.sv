@@ -21,7 +21,8 @@ module boardman_wrapper(
     assign wb_cyc_o = wb_stb_o;
     boardman_interface #(.SIMULATION(SIMULATION),
                          .CLOCK_RATE(CLOCK_RATE),
-                         .BAUD_RATE(BAUD_RATE))
+                         .BAUD_RATE(BAUD_RATE),
+                         .DEBUG("FALSE"))
         u_dev(.clk(wb_clk_i),
               .rst(wb_rst_i),
               .adr_o(wb_adr_o[21:2]),
@@ -31,5 +32,7 @@ module boardman_wrapper(
               .wr_o(wb_we_o),
               .wstrb_o(wb_sel_o),
               .ack_i(wb_ack_i || wb_rty_i || wb_err_i),
-              .burst_size_i(burst_size_i));           
+              .burst_size_i(burst_size_i),
+              .BM_RX(RX),
+              .BM_TX(TX));           
 endmodule

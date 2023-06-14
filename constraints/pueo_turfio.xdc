@@ -23,16 +23,17 @@
 #set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN L14 } [get_ports {    RX          }]
 #set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN U10 } [get_ports {    TX          }]
 
-## debug serial
-set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN D8  } [get_ports {    DBG_RX      }]
-set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN C9  } [get_ports {    DBG_TX      }]
+## debug serial. These were named from the FT2232's perspective originally, so they're swapped here
+## relative to the schematic.
+set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN D8  } [get_ports {    DBG_TX      }]
+set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN C9  } [get_ports {    DBG_RX      }]
 set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN D14 } [get_ports {    DBG_LED     }]
 
 
 ## SPI (cclk is internal)
-#set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN K16 } [get_ports {    SPI_MOSI    }]
-#set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN L17 } [get_ports {    SPI_MISO    }]
-#set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN L15 } [get_ports {    SPI_CS_B    }]
+set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN K16 } [get_ports {    SPI_MOSI    }]
+set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN L17 } [get_ports {    SPI_MISO    }]
+set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN L15 } [get_ports {    SPI_CS_B    }]
 
 ## LMK
 set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN J16 } [get_ports {    LMKDATA     }]
@@ -55,7 +56,7 @@ set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN M17 } [get_ports {    EN_3V
 ## init clk, MGT clock, local system clock
 set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN E15 } [get_ports {    INITCLK     }]
 set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN G14 } [get_ports {    INITCLKSTDBY}]
-#set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN C8  } [get_ports {    EN_LCLK_B   }]
+set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN C8  } [get_ports {    EN_LCLK_B   }]
 set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN H14 } [get_ports {    EN_MYCLK_B  }]
 
 ## cal sel
@@ -182,6 +183,9 @@ set_property -dict { IOSTANDARD LVDS_25 PACKAGE_PIN C13 DIFF_TERM "TRUE"} [get_p
 #set_property -dict { IOSTANDARD LVDS_25 PACKAGE_PIN V8      } [get_ports {DOUT_N[3]  }]
 #set_property -dict { IOSTANDARD LVDS_25 PACKAGE_PIN V7      } [get_ports {DOUT_P[3]  }]
 
+set_property -dict { PACKAGE_PIN D6 } [get_ports {F_LCLK_P}]
+set_property -dict { PACKAGE_PIN D5 } [get_ports {F_LCLK_N}]
+
 set_property BITSTREAM.GENERAL.COMPRESS TRUE [current_design]
 
 set_property CONFIG_MODE SPIx2 [current_design]
@@ -203,6 +207,12 @@ set rxclk [get_clocks rx_clock]
 # ignore the initclk/sysclk path
 set_max_delay -datapath_only -from $sysclk -to $initclk 25.000
 set_max_delay -datapath_only -from $initclk -to $sysclk 25.000
+
+# grab ALL the dumb clockmon regs
+set clockmon_level_regs [ get_cells -hier -filter {NAME =~ *u_clockmon/*clk_32x_level_reg*} ]
+set clockmon_cc_regs [ get_cells -hier -filter {NAME =~ *u_clockmon/*level_cdc_ff1_reg*}]
+set_max_delay -datapath_only -from $clockmon_level_regs -to $clockmon_cc_regs 10.000
+
 
 # We don't actually have any setup/hold specs from the manufacturer.
 # So let's just say min 2.5 max 5.5 and see what it says

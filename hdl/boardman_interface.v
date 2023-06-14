@@ -302,9 +302,13 @@ module boardman_interface(
             else if (address[1:0] == 2'b10) axis_tx_tdata <= dat_i[23:16];
             else if (address[1:0] == 2'b11) axis_tx_tdata <= dat_i[31:24];
         end 
-        else if (state == READDATA0 && axis_tx_tready) axis_tx_tdata <= dat_i[15:8];
-        else if (state == READDATA1 && axis_tx_tready) axis_tx_tdata <= dat_i[23:16];
-        else if (state == READDATA2 && axis_tx_tready) axis_tx_tdata <= dat_i[31:24];
+        // No! These don't come from dat_i, they come from *data*.
+        // dat_i is allowed to change after READCAPTURE. If we're doing a burst read,
+        // this data capture won't matter because axis_tx_tvalid is not 1 in READCAPTURE
+        // and we jump back to READCAPTURE (where it's regrabbed from dat_i).
+        else if (state == READDATA0 && axis_tx_tready) axis_tx_tdata <= data[15:8];
+        else if (state == READDATA1 && axis_tx_tready) axis_tx_tdata <= data[23:16];
+        else if (state == READDATA2 && axis_tx_tready) axis_tx_tdata <= data[31:24];
         else if (state == WRITEADDR0 && axis_tx_tready) axis_tx_tdata <= len;
 
         // tlast generation
