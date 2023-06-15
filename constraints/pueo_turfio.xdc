@@ -195,7 +195,8 @@ set_property BITSTREAM.CONFIG.SPI_32BIT_ADDR NO [current_design]
 set_property BITSTREAM.CONFIG.SPI_BUSWIDTH 2 [current_design]
 
 create_clock -period 25.000 -name init_clock [get_ports -filter { NAME =~ "INITCLK" && DIRECTION == "IN" }]
-create_clock -period 8.00 -name sys_clock [get_ports -filter { NAME =~ "CLKDIV2_P" && DIRECTION == "IN" }]
+# Sysclk gets its 8.00 period constraint from the MMCM.
+#create_clock -period 8.00 -name sys_clock [get_ports -filter { NAME =~ "CLKDIV2_P" && DIRECTION == "IN" }]
 create_clock -period 8.00 -name rx_clock [get_ports -filter { NAME =~ "T_RXCLK_N" && DIRECTION == "IN" }]
 
 # for ease of use. Plus we need to grab the generated bastard
@@ -208,16 +209,14 @@ set rxclk [get_clocks rx_clock]
 set_max_delay -datapath_only -from $sysclk -to $initclk 25.000
 set_max_delay -datapath_only -from $initclk -to $sysclk 25.000
 
-# grab ALL the dumb clockmon regs
-set clockmon_level_regs [ get_cells -hier -filter {NAME =~ *u_clockmon/*clk_32x_level_reg*} ]
-set clockmon_cc_regs [ get_cells -hier -filter {NAME =~ *u_clockmon/*level_cdc_ff1_reg*}]
-set clockmon_run_reset_regs [ get_cells -hier -filter {NAME =~ *u_clockmon/clk_running_reset_reg*}]
-set clockmon_run_regs [get_cells -hier -filter {NAME=~ *u_clockmon/*u_clkmon*}]
-set clockmon_run_cc_regs [get_cells -hier -filter {NAME=~ *u_clockmon/ckk_running_status_cdc1_reg*}]
-set_max_delay -datapath_only -from $clockmon_level_regs -to $clockmon_cc_regs 10.000
-set_max_delay -datapath_only -from $clockmon_run_reset_regs -to $clockmon_run_regs 10.000
-set_max_delay -datapath_only -from $clockmon_run_regs -to $clockmon_run_cc_regs 10.000
 
+# and autoignore the flag_sync module guys
+set sync_flag_regs [get_cells -hier -filter {NAME =~ *FlagToggle_clkA_reg*}]
+set sync_sync_regs [get_cells -hier -filter {NAME =~ *SyncA_clkB_reg*}]
+set sync_syncB_regs [get_cells -hier -filter {NAME =~ *SyncB_clkA_reg*}]
+
+set_max_delay -datapath_only -from $sync_flag_regs -to $sync_sync_regs 10.000
+set_max_delay -datapath_only -from $sync_sync_regs -to $sync_syncB_regs 10.000
 
 # We don't actually have any setup/hold specs from the manufacturer.
 # So let's just say min 2.5 max 5.5 and see what it says

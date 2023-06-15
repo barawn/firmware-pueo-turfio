@@ -22,6 +22,7 @@ set wb_static_targets [get_cells -hier -filter {NAME =~ *u_turf/u_cin_idelay*}]
 lappend wb_static_targets [get_cells -hier -filter {NAME=~ *u_turf/u_cin_idelay*}]
 lappend wb_static_targets [get_cells -hier -filter {NAME=~ *u_turf/u_rxclk_biterr/u_dsp}]
 lappend wb_static_targets [get_cells -hier -filter {NAME=~ *u_turf/cin_parallel_capture_reg*}]
+lappend wb_static_targets [get_cells -hier -filter {NAME=~ *u_turf/u_cin_iserdes*}]
 set_max_delay -datapath_only -from $wb_static_regs -to $wb_static_targets 10.000
 
 set biterr_count_rxclk [get_cells -hier -filter {NAME=~ *u_turf/bit_error_count_reg*}]
@@ -29,5 +30,6 @@ set biterr_count_wbclk [get_cells -hier -filter {NAME=~ *u_turf/bit_error_count_
 set_max_delay -datapath_only -from $biterr_count_rxclk -to $biterr_count_wbclk 10.000
 
 set wb_dat_regs [get_cells -hier -filter {NAME=~ *u_turf/dat_reg_reg*}]
-set cin_capture_regs [get_cells -hier -filter {NAME=~ *u_turf/cin_parallel_capture_reg*}]
-set_max_delay -datapath_only -from $cin_capture_regs -to $wb_dat_regs 10.000
+set wb_dat_sources [get_cells -hier -filter {NAME=~ *u_turf/cin_parallel_capture_reg*}]
+lappend wb_dat_sources [get_cells -hier -filter {NAME=~ *u_turf/u_cin_idelay*}]
+set_max_delay -datapath_only -from $wb_dat_sources -to $wb_dat_regs 10.000
