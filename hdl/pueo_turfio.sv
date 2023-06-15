@@ -137,16 +137,20 @@ module pueo_turfio #( parameter NSURF=1,
     wire clk200;
     // 125 MHz clock from the TURF arriving on RXCLK
     wire rxclk;
+    // Rxclk is OK (toggling)
+    wire rxclk_ok;
     // High speed (250 MHz) clock for digitizing CIN-type data
     wire rxclk_x2;
     // Local gigabit clock derived 
     wire gtp_clk;
     // System clock (from LMK)
-    wire sysclk;    
+    wire sysclk;
+    // Sysclk is OK (toggling) 
+    wire sysclk_ok;
     
     wire clk200_locked;
     BUFG u_initclk_bufg(.I(INITCLK),.O(init_clk));
-    clk200_wiz u_clk200(.clk_in1(init_clk),.clk_out1(clk200),.locked(clk200_locked));
+    clk200_wiz u_clk200(.clk_in1(init_clk),.reset(1'b0),.clk_out1(clk200),.locked(clk200_locked));
     IDELAYCTRL u_idelayctrl(.RST(!clk200_locked),.REFCLK(clk200));
 
 
@@ -189,7 +193,6 @@ module pueo_turfio #( parameter NSURF=1,
     `DEFINE_WB_IF( hski2c_ , 12, 32);
 
     // Slave stubs    
-    wbs_dummy #(.ADDRESS_WIDTH(12),.DATA_WIDTH(32)) u_surfturf_stub( `CONNECT_WBS_IFM( wb_, surfturf_) );
     wbs_dummy #(.ADDRESS_WIDTH(12),.DATA_WIDTH(32)) u_hski2c_stub( `CONNECT_WBS_IFM(wb_ , hski2c_) );
     // Master stubs
     wbm_dummy #(.ADDRESS_WIDTH(22),.DATA_WIDTH(32)) u_gtp_stub( `CONNECT_WBM_IFM(wb_ , gtp_ ));
@@ -213,12 +216,14 @@ module pueo_turfio #( parameter NSURF=1,
         u_id_ctrl( .wb_clk_i(wb_clk),
                    .wb_rst_i(1'b0),
                    `CONNECT_WBS_IFM( wb_ , tio_id_ctrl_ ),
+                   .rx_clk_ok_o(rxclk_ok),
+                   .sys_clk_ok_o(sysclk_ok),
                    .sys_clk_i(sysclk),
                    .gtp_clk_i(gtp_clk),
                    .rx_clk_i(rxclk),
                    .rx_clk_x2_i(rxclk_x2),
                    .clk200_i(clk200));
-    
+    // Genshift module    
     turfio_gen_shift_wrapper
         u_genshift( .wb_clk_i(wb_clk),
                     .wb_rst_i(1'b0),
@@ -239,11 +244,35 @@ module pueo_turfio #( parameter NSURF=1,
                     .SPI_MISO(SPI_MISO),
                     .SPI_MOSI(SPI_MOSI),
                     .SPI_CS_B(SPI_CS_B));
-
+    // SURFTURF module. This is just the TURF component for now.
+    // Internally it gets mapped to a subset of the address space. Here it just
+    // connects up what it can.
+    turf_interface #(.RXCLK_INV(T_RXCLK_INV),
+                     .TXCLK_INV(T_TXCLK_INV),
+                     .COUT_INV(T_COUT_INV),
+                     .COUTTIO_INV(T_COUTTIO_INV),
+                     .CIN_INV(T_CIN_INV))
+        u_turf(.wb_clk_i(wb_clk),
+               .wb_rst_i(1'b0),
+               `CONNECT_WBS_IFM( wb_ , surfturf_ ),
+               .rxclk_o(rxclk),
+               .rxclk_ok_i(rxclk_ok),
+               .rxclk_x2_o(rxclk_x2),        
+               .sysclk_i(sysclk),
+               .sysclk_ok_i(sysclk_ok),
+               .RXCLK_P(T_RXCLK_P),
+               .RXCLK_N(T_RXCLK_N),
+               .TXCLK_P(T_TXCLK_P),
+               .TXCLK_N(T_TXCLK_N),
+               .COUTTIO_P(T_COUTTIO_P),
+               .COUTTIO_N(T_COUTTIO_N),
+               .CIN_P(T_CIN_P),
+               .CIN_N(T_CIN_N));                     
+    
     // this is temporary and going away.
     wire serclk;
     wire locked;
-    wire sysclk_reset;
+    wire sysclk_reset=1'b0;
     sys_clk_generator u_sysclkgen(.clk_in1_p(CLKDIV2_P),.clk_in1_n(CLKDIV2_N),.reset(sysclk_reset),.sys_clk(sysclk),.ser_clk(serclk),.locked(locked));
     
     
@@ -359,22 +388,6 @@ module pueo_turfio #( parameter NSURF=1,
 ////                                   .data_out_to_pins_p( cin_pos));
 ////        end
 ////    endgenerate    
-
-    turf_interface #(.RXCLK_INV(T_RXCLK_INV),
-                     .TXCLK_INV(T_TXCLK_INV),
-                     .COUT_INV(T_COUT_INV),
-                     .COUTTIO_INV(T_COUTTIO_INV),
-                     .CIN_INV(T_CIN_INV))
-        u_turf(.rxclk_o(rxclk),
-               .rxclk_x2_o(rxclk_x2),        
-               .RXCLK_P(T_RXCLK_P),
-               .RXCLK_N(T_RXCLK_N),
-               .TXCLK_P(T_TXCLK_P),
-               .TXCLK_N(T_TXCLK_N),
-               .COUTTIO_P(T_COUTTIO_P),
-               .COUTTIO_N(T_COUTTIO_N),
-               .CIN_P(T_CIN_P),
-               .CIN_N(T_CIN_N));                     
 
     wire gtp_inclk;
     IBUFDS_GTE2 u_gtpclk( .I(F_LCLK_P),.IB(F_LCLK_N),.CEB(1'b0),.O(gtp_inclk));
