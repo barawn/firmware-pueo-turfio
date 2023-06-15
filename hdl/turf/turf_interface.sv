@@ -18,8 +18,8 @@
 // register 0x00: Reset controls, sync enable, interface enable
 // register 0x04: CIN IDELAY control/readback
 // register 0x08: CIN RXCLK bit error control and readback
-// register 0x0C: CIN SYSCLK bit error control and readback
-// register 0x10: CIN value capture and bitslip control
+// register 0x0C: CIN value capture and bitslip control
+// register 0x10: CIN SYSCLK bit error control and readback
 // register 0x14: COUT training value
 // register 0x18: COUT training enable
 // register 0x1C-0x3F: reserved
@@ -49,12 +49,65 @@ module turf_interface #(
         input CIN_N        
     );
 
-    // just kill the WB side interface for now
-    assign ack_o = wb_cyc_i && wb_stb_i;
-    assign dat_o = {32{1'b0}};
-    assign err_o = 1'b0;
-    assign rty_o = 1'b0;
+    // Demultiplexed output register.
+    reg [31:0] dat_reg = {32{1'b0}};
 
+    //////////////////////////////////////////
+    // Clock Crossings
+    //
+    // Our register access in the wb clk domain
+    // But some of our controls/etc. are in the
+    // rxclk and sysclk domains.
+    //
+    // So if those controls are accessed,
+    // we bounce over to the other domain
+    // and let them process it.
+    //
+    // Just to make the clock crossings easier
+    // we hold address, write enable, and data
+    // static here.
+    //////////////////////////////////////////
+    
+    reg [31:0] dat_in_static = {32{1'b0}};
+    reg [5:0]  adr_in_static = {6{1'b0}};
+    reg        we_in_static = 0;
+
+    // These determine whether we're jumping over to the rxclk or sysclk sides.
+    wire rxclk_access = (wb_adr_i == 6'h4 || wb_adr_i == 6'h8 || wb_adr_i == 6'h0C);
+    wire sysclk_access= (wb_adr_i == 6'h10);
+    // These are the flags to inform the other domains.
+    wire rxclk_waiting;
+    reg rxclk_waiting_reg = 0;
+    always @(posedge wb_clk_i) rxclk_waiting_reg <= rxclk_waiting;
+    wire rxclk_waiting_flag_wbclk = (rxclk_waiting && !rxclk_waiting_reg);
+    wire rxclk_waiting_flag_rxclk;
+    flag_sync u_rxclk_waiting_sync(.clkA(wb_clk_i),.clkB(rxclk_o),
+                                   .in_clkA(rxclk_waiting_flag_wbclk),
+                                   .out_clkB(rxclk_waiting_flag_rxclk));
+    reg  rxclk_ack_flag_rxclk = 0;
+    always @(posedge rxclk_o) rxclk_ack_flag_rxclk <= rxclk_waiting_flag_rxclk;
+    wire rxclk_ack_flag_wbclk;
+    flag_sync u_rxclk_ack_sync(.clkA(rxclk_o),.clkB(wb_clk_i),
+                               .in_clkA(rxclk_ack_flag_rxclk),
+                               .out_clkB(rxclk_ack_flag_wbclk));
+
+    wire sysclk_waiting;
+    reg sysclk_waiting_reg = 0;
+    always @(posedge wb_clk_i) sysclk_waiting_reg <= sysclk_waiting;
+    wire sysclk_waiting_flag_wbclk = (sysclk_waiting && !sysclk_waiting_reg);
+    wire sysclk_waiting_flag_sysclk;
+    flag_sync u_sysclk_waiting_sync(.clkA(wb_clk_i),.clkB(sysclk_i),
+                                    .in_clkA(sysclk_waiting_flag_wbclk),
+                                    .out_clkB(sysclk_waiting_flag_sysclk));
+    reg sysclk_ack_flag_sysclk = 0;
+    always @(posedge sysclk_i) sysclk_ack_flag_sysclk <= sysclk_waiting_flag_sysclk;
+    wire sysclk_ack_flag_wbclk;
+    flag_sync u_sysclk_ack_sync(.clkA(sysclk_i),.clkB(wb_clk_i),
+                                .in_clkA(sysclk_ack_flag_sysclk),
+                                .out_clkB(sysclk_ack_flag_wbclk));
+
+
+        
     // This is our first attempt just to get it working.
     // Try at 500 Mbit/s.
     
@@ -79,7 +132,8 @@ module turf_interface #(
     wire rxclk_locked;
     
     // RXCLK path    
-    IBUFGDS_DIFF_OUT u_rxclk(.I(rxclk_in_p),.IB(rxclk_in_n),.O(rxclk_out_p),.OB(rxclk_out_n));
+    IBUFGDS_DIFF_OUT #(.IBUF_LOW_PWR("FALSE"))
+        u_rxclk(.I(rxclk_in_p),.IB(rxclk_in_n),.O(rxclk_out_p),.OB(rxclk_out_n));
     // Just use the damn MMCM base directly
     // The math we use here is to run it at 1 GHz.
     // So CLKFBOUT_MULT_F is 8
@@ -139,46 +193,100 @@ module turf_interface #(
     // CIN out of IDELAY
     wire cin_delayed;
     // CIN idelay value
-    wire [5:0] cin_idelay_value;
+    wire [5:0] cin_idelay_value = dat_in_static[5:0];
     // Current CIN delay value
     wire [5:0] cin_idelay_current;
-    // Load CIN idelay
-    wire       cin_idelay_load;
-    // reregistered load
-    reg        cin_idelay_load_rereg = 0;
-    // flag
-    wire       do_cin_idelay_load = cin_idelay_load && !cin_idelay_load_rereg;    
+    // Load CIN value.
+    wire       do_cin_idelay_load = rxclk_waiting_flag_rxclk &&
+                                    adr_in_static == 6'h4 &&
+                                    we_in_static;
     // Bitslip the ISERDES
-    wire       cin_bitslip;
-    // reregistered
-    reg        cin_bitslip_rereg = 0;
-    // flag
-    wire       do_cin_bitslip = cin_bitslip && !cin_bitslip_rereg;    
-    // Current clock output of the ISERDES
-    wire [3:0] cin_parallel;
+    wire       do_cin_bitslip = rxclk_waiting_flag_rxclk &&
+                                adr_in_static == 6'hC &&
+                                we_in_static;
+                                
+    // Current clock output of the ISERDES.
+    // We need to grab *all* 32 because it's the only real way to ensure that
+    // the value being captured is correct. Our error tester only actually
+    // checks that the pattern repeats, not that it's correct.
+    // Annoyingly we're not actually going to use this for the proper deserialization
+    // because we want to have the fewest number of bits cross to the SYSCLK domain.
+    //
+    // Note: we *might* want to look into using the IO_FIFOs as they'll almost get
+    // us entirely to full deserialization. The only question is whether or not
+    // they'll be synchronous enough.
+    // (Technically they might be able to do the whole damn thing, using
+    //  2x 4-bit inputs to expand to 16 total bits and then 4x 4 bit inputs to expand
+    // to the full 32 bits). That would require extremely clever control signaling
+    // and timing however.
+    reg [27:0] cin_history = {28{1'b0}};
+    wire [7:0] cin_parallel;
+    reg [31:0] cin_parallel_capture = {32{1'b0}};
+    always @(posedge rxclk) if (rxclk_waiting_flag_rxclk &&
+                                adr_in_static == 6'hC) cin_parallel_capture <= { cin_parallel[3:0], cin_history };
+    // Shifts need to be right shifts. Data
+    // comes out:
+    // 0 1 2 3 4 5 6 7
+    // 6 9 9 6 a 5 5 a
+    // so to put it back the same way (0xA55A6996) we need to shift as:
+    // 0 6xxxxxxx
+    // 1 96xxxxxx
+    // 2 996xxxxx
+    // 3 6996xxxx
+    // 4 a6996xxx
+    // 5 5a6996xx
+    // 6 55a6996x
+    // 7 a55a6996
+    always @(posedge rxclk) begin
+        cin_history[24 +: 4] <= cin_parallel[3:0];
+        cin_history[20 +: 4] <= cin_history[24 +: 4];
+        cin_history[16 +: 4] <= cin_history[20 +: 4];
+        cin_history[12 +: 4] <= cin_history[16 +: 4];
+        cin_history[8 +: 4] <= cin_history[12 +: 4];
+        cin_history[4 +: 4] <= cin_history[8 +: 4];
+        cin_history[0 +: 4] <= cin_history[4 +: 4];
+    end 
     // Delayed version of the output of the ISERDES, for bit-error testing.
     wire [3:0] cin_parallel_delayed;
     // Bit error generation.
-    wire       cin_bit_error = (cin_parallel != cin_parallel_delayed);
+    wire       cin_bit_error = (cin_parallel[3:0] != cin_parallel_delayed[3:0]);
     srlvec #(.NBITS(4)) u_cin_srl(.clk(rxclk),
                                   .ce(1'b1),
                                   .a(4'h7),
-                                  .din(cin_parallel),
+                                  .din(cin_parallel[3:0]),
                                   .dout(cin_parallel_delayed));    
+    // Bit error testing. This sucks a bit because we have to have holding registers
+    // both here and in wb_clk.
+    wire [24:0] bit_error_count;
+    wire        bit_error_count_valid;
+    wire        bit_error_count_valid_wbclk;
+    flag_sync   u_bit_error_count_valid_sync(.clkA(rxclk),.clkB(wb_clk_i),
+                                             .in_clkA(bit_error_count_valid),
+                                             .out_clkB(bit_error_count_valid_wbclk));
+    reg [24:0]  bit_error_count_reg = {25{1'b0}};
+    always @(posedge rxclk) if (bit_error_count_valid) bit_error_count_reg <= bit_error_count;
+    reg [24:0]  bit_error_count_wbclk = {25{1'b0}};
+    always @(posedge wb_clk_i) if (bit_error_count_valid_wbclk) bit_error_count_wbclk <= bit_error_count_reg;
+        
+    dsp_timed_counter u_rxclk_biterr( .clk(rxclk),
+                                      .count_in(cin_bit_error),
+                                      .interval_in(dat_in_static[23:0]),
+                                      .interval_load( rxclk_waiting_flag_rxclk &&
+                                                      adr_in_static == 6'h8 &&
+                                                      we_in_static ),
+                                      .count_out(bit_error_count),
+                                      .count_out_valid(bit_error_count_valid));
 
     // Reset ISERDES
     wire       cin_iserdes_reset;
-    
-    always @(posedge rxclk) begin
-        cin_idelay_load_rereg <= cin_idelay_load;
-        cin_bitslip_rereg <= cin_bitslip;
-    end
-    
+        
     // CIN path        
-    IBUFDS_DIFF_OUT u_cin_ibuf(.I(cin_in_p),.IB(cin_in_n),.O(cin_out_p),.OB(cin_out_n));
-    IDELAYE2 #(.IDELAY_TYPE("VAR_LOAD"))
+    IBUFDS_DIFF_OUT #(.IBUF_LOW_PWR("FALSE"))
+        u_cin_ibuf(.I(cin_in_p),.IB(cin_in_n),.O(cin_out_p),.OB(cin_out_n));
+    IDELAYE2 #(.IDELAY_TYPE("VAR_LOAD"),
+               .HIGH_PERFORMANCE_MODE("TRUE"))
              u_cin_idelay(.C(rxclk),
-                          .LD(cin_idelay_load),
+                          .LD(do_cin_idelay_load),
                           .CNTVALUEIN(cin_idelay_value),
                           .CNTVALUEOUT(cin_idelay_current),
                           .IDATAIN(cin_out),
@@ -187,12 +295,14 @@ module turf_interface #(
     // OSERDES is opposite that (LSB is first out)
     // In UltraScale they are BOTH LSB is first in.
     // So that means we need to flop the ISERDES here.
+    // We also use the TOP bits (which... we're not supposed to) because they still
+    // actually do work to do an 8-fold deserialization over 2 clock periods.
     ISERDESE2 #(.INTERFACE_TYPE("NETWORKING"),
                 .DATA_RATE("DDR"),
                 .DATA_WIDTH(4),
                 .IOBDELAY("IFD"),
                 .NUM_CE(1))
-        u_cin_iserdes(.BITSLIP(cin_bitslip),
+        u_cin_iserdes(.BITSLIP(do_cin_bitslip),
                       .CE1(1'b1),
                       .CLK(rxclk_x2),
                       .CLKB(~rxclk_x2),
@@ -202,7 +312,11 @@ module turf_interface #(
                       .Q1(cin_parallel[3]),
                       .Q2(cin_parallel[2]),
                       .Q3(cin_parallel[1]),
-                      .Q4(cin_parallel[0]));
+                      .Q4(cin_parallel[0]),
+                      .Q5(cin_parallel[7]),
+                      .Q6(cin_parallel[6]),
+                      .Q7(cin_parallel[5]),
+                      .Q8(cin_parallel[4]));
 
     // COUT positive output from OBUFDS
     wire couttio_out_p;
@@ -238,23 +352,78 @@ module turf_interface #(
     OBUFDS u_txclk_obuf(.I(txclk_in),.O(txclk_out_p),.OB(txclk_out_n));
 
                                             
-    // OK, Vio time:
-    // cin_idelay_load
-    // cin_idelay_value    
-    // cin_iserdes_reset
-    // cin_bitslip
-    // cin_idelay_current (input)
-    // 4 out 1 in
-    turf_vio u_vio(.clk(rxclk),
-                   .probe_in0(cin_idelay_current),
-                   .probe_out0(cin_bitslip),
-                   .probe_out1(cin_iserdes_reset),
-                   .probe_out2(cin_idelay_load),
-                   .probe_out3(cin_idelay_value));
+//    // OK, Vio time:
+//    // cin_idelay_load
+//    // cin_idelay_value    
+//    // cin_iserdes_reset
+//    // cin_bitslip
+//    // cin_idelay_current (input)
+//    // 4 out 1 in
+//    turf_vio u_vio(.clk(rxclk),
+//                   .probe_in0(cin_idelay_current),
+//                   .probe_out0(cin_bitslip),
+//                   .probe_out1(cin_iserdes_reset),
+//                   .probe_out2(cin_idelay_load),
+//                   .probe_out3(cin_idelay_value));
     // and ILA (4 bit only)
     turf_ila u_ila(.clk(rxclk),
                    .probe0(cin_parallel),
                    .probe1(cin_bit_error));                   
+
+    // Interface logic
+    localparam FSM_BITS=2;
+    localparam [FSM_BITS-1:0] IDLE = 0;
+    localparam [FSM_BITS-1:0] ACK = 1;
+    localparam [FSM_BITS-1:0] WAIT_ACK_RXCLK = 2;
+    localparam [FSM_BITS-1:0] WAIT_ACK_SYSCLK = 3;
+    reg [FSM_BITS-1:0] state = IDLE;
+    
+    assign rxclk_waiting = (state == WAIT_ACK_RXCLK);
+    assign sysclk_waiting = (state == WAIT_ACK_SYSCLK);
+    
+    always @(posedge wb_clk_i) begin        
+        if (wb_cyc_i && wb_stb_i) begin
+            // stupid, but whatever
+            if (wb_sel_i[0]) dat_in_static[7:0] <= wb_dat_i[7:0];
+            if (wb_sel_i[1]) dat_in_static[15:8] <= wb_dat_i[15:8];
+            if (wb_sel_i[2]) dat_in_static[23:16] <= wb_dat_i[23:16];
+            if (wb_sel_i[3]) dat_in_static[31:24] <= wb_dat_i[31:24];
+            adr_in_static <= wb_adr_i;
+            we_in_static <= wb_we_i;
+        end
+
+        if (wb_rst_i) state <= IDLE;
+        else begin
+            case (state)
+                IDLE:   if (wb_cyc_i && wb_stb_i) begin
+                            if (rxclk_access) state <= WAIT_ACK_RXCLK;
+                            else if (sysclk_access) state <= WAIT_ACK_SYSCLK;
+                            else state <= ACK;
+                        end
+                ACK: state <= IDLE;
+                WAIT_ACK_RXCLK: if (rxclk_ack_flag_wbclk || !rxclk_ok_i) state <= ACK;
+                WAIT_ACK_SYSCLK: if (sysclk_ack_flag_wbclk || !sysclk_ok_i) state <= ACK;
+            endcase
+        end
+    
+        if (state == WAIT_ACK_RXCLK) begin
+            if (rxclk_ack_flag_wbclk) begin
+                if (wb_adr_i == 6'h4) dat_reg <= cin_idelay_current;
+                else if (wb_adr_i == 6'h8) dat_reg <= bit_error_count_wbclk;
+                else if (wb_adr_i == 6'hC) dat_reg <= cin_parallel_capture;
+            end else if (!rxclk_ok_i) begin
+                dat_reg <= {32{1'b1}};
+            end
+        end else if (state == WAIT_ACK_SYSCLK) begin
+            if (!sysclk_ok_i) dat_reg <= {32{1'b1}};
+            else dat_reg <= {32{1'b0}};
+        end
+    end            
+
+    assign wb_dat_o = dat_reg;
+    assign wb_ack_o = (state == ACK);
+    assign wb_err_o = 1'b0;
+    assign wb_rty_o = 1'b0;
 
     assign rxclk_o = rxclk;
     assign rxclk_x2_o = rxclk_x2;
