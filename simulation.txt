@@ -1,2 +1,6 @@
 verilog-library-barawn/sim/tb_rclock.sv
+verilog-library-barawn/sim/dsp_timed_counter_tb.sv
+sim/simple_clock_mon_tb.sv
 sim/pueo_turfio_tb.sv
+sim/simple_clock_mon_tb_behav.wcfg
+verilog-library-barawn/sim/dsp_timed_counter_tb_behav.wcfg
