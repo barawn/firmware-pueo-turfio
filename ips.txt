@@ -1,4 +1,7 @@
 ip/clock/clk200_wiz/clk200_wiz.xci
+ip/debug/cobs_ila/cobs_ila.xci
+ip/debug/gen_shift_ila/gen_shift_ila.xci
+ip/debug/intercon_ila/intercon_ila.xci
 ip/debug/jtag_ila/jtag_ila.xci
 ip/debug/jtag_vio/jtag_vio.xci
 ip/debug/lmk_ila/lmk_ila.xci
