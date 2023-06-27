@@ -14,9 +14,15 @@ verilog-library-barawn/hdl/wbs_dummy.v
 verilog-library-barawn/hdl/wishbone_arbiter.v
 hdl/boardman_wrapper.sv
 hdl/gen_shift_if/gen_shift_if.sv
+hdl/turf/rxclk_sysclk_transfer.sv
 hdl/clock/simple_clock_mon.sv
 hdl/tio_id_ctrl.sv
+hdl/turf/turf_cin.sv
+hdl/turf/turf_cin_parallel_sync.sv
+l/turfio/turf_cout_interface.sv
 hdl/turf/turf_interface.sv
+hdl/turf/turf_rxclk_gen.sv
+hdl/turf/turfctl_register_core.sv
 hdl/turfio_gen_shift_wrapper.sv
 hdl/turfio_intercon.sv
 hdl/pueo_turfio.sv
