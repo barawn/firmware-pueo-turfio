@@ -216,10 +216,11 @@ module turfctl_register_core(
 
     // MMCM reset (async, doesn't matter)
     reg       mmcm_reset = 0;
-    // ISERDES reset (need to resync to rxclk)
+    // ISERDES reset (also copied to output). Trying out custom attributes.
+    (* CUSTOM_CC = "FROM_WBCLK" *)
     reg       iserdes_reset = 0;
-    // Resync registers
-    (* ASYNC_REG = "TRUE" *)
+    // Resync registers. Again trying out custom attributes.
+    (* ASYNC_REG = "TRUE", CUSTOM_CC = "TO_RXCLK" *)
     reg [1:0] iserdes_reset_resync = {2{1'b0}};
     always @(posedge rxclk_i) iserdes_reset_resync <= {iserdes_reset_resync[0], iserdes_reset };
     
