@@ -40,3 +40,8 @@ set_max_delay -datapath_only -from $wb_dat_sources -to $wb_dat_regs 10.000
 set rxsys_xfr_src_regs [get_cells -hier -filter {CUSTOM_SYSCLK_SOURCE=="TRUE"}]
 set rxsys_xfr_tgt_regs [get_cells -hier -filter {CUSTOM_SYSCLK_TARGET=="TRUE"}]
 set_min_delay -from $rxsys_xfr_src_regs -to $rxsys_xfr_tgt_regs 0.0
+
+# ignore the properly-tagged FROM_WBCLK and TO_RXCLK clock-crosses.
+set custom_cc_from_wbclk [get_cells -hier -filter {CUSTOM_CC=="FROM_WBCLK"}]
+set custom_cc_to_rxclk [get_cells -hier -filter {CUSTOM_CC=="TO_RXCLK"}]
+set_max_delay -datapath_only -from $custom_cc_from_wbclk -to $custom_cc_to_rxclk 10.000
