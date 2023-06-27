@@ -25,6 +25,7 @@ module tio_id_ctrl(
 
         // Clocks for monitoring. We leave space for up to 16.
         input sys_clk_i,        // 125 MHz from LMK (U2)
+        input sys_clk_x2_i,
         input gtp_clk_i,        // 125 MHz from MGT clock (LCLK, Y2)
         input rx_clk_i,         // 125 MHz from TURF receive clock
         input rx_clk_x2_i,      // 250 MHz derived from TURF receive clock
@@ -135,8 +136,8 @@ module tio_id_ctrl(
     // Peel off the select for the clock monitor. It gets 0x40-0x7F = xxxx_x1xx_xxxx
     // But right now we grab the top 6 bits
     wire sel_clockmon = (wb_cyc_i && wb_stb_i && (wb_adr_i[6 +: 6] == 6'h01));
-    // 5 clocks needs 3 bits    
-    simple_clock_mon #(.NUM_CLOCKS(5))
+    // 6 clocks needs 3 bits    
+    simple_clock_mon #(.NUM_CLOCKS(6))
         u_clockmon( .clk_i(wb_clk_i),
                     .adr_i(wb_adr_i[2 +: 3]),
                     .en_i(sel_clockmon),
@@ -146,7 +147,8 @@ module tio_id_ctrl(
                     .ack_o(ack_clockmon),
                     .clk_running_o(clk_running),
                     // From MSB to LSB
-                    .clk_mon_i( { clk200_i,
+                    .clk_mon_i( { sys_clk_x2_i,
+                                  clk200_i,
                                   rx_clk_x2_i,
                                   rx_clk_i,
                                   gtp_clk_i,
