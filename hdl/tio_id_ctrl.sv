@@ -10,7 +10,9 @@
 // 0x004: Firmware ID (standard day/month/major/minor/revision packing)
 // 0x008: DNA port
 // 0x00C: General status/control.
-// 0x010-0x3F: Reserved
+// 0x010: Sync offset register/sync enable.
+// 0x014: Clock offset register.
+// 0x018-0x3F: Reserved
 // 0x040: Sys clock monitor (125 MHz)
 // 0x044: Local GTP clock monitor (125 MHz)
 // 0x048: RX clock monitor (125 MHz)
@@ -23,6 +25,18 @@ module tio_id_ctrl(
         input wb_rst_i,
         `TARGET_NAMED_PORTS_WB_IF( wb_ , 12, 32),
 
+        // Sync sequence offset. When a sync sequence
+        // comes in, this is the number of sysclks
+        // we wait before resetting the internal
+        // sync sequence (and issuing the external clock sync if enabled)
+        output [7:0] sync_offset_o,
+        // Enable the external sync. This is optional because it will eff the SURF clocks when done.
+        // Only needs to be done once.
+        output       en_ext_sync_o,
+        // Clock counter offset. When a sync request
+        // comes in, this is what we reset the sysclk
+        // counter to.
+        output [7:0] clk_offset_o,
         // Clocks for monitoring. We leave space for up to 16.
         input sys_clk_i,        // 125 MHz from LMK (U2)
         input sys_clk_x2_i,
@@ -51,6 +65,14 @@ module tio_id_ctrl(
     reg dna_shift = 0;
     // Read the DNA port
     reg dna_read = 0;
+    
+    // Sync offset + enable
+    (* CUSTOM_CC = "FROM_WBCLK" *)
+    reg [8:0] sync_offset_plus_en = {9{1'b0}};
+    
+    // Clock offset.
+    (* CUSTOM_CC = "FROM_WBCLK" *)
+    reg [7:0] clock_offset = {8{1'b0}};
     
     // Status/control register
     wire [31:0] ctrlstat_reg;
@@ -83,8 +105,8 @@ module tio_id_ctrl(
 					assign wishbone_registers[ addr ] = x
 
 		`define SIGNALRESET(addr, x, range, resetval)																	\
-					always @(posedge clk_i) begin																			\
-						if (rst_i) x <= resetval;																				\
+					always @(posedge wb_clk_i) begin																			\
+						if (wb_rst_i) x <= resetval;																				\
 						else if (sel_internal && wb_cyc_i && wb_stb_i && wb_we_i && (BASE(wb_adr_i) == addr))		\
 							x <= wb_dat_i range;																						\
 					end																												\
@@ -97,9 +119,8 @@ module tio_id_ctrl(
     `WISHBONE_ADDRESS( 12'h004, VERSION, OUTPUT, [31:0], 0);
     `WISHBONE_ADDRESS( 12'h008, { {31{1'b0}}, dna_data }, OUTPUTSELECT, sel_dna, 0);
     `WISHBONE_ADDRESS( 12'h00C, ctrlstat_reg, OUTPUTSELECT, sel_ctrlstat, 0);
-    // Reserved slots. Shadowed.
-    assign wishbone_registers[4] = wishbone_registers[0];
-    assign wishbone_registers[5] = wishbone_registers[1];
+    `WISHBONE_ADDRESS( 12'h010, sync_offset_plus_en, SIGNALRESET, [8:0], 9'h00);
+    `WISHBONE_ADDRESS( 12'h014, clock_offset, SIGNALRESET, [7:0], 8'h00);
     assign wishbone_registers[6] = wishbone_registers[2];
     assign wishbone_registers[7] = wishbone_registers[3];
     assign wishbone_registers[8] = wishbone_registers[0];
@@ -158,4 +179,8 @@ module tio_id_ctrl(
     assign wb_err_o = 1'b0;
     assign wb_rty_o = 1'b0;
     assign wb_dat_o = (wb_adr_i[6]) ? dat_clockmon : dat_internal;
+
+    assign sync_offset_o = sync_offset_plus_en[7:0];
+    assign en_ext_sync_o = sync_offset_plus_en[8];
+    assign clock_offset_o = clock_offset;
 endmodule
