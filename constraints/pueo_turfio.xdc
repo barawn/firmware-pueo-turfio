@@ -200,6 +200,8 @@ create_clock -period 25.000 -name init_clock [get_ports -filter { NAME =~ "INITC
 # We're using the *nominal* clock offset here, hopefully it works.
 create_clock -period 8.00 -waveform {6.4 2.4} -name rx_clock [get_ports -filter { NAME =~ "T_RXCLK_N" && DIRECTION == "IN" }]
 
+create_clock -period 8.00 -name gtp_clock [get_ports -filter { NAME =~ "F_LCLK_P" && DIRECTION == "IN" }]
+
 # for ease of use. Plus we need to grab the generated bastard
 set sysclk_pin [get_pins -hier -filter {NAME =~ *u_sysclkgen*mmcm_adv_inst/CLKOUT0}]
 set sysclk [get_clocks -of_objects $sysclk_pin]
@@ -219,10 +221,10 @@ set sync_syncB_regs [get_cells -hier -filter {NAME =~ *SyncB_clkA_reg*}]
 set_max_delay -datapath_only -from $sync_flag_regs -to $sync_sync_regs 10.000
 set_max_delay -datapath_only -from $sync_sync_regs -to $sync_syncB_regs 10.000
 
-# We don't actually have any setup/hold specs from the manufacturer.
-# So let's just say min 2.5 max 5.5 and see what it says
-set_output_delay -clock sys_clock -min 2.5 [get_ports CLK_SYNC]
-set_output_delay -clock sys_clock -max 5.5 [get_ports CLK_SYNC]
+# These pretty much get automatically satisfied. It should work because CLK_SYNC is definitively after the input clock,
+# and this adds a pretty significant delay.
+set_output_delay -clock $sysclk -min 0.7 [get_ports CLK_SYNC]
+set_output_delay -clock $sysclk -max 1.5   [get_ports CLK_SYNC]
 
 connect_debug_port dbg_hub/clk [get_nets -of_objects $initclk]
 
