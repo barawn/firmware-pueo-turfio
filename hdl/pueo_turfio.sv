@@ -194,6 +194,38 @@ module pueo_turfio #( parameter NSURF=1,
     `DEFINE_WB_IF( surfturf_ , 12, 32);
     `DEFINE_WB_IF( hski2c_ , 12, 32);
 
+    // Command path data
+    wire [31:0] turf_command;
+    // Command path data is valid
+    wire        turf_command_valid;
+    // Sync request from command path
+    wire        turf_cmdsync;
+    // PPS request from command path
+    wire        turf_cmdpps;
+    // Command processor reset
+    wire        turf_cmdproc_rst;
+    // Command processor data
+    wire [7:0]  turf_cmdproc_tdata;
+    // Command processor data valid
+    wire        turf_cmdproc_tvalid;
+    // Command processor data last
+    wire        turf_cmdproc_tlast;
+    // Trigger time
+    wire [14:0] turf_trigtime;
+    // Trigger time valid
+    wire        turf_trigtime_valid;
+
+    // Sync indicator: first cycle of the 16-cycle clock period.
+    wire        sync;
+    // Sync offset (from TIO core)
+    wire [7:0]  sync_offset;
+    // Clock offset (from TIO core)
+    wire [7:0]  clock_offset;
+    // External sync enable (from TIO core)
+    wire        en_ext_sync;
+    // Clock time
+    wire [47:0] sysclk_count;
+
     // Slave stubs    
     wbs_dummy #(.ADDRESS_WIDTH(12),.DATA_WIDTH(32)) u_hski2c_stub( `CONNECT_WBS_IFM(wb_ , hski2c_) );
     // Master stubs
@@ -258,6 +290,11 @@ module pueo_turfio #( parameter NSURF=1,
         u_turf(.wb_clk_i(wb_clk),
                .wb_rst_i(1'b0),
                `CONNECT_WBS_IFM( wb_ , surfturf_ ),
+               
+                .sync_i(sync),
+                .command_o(turf_command),
+                .command_valid_o(turf_command_valid),
+                
                .rxclk_o(rxclk),
                .rxclk_ok_i(rxclk_ok),
                .rxclk_x2_o(rxclk_x2),        
@@ -274,6 +311,28 @@ module pueo_turfio #( parameter NSURF=1,
                .T_COUT_N(T_COUT_N),
                .CIN_P(T_CIN_P),
                .CIN_N(T_CIN_N));                     
+
+    pueo_command_decoder u_decoder(.sysclk_i(sysclk),
+                                   .command_i(turf_command),
+                                   .command_valid_i(turf_command_valid),
+                                   .cmdsync_o(turf_cmdsync),
+                                   .cmdpps_o(turf_cmdpps),
+                                   .cmdproc_rst_o(turf_cmdproc_rst),
+                                   .cmdproc_tdata(turf_cmdproc_tdata),
+                                   .cmdproc_tvalid(turf_cmdproc_tvalid),
+                                   .cmdproc_tlast(turf_cmdproc_tlast),
+                                   .trig_time_o(turf_trigtime),
+                                   .trig_valid_o(turf_trigtime_valid));
+
+    turfio_sync_sysclk_count u_synccount(.sysclk_i(sysclk),
+                                         .sync_offset_i(sync_offset),
+                                         .clock_offset_i(clock_offset),
+                                         .en_ext_sync_i(en_ext_sync),
+                                         .sysclk_count_o(sysclk_count),
+                                         .sync_req_i(turf_cmdsync),
+                                         .sync_o(sync),
+                                         .dbg_surf_clk_o(DBG_LED),
+                                         .SYNC(CLK_SYNC));
     
     wire locked;
     wire sysclk_reset=1'b0;
