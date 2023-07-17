@@ -1,3 +1,4 @@
+sim/turf_cout_interface_tb.sv
 verilog-library-barawn/sim/tb_rclock.sv
 verilog-library-barawn/sim/dsp_timed_counter_tb.sv
 sim/simple_clock_mon_tb.sv
