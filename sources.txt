@@ -20,7 +20,7 @@ hdl/clock/simple_clock_mon.sv
 hdl/tio_id_ctrl.sv
 hdl/turf/turf_cin.sv
 hdl/turf/turf_cin_parallel_sync.sv
-l/turfio/turf_cout_interface.sv
+hdl/turf/turf_cout_interface.sv
 hdl/turf/turf_interface.sv
 hdl/turf/turf_rxclk_gen.sv
 hdl/turf/turfctl_register_core.sv
