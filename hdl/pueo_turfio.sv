@@ -11,7 +11,7 @@ module pueo_turfio #( parameter NSURF=1,
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd0,
-                      parameter [7:0] VER_REV =   8'd5,
+                      parameter [7:0] VER_REV =   8'd6,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock
         input INITCLK,
@@ -162,6 +162,9 @@ module pueo_turfio #( parameter NSURF=1,
     // 1: cin/cout (ctl)
     // 2: debug rx/tx (dbg)
     // 3: turf serial (ser)
+    
+    // We define this here so it's switchable for whatever reason.
+    localparam WB_CLK_TYPE = "INITCLK";
     wire wb_clk = init_clk;
 
     `DEFINE_WB_IF( gtp_ , 22, 32);
@@ -246,7 +249,9 @@ module pueo_turfio #( parameter NSURF=1,
                     `CONNECT_WBM_IFM(surfturf_ , surfturf_ ),
                     `CONNECT_WBM_IFM(hski2c_ , hski2c_ ));
     // ID control module
-    tio_id_ctrl #(.DEVICE(IDENT),.VERSION(DATEVERSION))
+    tio_id_ctrl #(.DEVICE(IDENT),
+                  .VERSION(DATEVERSION),
+                  .WB_CLK_TYPE(WB_CLK_TYPE))
         u_id_ctrl( .wb_clk_i(wb_clk),
                    .wb_rst_i(1'b0),
                    `CONNECT_WBS_IFM( wb_ , tio_id_ctrl_ ),
@@ -286,7 +291,8 @@ module pueo_turfio #( parameter NSURF=1,
                      .TXCLK_INV(T_TXCLK_INV),
                      .COUT_INV(T_COUT_INV),
                      .COUTTIO_INV(T_COUTTIO_INV),
-                     .CIN_INV(T_CIN_INV))
+                     .CIN_INV(T_CIN_INV),
+                     .WB_CLK_TYPE(WB_CLK_TYPE))
         u_turf(.wb_clk_i(wb_clk),
                .wb_rst_i(1'b0),
                `CONNECT_WBS_IFM( wb_ , surfturf_ ),

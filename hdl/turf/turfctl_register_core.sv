@@ -8,7 +8,8 @@
 //             [1] RXCLK MMCM not locked
 //             [2] ISERDES reset
 //             [3] CIN parallelizer reset
-//             [7:4] reserved
+//             [4] OSERDES reset
+//             [7:5] reserved
 //             [8]  CIN parallelizer lock enable
 //             [9]  CIN parallelizer lock
 //             [10] COUT (all of them) train enable
@@ -40,6 +41,9 @@ module turfctl_register_core(
         output iserdes_rst_o,
         output iserdes_bitslip_o,
         
+        // OSERDES reset output, to synchronize.
+        output oserdes_rst_o,
+        
         // turf_cin_parallel_sync inputs/outputs
         output cin_sync_rst_o,
         output cin_sync_capture_o,
@@ -53,7 +57,8 @@ module turfctl_register_core(
     );
 
     parameter DEBUG = "FALSE";
-
+    parameter WB_CLK_TYPE = "INITCLK";
+    
     // Maximum phase shift for RXCLK. Fine phase shift is 1/56th, RXCLK is 8x, 56*8=448.
     localparam [8:0] RXCLK_FINE_PS_MAX = 448 - 1;
 
@@ -216,14 +221,18 @@ module turfctl_register_core(
 
     // MMCM reset (async, doesn't matter)
     reg       mmcm_reset = 0;
-    // ISERDES reset (also copied to output). Trying out custom attributes.
-    (* CUSTOM_CC = "FROM_WBCLK" *)
+    // ISERDES reset (also copied to output).
+    (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
     reg       iserdes_reset = 0;
-    // Resync registers. Again trying out custom attributes.
-    (* ASYNC_REG = "TRUE", CUSTOM_CC = "TO_RXCLK" *)
+    (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
+    reg       oserdes_reset = 0;
+    // Resync registers.
+    (* ASYNC_REG = "TRUE", CUSTOM_CC_DST = "RXCLK" *)
     reg [1:0] iserdes_reset_resync = {2{1'b0}};
     always @(posedge rxclk_i) iserdes_reset_resync <= {iserdes_reset_resync[0], iserdes_reset };
-    
+    (* ASYNC_REG = "TRUE", CUSTOM_CC_DST = "SYSCLK" *)
+    reg [1:0] oserdes_reset_resync = {2{1'b0}};
+    always @(posedge sysclk_i) oserdes_reset_resync <= { oserdes_reset_resync[0], oserdes_reset };
     // parallelizer reset (convert to flag, resync to sysclk)
     reg       cin_sync_reset = 0;
     // reregister
@@ -245,7 +254,8 @@ module turfctl_register_core(
     assign reset_register[1] = mmcm_locked_i;
     assign reset_register[2] = iserdes_reset;
     assign reset_register[3] = cin_sync_reset;
-    assign reset_register[7:4] = 4'h0;
+    assign reset_register[4] = oserdes_reset;
+    assign reset_register[7:5] = 3'h0;
     assign reset_register[8] = enable_lock;
     assign reset_register[9] = cin_locked;
     assign reset_register[10] = cout_train_enable;
@@ -282,6 +292,7 @@ module turfctl_register_core(
                 mmcm_reset <= dat_in_static[0];
                 iserdes_reset <= dat_in_static[2];
                 cin_sync_reset <= dat_in_static[3];
+                oserdes_reset <= dat_in_static[4];
             end
         end    
     
@@ -368,6 +379,8 @@ module turfctl_register_core(
                                      adr_in_static == 6'hC &&
                                      we_in_static;                                 
     assign iserdes_rst_o = iserdes_reset_resync[1];
+
+    assign oserdes_rst_o = oserdes_reset_resync[1];
     // parallel sync comes out of the flag synchronizer
 
     assign cout_train_o = cout_train_enable;

@@ -57,6 +57,7 @@ module tio_id_ctrl(
     
     parameter [31:0] DEVICE = "TFIO";
     parameter [31:0] VERSION = {32{1'b0}};
+    parameter WB_CLK_TYPE = "INITCLK";
     localparam [31:0] ICAP_KEY = "FKey";
 
     // Output from the DNA port.
@@ -67,11 +68,11 @@ module tio_id_ctrl(
     reg dna_read = 0;
     
     // Sync offset + enable
-    (* CUSTOM_CC = "FROM_WBCLK" *)
+    (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
     reg [8:0] sync_offset_plus_en = {9{1'b0}};
     
     // Clock offset.
-    (* CUSTOM_CC = "FROM_WBCLK" *)
+    (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
     reg [7:0] clock_offset = {8{1'b0}};
     
     // Status/control register

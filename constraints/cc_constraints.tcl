@@ -1,12 +1,75 @@
-# This script contains a bunch of clock-crossing
-# path definitions that Xilinx can't handle easily
-# in an XDC file. It gets auto-loaded at implementation.
+######## CONVENIENCE FUNCTIONS
 
-# Yes, the massive use of 10 ns is not correct but the
-# actual static value's much larger and 10 ns results in
-# "reasonably close but not constraining".
+proc set_cc_paths { srcClk dstClk ctlist } {
+    array set ctypes $ctlist
+    set srcType $ctypes($srcClk)
+    set dstType $ctypes($dstClk)
+    set maxTime [get_property PERIOD $srcClk]
+    set srcRegs [get_cells -hier -filter "CUSTOM_CC_SRC == $srcType"]
+    set dstRegs [get_cells -hier -filter "CUSTOM_CC_DST == $dstType"]
+    set_max_delay -datapath_only -from $srcRegs -to $dstRegs $maxTime
+}
 
-# grab ALL the dumb clockmon regs
+proc set_gray_paths { srcClk dstClk ctlist } {
+    array set ctypes $ctlist
+    set maxTime [get_property PERIOD $srcClk]
+    set maxSkew [expr min([get_property PERIOD $srcClk], [get_property PERIOD $dstClk])]
+    set srcRegs [get_cells -hier -filter "CUSTOM_GRAY_SRC == $ctypes($srcClk)"]
+    set dstRegs [get_cells -hier -filter "CUSTOM_GRAY_DST == $ctypes($dstClk)"]
+    set_max_delay -datapath_only -from $srcRegs -to $dstRegs $maxTime
+    set_bus_skew -from $srcRegs -to $dstRegs $maxSkew
+}
+
+proc set_ignore_paths { srcClk dstClk ctlist } {
+    array set ctypes $ctlist
+    set srcRegs [get_cells -hier -filter "CUSTOM_IGN_SRC == $ctypes($srcClk)"]
+    set dstRegs [get_cells -hier -filter "CUSTOM_IGN_DST == $ctypes($dstClk)"]
+    set_false_path -from $srcRegs -to $dstRegs
+}
+
+######## END CONVENIENCE FUNCTIONS
+
+######## CLOCK DEFINITIONS
+
+# PIN CLOCKS
+set initclk [create_clock -period 25.000 -name init_clock [get_ports -filter { NAME =~ "INITCLK" && DIRECTION == "IN" }]]
+set clktypes($initclk) INITCLK
+
+# We're using the *nominal* clock offset here, hopefully it works.
+set rxclk [create_clock -period 8.00 -waveform {6.4 2.4} -name rx_clock [get_ports -filter { NAME =~ "T_RXCLK_N" && DIRECTION == "IN" }]]
+set clktypes($rxclk) RXCLK
+
+set gtpclk [create_clock -period 8.00 -name gtp_clock [get_ports -filter { NAME =~ "F_LCLK_P" && DIRECTION == "IN" }]]
+set clktypes($gtpclk) GTPCLK
+
+# INTERNAL CLOCKS
+set sysclk [get_clocks -of_objects [get_nets -hier -filter { NAME =~ "sysclk"}]]
+set clktypes($sysclk) SYSCLK
+
+connect_debug_port dbg_hub/clk [get_nets -of_objects $initclk]
+
+# create clktypelist variable to save
+set clktypelist [array get clktypes]
+
+###### END CLOCK DEFINITIONS
+
+# autoignore the flag_sync module guys
+set sync_flag_regs [get_cells -hier -filter {NAME =~ *FlagToggle_clkA_reg*}]
+set sync_sync_regs [get_cells -hier -filter {NAME =~ *SyncA_clkB_reg*}]
+set sync_syncB_regs [get_cells -hier -filter {NAME =~ *SyncB_clkA_reg*}]
+set_max_delay -datapath_only -from $sync_flag_regs -to $sync_sync_regs 10.000
+set_max_delay -datapath_only -from $sync_sync_regs -to $sync_syncB_regs 10.000
+
+# ignore the initclk/sysclk path. I need to make these automagic or something
+set_max_delay -datapath_only -from $sysclk -to $initclk 25.000
+set_max_delay -datapath_only -from $initclk -to $sysclk 25.000
+
+# These pretty much get automatically satisfied. It should work because CLK_SYNC is definitively after the input clock,
+# and this adds a pretty significant delay.
+set_output_delay -clock $sysclk -min 0.7 [get_ports CLK_SYNC]
+set_output_delay -clock $sysclk -max 1.5   [get_ports CLK_SYNC]
+
+# grab ALL the dumb clockmon regs.
 set clockmon_level_regs [ get_cells -hier -filter {NAME =~ *u_clockmon/*clk_32x_level_reg*} ]
 set clockmon_cc_regs [ get_cells -hier -filter {NAME =~ *u_clockmon/*level_cdc_ff1_reg*}]
 set clockmon_run_reset_regs [ get_cells -hier -filter {NAME =~ *u_clockmon/clk_running_reset_reg*}]
@@ -24,6 +87,7 @@ lappend wb_static_targets [get_cells -hier -filter {NAME=~ *u_turf/u_cin_sync/ci
 lappend wb_static_targets [get_cells -hier -filter {NAME=~ *u_turf/u_turfcin/u_cin_iserdes*}]
 set_max_delay -datapath_only -from $wb_static_regs -to $wb_static_targets 10.000
 
+# I really should add an optional CLKTYPE attribute to the DSP here to automate this
 set biterr_count_rxclk [get_cells -hier -filter {NAME=~ *u_turf/u_core/u_cin_biterr/u_dsp}]
 set biterr_count_wbclk [get_cells -hier -filter {NAME=~ *u_turf/u_core/bit_error_count_wbclk_reg*}]
 set_max_delay -datapath_only -from $biterr_count_rxclk -to $biterr_count_wbclk 10.000
@@ -41,7 +105,6 @@ set rxsys_xfr_src_regs [get_cells -hier -filter {CUSTOM_SYSCLK_SOURCE=="TRUE"}]
 set rxsys_xfr_tgt_regs [get_cells -hier -filter {CUSTOM_SYSCLK_TARGET=="TRUE"}]
 set_min_delay -from $rxsys_xfr_src_regs -to $rxsys_xfr_tgt_regs 0.0
 
-# ignore the properly-tagged FROM_WBCLK and TO_RXCLK clock-crosses.
-set custom_cc_from_wbclk [get_cells -hier -filter {CUSTOM_CC=="FROM_WBCLK"}]
-set custom_cc_to_rxclk [get_cells -hier -filter {CUSTOM_CC=="TO_RXCLK"}]
-set_max_delay -datapath_only -from $custom_cc_from_wbclk -to $custom_cc_to_rxclk 10.000
+# These guys are properly tagged.
+set_cc_paths $initclk $rxclk $clktypelist
+set_cc_paths $initclk $sysclk $clktypelist

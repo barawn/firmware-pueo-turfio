@@ -11,7 +11,8 @@ module turf_cout_interface(
         input sysclk_i,
         // system clock x2 for OSERDES
         input sysclk_x2_i,      
-        // OSERDES reset (dunno)
+        // OSERDES reset. Our input SYSCLK gets borked frequently,
+        // so this is needed to synchronize.
         input oserdes_rst_i,          
         // training enable on all interfaces
         input train_i,

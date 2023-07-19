@@ -43,6 +43,7 @@ module turf_interface #(
         parameter COUTTIO_INV = 1'b0,
         parameter CIN_INV = 1'b0,
         parameter [31:0] TRAIN_SEQUENCE = 32'hA55A6996,
+        parameter WB_CLK_TYPE = "INITCLK",
         parameter DEBUG = `TURF_INTERFACE_DEBUG
     )
     (   input wb_clk_i,
@@ -138,6 +139,9 @@ module turf_interface #(
     // Capture error.
     wire sysclk_rxclk_biterr;
 
+    // Reset the OSERDES to synchronize.
+    wire oserdes_rst_sysclk;
+
     // Force cout into training path
     wire cout_train;
 
@@ -193,7 +197,7 @@ module turf_interface #(
                           .T_COUT_INV(COUT_INV))
         u_turf_cout(.sysclk_i(sysclk_i),
                     .sysclk_x2_i(sysclk_x2_i),
-                    .oserdes_rst_i(1'b0),
+                    .oserdes_rst_i(oserdes_rst_sysclk),
                     .train_i(cout_train),
                     .sync_i(sync_i),
                     .response_i(response_i),
@@ -208,7 +212,7 @@ module turf_interface #(
     // we are a wishbone slave, and passing it to our core
     // requires the CONNECT_WBS_IFS macro (because the interface is
     // named as a WISHBONE slave)
-    turfctl_register_core #(.DEBUG(DEBUG))
+    turfctl_register_core #(.DEBUG(DEBUG),.WB_CLK_TYPE(WB_CLK_TYPE))
         u_core( .wb_clk_i(wb_clk_i),
                 .wb_rst_i(wb_rst_i),
                 `CONNECT_WBS_IFS(wb_ , wb_ ),
@@ -229,6 +233,7 @@ module turf_interface #(
                 .idelay_current_i(cin_idelay_current),
                 .iserdes_rst_o(cin_iserdes_rst),
                 .iserdes_bitslip_o(cin_iserdes_bitslip),
+                .oserdes_rst_o(oserdes_rst_sysclk),
                 
                 .cin_sync_rst_o(cin_sync_reset),
                 .cin_sync_capture_o(cin_sync_capture),

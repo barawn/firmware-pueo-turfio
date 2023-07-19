@@ -18,11 +18,11 @@ module turfio_sync_sysclk_count(
         output      SYNC
     );
     
-    (* CUSTOM_CC = "TO_SYSCLK" *)
+    (* CUSTOM_CC_DST = "SYSCLK" *)
     reg [5:0] sync_offset_resync = {6{1'b0}};
-    (* CUSTOM_CC = "TO_SYSCLK" *)
+    (* CUSTOM_CC_DST = "SYSCLK" *)
     reg [7:0] clk_offset_resync = {8{1'b0}};
-    (* CUSTOM_CC = "TO_SYSCLK" *)
+    (* CUSTOM_CC_DST = "SYSCLK" *)
     reg [1:0] en_ext_sync_resync = 0;
         
     wire      do_sync_out;
