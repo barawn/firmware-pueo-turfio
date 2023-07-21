@@ -18,6 +18,8 @@ module turfio_sync_sysclk_count(
         output      SYNC
     );
     
+    parameter DEBUG = "TRUE";
+    
     (* CUSTOM_CC_DST = "SYSCLK" *)
     reg [5:0] sync_offset_resync = {6{1'b0}};
     (* CUSTOM_CC_DST = "SYSCLK" *)
@@ -53,6 +55,38 @@ module turfio_sync_sysclk_count(
     (* IOB = "TRUE" *)        
     reg dbg_surf_clk = 0;
     
+    // OK, here's how this works:
+    // do_sync_out resets the clock phase counter. When that happens
+    // IF en_ext_sync_resync[1] is high AND sync_done is low, we LOWER ext_sync when do_sync_out occurs.
+    // ext_sync can ALWAYS be raised by clk_phase_counter == 10
+    // sync_done can then be set by do_sync_out AND en_ext_sync_resync[1]
+    //
+    // Timing diagram:
+    // clk  en_ext_sync_resync[1]   sync_done   do_sync_out clk_phase_counter   ext_sync
+    // 0    1                       0           0           3                   1
+    // 1    1                       0           0           4                   1
+    // 2    1                       0           1           5                   1
+    // 3    1                       1           0           0                   0
+    // 4    1                       1           0           1                   0
+    // 5-12 1                       1           0           2..9                0
+    // 13   1                       1           0           10                  0
+    // 14   1                       1           0           11                  1
+    // 15   1                       1           0           12                  1
+    // 16   1                       1           0           13                  1
+    // 17   1                       1           0           14                  1
+    // 18   1                       1           0           15                  1
+    // 19   1                       1           0           0                   1
+    //
+    // so again: logic is:
+    // sync_done: lower if !en_ext_sync_resync[1], raise if (do_sync_out).
+    // ext_sync: lower if do_sync_out && !sync_done
+    //           raise on clk_phase_counter == 10
+    // let's simplify logic on ext_sync: we'll create a register that'll go high in clk phase 10
+    reg raise_ext_sync = 0;
+    
+    (* KEEP = "TRUE" *)
+    reg dbg_ext_sync = 1;
+        
     always @(posedge sysclk_i) begin
         if (do_sync_out) sysclk_counter <= { {40{1'b0}}, clk_offset_resync };
         else sysclk_counter <= sysclk_counter + 1;
@@ -65,10 +99,18 @@ module turfio_sync_sysclk_count(
         en_ext_sync_resync <= {en_ext_sync_resync[0], en_ext_sync_i };
         
         if (!en_ext_sync_resync[1]) sync_done <= 1'b0;
-        else if (en_ext_sync_resync[1] && (clk_phase_counter[4:0] == 0)) sync_done <= 1'b1;
+        else if (do_sync_out) sync_done <= 1'b1;
 
-        if (clk_phase_counter[3:0] == 4'h0 && !sync_done) ext_sync <= 1'b0;
-        else if (clk_phase_counter[3:0] == 10) ext_sync <= 1'b1;
+        // Slight caveat here: if clk_phase_counter[3:0] is 9 the same clock do_sync_out
+        // is high, then raise_ext_sync will go to 1 in the next clock, which is WRONG
+        // so we caveat that here
+        raise_ext_sync <= (clk_phase_counter[3:0] == 9) && !do_sync_out;
+        
+        if (do_sync_out && !sync_done && en_ext_sync_resync[1]) ext_sync <= 1'b0;
+        else if (raise_ext_sync) ext_sync <= 1'b1;
+        
+        if (do_sync_out && !sync_done && en_ext_sync_resync[1]) dbg_ext_sync <= 1'b0;
+        else if (raise_ext_sync) dbg_ext_sync <= 1'b1;
         
         // SURF clock is designed to be high clocks 0-7 and low 8-15
         if (clk_phase_counter[3:0] == 15) dbg_surf_clk <= 1'b1;
@@ -81,6 +123,16 @@ module turfio_sync_sysclk_count(
                        .A(sync_offset_resync[0 +: 5]),
                        .Q(do_sync_out));
 
+    generate
+        if (DEBUG == "TRUE") begin : DBG
+            sync_ila u_ila(.clk(sysclk_i),
+                           .probe0(clk_phase_counter),
+                           .probe1(en_ext_sync_resync[1]),
+                           .probe2(sync_done),
+                           .probe3(do_sync_out),
+                           .probe4(dbg_ext_sync));
+        end
+    endgenerate
     
     assign sync_o = clk_phase_counter[4];
     assign sysclk_count_o = sysclk_counter;
