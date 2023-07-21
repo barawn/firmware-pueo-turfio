@@ -11,7 +11,7 @@ module pueo_turfio #( parameter NSURF=1,
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd0,
-                      parameter [7:0] VER_REV =   8'd6,
+                      parameter [7:0] VER_REV =   8'd8,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock
         input INITCLK,
@@ -262,7 +262,12 @@ module pueo_turfio #( parameter NSURF=1,
                    .gtp_clk_i(gtp_clk),
                    .rx_clk_i(rxclk),
                    .rx_clk_x2_i(rxclk_x2),
-                   .clk200_i(clk200));
+                   .clk200_i(clk200),
+                   .en_ext_sync_o(en_ext_sync),
+                   .clk_offset_o(clock_offset),
+                   .sync_offset_o(sync_offset)
+                   
+                   );
     // Genshift module    
     turfio_gen_shift_wrapper
         u_genshift( .wb_clk_i(wb_clk),
