@@ -39,24 +39,24 @@ module turf_cin_parallel_sync(
     wire do_cin_capture = enable_capture || capture_i;
     reg enable_lock = 0;
     reg locked = 0;
+    reg locked_rereg = 0;
     reg [3:0] sysclk_sequence = {4{1'b0}};
     // SYNCHRONIZATION
     // We have an 8-clock sequence, so the way this works is:
     //
-    // clk  current_cin     enable_lock locked  sysclk_sequence enable_capture  cin_capture
-    // 7    TRAIN_SEQUENCE  1           0       0               0               X
-    // 0    X               1           1       0               0               X
-    // 1    X               1           1       1               0               X
-    // 2    X               1           1       2               0               X
-    // 3    X               1           1       3               0               X
-    // 4    X               1           1       4               0               X
-    // 5    X               1           1       5               0               X
-    // 6    X               1           1       6               0               X
-    // 7    TRAIN_SEQUENCE  1           1       7               1               X
-    // 0    X               1           1       8               0               TRAIN_SEQUENCE
+    // clk  current_cin     enable_lock locked  locked_rereg    sysclk_sequence enable_capture  cin_capture
+    // 7    TRAIN_SEQUENCE  1           0       0               0               0               X
+    // 0    X               1           1       0               0               0               X
+    // 1    X               1           1       1               1               0               X
+    // 2    X               1           1       1               2               0               X
+    // 3    X               1           1       1               3               0               X
+    // 4    X               1           1       1               4               0               X
+    // 5    X               1           1       1               5               0               X
+    // 6    X               1           1       1               6               0               X
+    // 7    TRAIN_SEQUENCE  1           1       1               7               1               X
+    // 0    X               1           1       1               8               0               TRAIN_SEQUENCE
     //
     // We delay the locked input because it doesn't matter and it simplifies the counter.
-    // It's just a delay so we can use an SRL with address set to 7 for it.
 
     // BIT ERROR TESTING
     wire [3:0] cin_delayed;
@@ -64,6 +64,7 @@ module turf_cin_parallel_sync(
     // loading, since they feed nothing except the capture register. Now
     // of course they've got an extra load, but whatever. We mainly wanted
     // to get away from the input registers since they're special.
+    // It's just a delay so we can use an SRL with address set to 7 for it.
     reg cin_biterr = 0;
     assign     cin_biterr_o = cin_biterr;
     srlvec #(.NBITS(4)) u_cin_srl(.clk(sysclk_i),
@@ -88,9 +89,12 @@ module turf_cin_parallel_sync(
 
         if (rst_i) locked <= 1'b0;
         else if (enable_lock && current_cin == TRAIN_SEQUENCE) locked <= 1'b1;
-        
+
         enable_capture <= sysclk_sequence == 4'h6;        
 
+        if (rst_i) locked_rereg <= 1'b0;
+        else locked_rereg <= locked;
+            
         if (!locked) sysclk_sequence <= 4'h0;
         else sysclk_sequence <= sysclk_sequence[2:0] + 1;
         
@@ -113,7 +117,9 @@ module turf_cin_parallel_sync(
                                .probe3(do_cin_capture),
                                .probe4(cin_parallel_o),
                                .probe5(cin_parallel_valid_o),
-                               .probe6(cin_biterr));
+                               .probe6(cin_biterr),
+                               .probe7(current_cin),
+                               .probe8(sysclk_sequence));
         end
     endgenerate
     
