@@ -1,6 +1,16 @@
 ######## CONVENIENCE FUNCTIONS
+# These all have escape clauses because clocks sometimes don't exist in the elaboration/synthesis
+# steps.
 
 proc set_cc_paths { srcClk dstClk ctlist } {
+    if {$srcClk eq ""} {
+        puts "set_cc_paths: No source clock: returning."
+        return
+    }
+    if {$dstClk eq ""} {
+        puts "set_cc_paths: No destination clock: returning."
+        return
+    }
     array set ctypes $ctlist
     set srcType $ctypes($srcClk)
     set dstType $ctypes($dstClk)
@@ -11,6 +21,14 @@ proc set_cc_paths { srcClk dstClk ctlist } {
 }
 
 proc set_gray_paths { srcClk dstClk ctlist } {
+    if {$srcClk eq ""} {
+        puts "set_gray_paths: No source clock: returning."
+        return
+    }
+    if {$dstClk eq ""} {
+        puts "set_gray_paths: No destination clock: returning."
+        return
+    }
     array set ctypes $ctlist
     set maxTime [get_property PERIOD $srcClk]
     set maxSkew [expr min([get_property PERIOD $srcClk], [get_property PERIOD $dstClk])]
@@ -21,6 +39,14 @@ proc set_gray_paths { srcClk dstClk ctlist } {
 }
 
 proc set_ignore_paths { srcClk dstClk ctlist } {
+    if {$srcClk eq ""} {
+        puts "set_ignore_paths: No source clock: returning."
+        return
+    }
+    if {$dstClk eq ""} {
+        puts "set_ignore_paths: No destination clock: returning."
+        return
+    }
     array set ctypes $ctlist
     set srcRegs [get_cells -hier -filter "CUSTOM_IGN_SRC == $ctypes($srcClk)"]
     set dstRegs [get_cells -hier -filter "CUSTOM_IGN_DST == $ctypes($dstClk)"]
@@ -32,8 +58,8 @@ proc set_ignore_paths { srcClk dstClk ctlist } {
 ######## CLOCK DEFINITIONS
 
 # PIN CLOCKS
-set initclk [create_clock -period 25.000 -name init_clock [get_ports -filter { NAME =~ "INITCLK" && DIRECTION == "IN" }]]
-set clktypes($initclk) INITCLK
+set initclkin [create_clock -period 25.000 -name init_clock [get_ports -filter { NAME =~ "INITCLK" && DIRECTION == "IN" }]]
+set clktypes($initclkin) INITCLKIN
 
 # We're using the *nominal* clock offset here, hopefully it works.
 set rxclk [create_clock -period 8.00 -waveform {6.4 2.4} -name rx_clock [get_ports -filter { NAME =~ "T_RXCLK_N" && DIRECTION == "IN" }]]
@@ -45,6 +71,9 @@ set clktypes($gtpclk) GTPCLK
 # INTERNAL CLOCKS
 set sysclk [get_clocks -of_objects [get_nets -hier -filter { NAME =~ "sysclk"}]]
 set clktypes($sysclk) SYSCLK
+
+set initclk [get_clocks -of_objects [get_nets -hier -filter { NAME =~ "init_clk"}]]
+set clktypes($initclk) INITCLK
 
 connect_debug_port dbg_hub/clk [get_nets -of_objects $initclk]
 

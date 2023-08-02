@@ -11,9 +11,9 @@ module pueo_turfio #( parameter NSURF=1,
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd0,
-                      parameter [7:0] VER_REV =   8'd8,
+                      parameter [7:0] VER_REV =   8'd9,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
-        // 40 MHz constantly on clock
+        // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
         // Force initclk into standby
         output INITCLKSTDBY,
@@ -127,11 +127,20 @@ module pueo_turfio #( parameter NSURF=1,
     localparam T_CIN_INV = 1'b0;
     localparam [6:0] T_COUT_INV = 7'b110_1000;
 
+    // For the boardman interface
+    
+    // Clock rate
+    localparam INITCLK_RATE = 80000000;
+    // Baud rate
+    localparam BOARDMAN_BAUD = 115200;
+
     //////////////////////////////////////////////
     // CLOCKS                                   //
     //////////////////////////////////////////////
     
-    // 40 MHz always running clock
+    // 40 MHz always running clock *input*
+    wire init_clk_in;
+    // 80 MHz initialization clock used for all the logic
     wire init_clk;
     // 200 MHz clock for IDELAYCTRLs (derived)
     wire clk200;
@@ -151,8 +160,10 @@ module pueo_turfio #( parameter NSURF=1,
     wire sysclk_ok;
     
     wire clk200_locked;
-    BUFG u_initclk_bufg(.I(INITCLK),.O(init_clk));
-    clk200_wiz u_clk200(.clk_in1(init_clk),.reset(1'b0),.clk_out1(clk200),.locked(clk200_locked));
+    BUFG u_initclk_bufg(.I(INITCLK),.O(init_clk_in));
+    // init_clk and clk200 come out of the clock wizard.
+    // init_clk is now *** 80 *** MHz
+    clk200_wiz u_clk200(.clk_in1(init_clk_in),.reset(1'b0),.clk_out1(clk200),.clk_out2(init_clk),.locked(clk200_locked));
     IDELAYCTRL u_idelayctrl(.RST(!clk200_locked),.REFCLK(clk200));
 
 
@@ -176,8 +187,8 @@ module pueo_turfio #( parameter NSURF=1,
     // fix this later
     wire [1:0] burst_size = 2'b00;
     boardman_wrapper #(.SIMULATION(SIMULATION),
-                       .CLOCK_RATE(40000000),
-                       .BAUD_RATE(115200))
+                       .CLOCK_RATE(INITCLK_RATE),
+                       .BAUD_RATE(BOARDMAN_BAUD))
             u_boardman( .wb_clk_i(wb_clk),
                         .wb_rst_i(1'b0),
                         `CONNECT_WBM_IFM( wb_ , dbg_ ),
