@@ -11,7 +11,7 @@ module pueo_turfio #( parameter NSURF=1,
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd0,
-                      parameter [7:0] VER_REV =   8'd9,
+                      parameter [7:0] VER_REV =   8'd12,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -85,6 +85,13 @@ module pueo_turfio #( parameter NSURF=1,
         // GTP stuff
         input F_LCLK_P,   // GTP clock D6
         input F_LCLK_N,   // GTP clock D5
+        // MGTRX (n.b. this is inverted but it doesn't matter)
+        input MGTRX_P,  // A4
+        input MGTRX_N,  // A3
+        // MGTTX
+        output MGTTX_P, // F2
+        output MGTTX_N, // F1
+        //
         output EN_LCLK_B, // GTP clock enable
         // this isn't actually clkdiv2 anymore, dumbass
         input CLKDIV2_P,
@@ -207,7 +214,8 @@ module pueo_turfio #( parameter NSURF=1,
     `DEFINE_WB_IF( genshift_ , 12, 32);
     `DEFINE_WB_IF( surfturf_ , 12, 32);
     `DEFINE_WB_IF( hski2c_ , 12, 32);
-
+    `DEFINE_WB_IF( aurora_ , 12, 32);
+    
     // Command path data
     wire [31:0] turf_command;
     // Command path data is valid
@@ -258,7 +266,8 @@ module pueo_turfio #( parameter NSURF=1,
                     `CONNECT_WBM_IFM(tio_id_ctrl_ , tio_id_ctrl_ ),
                     `CONNECT_WBM_IFM(genshift_ , genshift_ ),
                     `CONNECT_WBM_IFM(surfturf_ , surfturf_ ),
-                    `CONNECT_WBM_IFM(hski2c_ , hski2c_ ));
+                    `CONNECT_WBM_IFM(hski2c_ , hski2c_ ),
+                    `CONNECT_WBM_IFM(aurora_ , aurora_ ));
     // ID control module
     tio_id_ctrl #(.DEVICE(IDENT),
                   .VERSION(DATEVERSION),
@@ -368,7 +377,47 @@ module pueo_turfio #( parameter NSURF=1,
     wire gtp_inclk;
     IBUFDS_GTE2 u_gtpclk( .I(F_LCLK_P),.IB(F_LCLK_N),.CEB(1'b0),.O(gtp_inclk));
     BUFG u_gtpclk_bufg(.I(gtp_inclk),.O(gtp_clk));
+    // Now we hook up Aurora. We're just killing off interfaces for now.
+    `DEFINE_AXI4S_MIN_IF( cmd_addr_ , 32 );
+    `DEFINE_AXI4S_MIN_IF( cmd_data_ , 32 );
+    `DEFINE_AXI4S_MIN_IF( cmd_resp_ , 32 );
+    `DEFINE_AXI4S_MIN_IF( aurora_in_ , 32 );
+    `DEFINE_AXI4S_MIN_IF( aurora_out_ , 32 );
+    // kill 'em
+    assign cmd_addr_tready = 1'b1;
+    assign cmd_data_tready = 1'b1;
+    assign cmd_resp_tvalid = 1'b0;
+    assign cmd_resp_tdata = {32{1'b0}};
+    assign aurora_out_tready = 1'b1;
+    assign aurora_in_tvalid = 1'b0;
+    assign aurora_in_tdata = {32{1'b0}};
+    // shove inbounds into ilas
+    aurora_cmd_ila u_acmd_ila(.clk(wb_clk),
+                         .probe0( cmd_addr_tdata ),
+                         .probe1( cmd_addr_tvalid ),
+                         .probe2( cmd_data_tdata ),
+                         .probe3( cmd_data_tvalid ));
+    aurora_trig_ila u_atrig_ila(.clk(sysclk),
+                                .probe0( aurora_out_tdata ),
+                                .probe1( aurora_out_tvalid ));                 
+    // ok here we go
+    turf_aurora_wrapper u_aurora( .wb_clk_i(wb_clk),
+                                  .wb_rst_i(1'b0),
+                                  `CONNECT_WBS_IFM( wb_ , aurora_ ),
+                                  `CONNECT_AXI4S_MIN_IF( m_cmd_addr_ , cmd_addr_ ),
+                                  `CONNECT_AXI4S_MIN_IF( m_cmd_data_ , cmd_data_ ),
+                                  `CONNECT_AXI4S_MIN_IF( s_cmd_data_ , cmd_resp_ ),
+                                  .sys_clk_i(sysclk),
+                                  `CONNECT_AXI4S_MIN_IF( s_axis_ , aurora_in_ ),
+                                  `CONNECT_AXI4S_MIN_IF( m_axis_ , aurora_out_ ),
+                                  
+                                  .gtp_inclk_i(gtp_inclk),
+                                  .MGTRX_P(MGTRX_P),
+                                  .MGTRX_N(MGTRX_N),
+                                  .MGTTX_P(MGTTX_P),
+                                  .MGTTX_N(MGTTX_N));
     
+
 
     // this is dumbass-edly inverted with no hint in the name
     assign INITCLKSTDBY = 1'b1;
