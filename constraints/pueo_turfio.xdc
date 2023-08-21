@@ -185,6 +185,10 @@ set_property -dict { IOSTANDARD LVDS_25 PACKAGE_PIN E18     } [get_ports {T_COUT
 
 set_property -dict { PACKAGE_PIN D6 } [get_ports {F_LCLK_P}]
 set_property -dict { PACKAGE_PIN D5 } [get_ports {F_LCLK_N}]
+set_property -dict { PACKAGE_PIN A4 } [get_ports {MGTRX_P}]
+set_property -dict { PACKAGE_PIN A3 } [get_ports {MGTRX_N}]
+set_property -dict { PACKAGE_PIN F2 } [get_ports {MGTTX_P}]
+set_property -dict { PACKAGE_PIN F1 } [get_ports {MGTTX_N}]
 
 set_property BITSTREAM.GENERAL.COMPRESS TRUE [current_design]
 
