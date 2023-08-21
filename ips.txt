@@ -1,4 +1,13 @@
+ip/aurora/aurora_cc_rdfifo/aurora_cc_rdfifo.xci
+ip/aurora/aurora_cc_wrfifo/aurora_cc_wrfifo.xci
+ip/debug/aurora_cmd_ila/aurora_cmd_ila.xci
+ip/aurora/aurora_cmdresize/aurora_cmdresize.xci
+ip/debug/aurora_trig_ila/aurora_trig_ila.xci
+ip/aurora/aurora_turf/aurora_turf.xci
+ip/aurora/aurora_turf_v2/aurora_turf_v2.xci
+ip/aurora/aurora_ufc_cc_wrfifo/aurora_ufc_cc_wrfifo.xci
 ip/clock/clk200_wiz/clk200_wiz.xci
+ip/aurora/cmd_switch/cmd_switch.xci
 ip/debug/cobs_ila/cobs_ila.xci
 ip/debug/gen_shift_ila/gen_shift_ila.xci
 ip/debug/intercon_ila/intercon_ila.xci
@@ -9,9 +18,11 @@ ip/debug/lmk_vio/lmk_vio.xci
 ip/debug/rack_jtag_ila/rack_jtag_ila.xci
 ip/debug/rackbus/rackbus_out_vio/rackbus_out_vio.xci
 ip/rackbus/rackbus_to_surf/rackbus_to_surf.xci
+ip/debug/sync_ila/sync_ila.xci
 ip/clock/sys_clk_generator/sys_clk_generator.xci
 ip/debug/turf_cin_ila/turf_cin_ila.xci
 ip/debug/turf_ila/turf_ila.xci
 ip/clock/sys_clk_generator/turf_rxclk_clkwiz/turf_rxclk_clkwiz.xci
 ip/debug/turf_vio/turf_vio.xci
 ip/debug/turfwb_ila/turfwb_ila.xci
+ip/aurora/ufc_resize/ufc_resize.xci
