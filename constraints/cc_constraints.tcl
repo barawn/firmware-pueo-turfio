@@ -75,6 +75,9 @@ set clktypes($sysclk) SYSCLK
 set initclk [get_clocks -of_objects [get_nets -hier -filter { NAME =~ "init_clk"}]]
 set clktypes($initclk) INITCLK
 
+set userclk [get_clocks -of_objects [get_nets -hier -filter { NAME =~ "u_aurora/user_clk"}]]
+set clktypes($userclk) USERCLK
+
 connect_debug_port dbg_hub/clk [get_nets -of_objects $initclk]
 
 # create clktypelist variable to save
@@ -137,3 +140,5 @@ set_min_delay -from $rxsys_xfr_src_regs -to $rxsys_xfr_tgt_regs 0.0
 # These guys are properly tagged.
 set_cc_paths $initclk $rxclk $clktypelist
 set_cc_paths $initclk $sysclk $clktypelist
+set_cc_paths $userclk $initclk $clktypelist
+set_cc_paths $initclk $userclk $clktypelist
