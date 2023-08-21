@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 `include "interfaces.vh"
 
-// TURFIO interconnect. Right now we only generate 4 slave
+// TURFIO interconnect. Right now we generate 5 slave
 // address spaces.
 //
 // Plan for *four* master interfaces (jeez)
@@ -10,12 +10,14 @@
 // 2: debug serial path (dbg)
 // 3: TURF serial path (ser)
 //
-// Currently implement 4 slaves, with 12 bit address space
-// evenly mapped. But those are in parameters.
+// Currently implement 5 slaves, with 12 bit address space
+// 
 // 0: tio_id_ctrl
 // 1: genshift
 // 2: surfturf
 // 3: hski2c
+// 4: aurora
+// to simplify decoding, this expands to 8 with genshift/surfturf/hski2c getting doubly-mapped
 module turfio_intercon(
         input clk_i,
         input rst_i,
@@ -28,7 +30,8 @@ module turfio_intercon(
         `HOST_NAMED_PORTS_WB_IF( tio_id_ctrl_ , 12, 32),
         `HOST_NAMED_PORTS_WB_IF( genshift_ , 12, 32),
         `HOST_NAMED_PORTS_WB_IF( surfturf_ , 12, 32),
-        `HOST_NAMED_PORTS_WB_IF( hski2c_ , 12, 32)     
+        `HOST_NAMED_PORTS_WB_IF( hski2c_ , 12, 32),
+        `HOST_NAMED_PORTS_WB_IF( aurora_ , 12, 32)    
     );    
 
     parameter DEBUG = "TRUE";
@@ -44,18 +47,26 @@ module turfio_intercon(
     // I use this approach generally for building simple intercons: the one downside
     // that it has is that you *have* to map out the entire space somehow. It doesn't
     // have to be even, it doesn't have to make sense, but it has to be mapped fully.
+    //
+    // Update for 5 spaces: now we shadow genshift/surfturf/hski2c, but it means that
+    // tio_id_ctrl and aurora's mask both need to have an additional bit
+    // e.g. instead of 3FC = 11_1111_1100
+    //        they are 3F8 = 11_1111_1000
+    // the others can remain 3FC so they stay doubly mapped: i.e. GENSHIFT matches 1000 and 5000, etc.
     localparam [21:0] TIO_ID_CTRL_BASE = 22'h000000;
-    localparam [21:0] TIO_ID_CTRL_MASK = 22'h3FCFFF;
+    localparam [21:0] TIO_ID_CTRL_MASK = 22'h3F8FFF;
     localparam [21:0] GENSHIFT_BASE    = 22'h001000;
     localparam [21:0] GENSHIFT_MASK    = 22'h3FCFFF;
     localparam [21:0] SURFTURF_BASE    = 22'h002000;
     localparam [21:0] SURFTURF_MASK    = 22'h3FCFFF;
     localparam [21:0] HSKI2C_BASE      = 22'h003000;
     localparam [21:0] HSKI2C_MASK      = 22'h3FCFFF;
-
+    localparam [21:0] AURORA_BASE      = 22'h004000;
+    localparam [21:0] AURORA_MASK      = 22'h3F8FFF;
+    
     // START BOILERPLATE INTERCONNECT
     localparam NUM_MASTERS = 4;
-    localparam NUM_SLAVES = 4;    
+    localparam NUM_SLAVES = 5;    
     localparam ADDR_WIDTH = 22;
     localparam DATA_WIDTH = 32;
 	wire [NUM_MASTERS-1:0] requests;
@@ -173,7 +184,8 @@ module turfio_intercon(
     `SLAVE_MAP( genshift_ , 1, GENSHIFT_MASK, GENSHIFT_BASE );
     `SLAVE_MAP( surfturf_ , 2, SURFTURF_MASK, SURFTURF_BASE );
     `SLAVE_MAP( hski2c_ , 3, HSKI2C_MASK, HSKI2C_BASE );
-                
+    `SLAVE_MAP( aurora_ , 4, AURORA_MASK, AURORA_BASE );
+    
     generate
         if (DEBUG == "TRUE") begin
             // Minimal internal WISHBONE bus. Combines bidir data into one.
