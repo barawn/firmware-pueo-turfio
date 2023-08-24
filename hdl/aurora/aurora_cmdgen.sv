@@ -3,10 +3,13 @@
 module aurora_cmdgen( input aclk,
                       input aresetn,
                       `TARGET_NAMED_PORTS_AXI4S_MIN_IF( s_axis_ , 32 ),
+                      input [3:0] s_axis_tkeep,
                       input s_axis_tlast,
                       `HOST_NAMED_PORTS_AXI4S_MIN_IF( m_cmd_addr_ , 32 ),
                       `HOST_NAMED_PORTS_AXI4S_MIN_IF( m_cmd_data_ , 32 )
     );
+
+    parameter DEBUG = "TRUE";
 
     // internal write checked bus (see later)
     `DEFINE_AXI4S_MIN_IF( cmdin_wrcheck_ , 32);
@@ -52,4 +55,16 @@ module aurora_cmdgen( input aclk,
     // m_cmd_addr_tready = ack_i
     // This is basically conceptually right, however we handle it in a state machine
     // to ensure that reads have someplace to go. Otherwise we have a deadlock possibility.
+    generate
+        if (DEBUG == "TRUE") begin : ILA
+            aurora_cmdgen_ila u_ila(.clk(aclk),
+                                    .probe0(s_axis_tdata),
+                                    .probe1(s_axis_tvalid),
+                                    .probe2(s_axis_tready),
+                                    .probe3(s_axis_tlast),
+                                    .probe4(s_axis_tdest),
+                                    .probe5(s_axis_tkeep));
+        end
+    endgenerate
+
 endmodule
