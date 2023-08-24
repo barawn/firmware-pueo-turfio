@@ -11,7 +11,7 @@ module pueo_turfio #( parameter NSURF=1,
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd0,
-                      parameter [7:0] VER_REV =   8'd12,
+                      parameter [7:0] VER_REV =   8'd15,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -251,7 +251,7 @@ module pueo_turfio #( parameter NSURF=1,
     // Slave stubs    
     wbs_dummy #(.ADDRESS_WIDTH(12),.DATA_WIDTH(32)) u_hski2c_stub( `CONNECT_WBS_IFM(wb_ , hski2c_) );
     // Master stubs
-    wbm_dummy #(.ADDRESS_WIDTH(22),.DATA_WIDTH(32)) u_gtp_stub( `CONNECT_WBM_IFM(wb_ , gtp_ ));
+//    wbm_dummy #(.ADDRESS_WIDTH(22),.DATA_WIDTH(32)) u_gtp_stub( `CONNECT_WBM_IFM(wb_ , gtp_ ));
     wbm_dummy #(.ADDRESS_WIDTH(22),.DATA_WIDTH(32)) u_ctl_stub( `CONNECT_WBM_IFM(wb_ , ctl_ ));
     wbm_dummy #(.ADDRESS_WIDTH(22),.DATA_WIDTH(32)) u_ser_stub( `CONNECT_WBM_IFM(wb_ , ser_ ));
     // Interconnect
@@ -377,17 +377,22 @@ module pueo_turfio #( parameter NSURF=1,
     wire gtp_inclk;
     IBUFDS_GTE2 u_gtpclk( .I(F_LCLK_P),.IB(F_LCLK_N),.CEB(1'b0),.O(gtp_inclk));
     BUFG u_gtpclk_bufg(.I(gtp_inclk),.O(gtp_clk));
-    // Now we hook up Aurora. We're just killing off interfaces for now.
+    // Now we hook up Aurora. Really need to figure out the whole aresetn thing
     `DEFINE_AXI4S_MIN_IF( cmd_addr_ , 32 );
     `DEFINE_AXI4S_MIN_IF( cmd_data_ , 32 );
     `DEFINE_AXI4S_MIN_IF( cmd_resp_ , 32 );
+    aurora_wb_master u_wbgtp( .aclk(wb_clk),
+                              .aresetn(1'b1),
+                              `CONNECT_AXI4S_MIN_IF( s_addr_ , cmd_addr_ ),
+                              `CONNECT_AXI4S_MIN_IF( s_data_ , cmd_data_ ),
+                              `CONNECT_AXI4S_MIN_IF( m_resp_ , cmd_resp_ ),
+                              
+                              `CONNECT_WBM_IFM( wb_ , gtp_ ));
+        
+    // Main path ifs. Just killed for now.
     `DEFINE_AXI4S_MIN_IF( aurora_in_ , 32 );
     `DEFINE_AXI4S_MIN_IF( aurora_out_ , 32 );
     // kill 'em
-    assign cmd_addr_tready = 1'b1;
-    assign cmd_data_tready = 1'b1;
-    assign cmd_resp_tvalid = 1'b0;
-    assign cmd_resp_tdata = {32{1'b0}};
     assign aurora_out_tready = 1'b1;
     assign aurora_in_tvalid = 1'b0;
     assign aurora_in_tdata = {32{1'b0}};
@@ -396,7 +401,9 @@ module pueo_turfio #( parameter NSURF=1,
                          .probe0( cmd_addr_tdata ),
                          .probe1( cmd_addr_tvalid ),
                          .probe2( cmd_data_tdata ),
-                         .probe3( cmd_data_tvalid ));
+                         .probe3( cmd_data_tvalid ),
+                         .probe4( cmd_resp_tdata ),
+                         .probe5( cmd_resp_tvalid) );
     aurora_trig_ila u_atrig_ila(.clk(sysclk),
                                 .probe0( aurora_out_tdata ),
                                 .probe1( aurora_out_tvalid ));                 
