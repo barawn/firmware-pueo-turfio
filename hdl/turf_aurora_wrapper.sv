@@ -161,16 +161,27 @@ module turf_aurora_wrapper(
     // and a fakey-path for UFC
     `DEFINE_AXI4S_MIN_IF( muxed_ufc_ , 3 );
     // now hook the userclk tx path and ufc userclk path together
+    // You ONLY do this for tdata bc tkeep/tlast aren't sampled. 
     // we can do this simply because the core deasserts muxed_tx_tready when the UFC is being selected
     assign muxed_tx_tvalid = tx_userclk_tvalid;
     assign tx_userclk_tready = muxed_tx_tready;
     assign muxed_tx_tdata = (muxed_tx_tready) ? tx_userclk_tdata : ufc_tx_userclk_tdata;
-    assign muxed_tx_tkeep = (muxed_tx_tready) ? tx_userclk_tkeep : ufc_tx_userclk_tkeep;
-    assign muxed_tx_tlast = (muxed_tx_tready) ? tx_userclk_tlast : ufc_tx_userclk_tlast;
-    // and generate the fakey path
+    assign muxed_tx_tkeep = tx_userclk_tkeep;
+    assign muxed_tx_tlast = tx_userclk_tlast;
+
+    // The fakey UFC path is trickier. The full acknowledge of the UFC transmission doesn't occur until
+    // one cycle *after* muxed_ufc_tready is asserted.    
+    
+    // indicates that this is the cycle that the UFC data is asserted
+    reg ufc_tx_cycle = 0;
+    // it is ALWAYS a one-cycle flag bc muxed_ufc_tvalid is determined by !ufc_tx_cycle
+    always @(posedge user_clk) ufc_tx_cycle <= muxed_ufc_tvalid && muxed_ufc_tready;
+    
+    // now hook it up. ufc_tx_userclk_tready comes from ufc_tx_cycle, so basically the ack
+    // is held off by a cycle to allow the real data to be captured.
     assign muxed_ufc_tdata = ufc_tx_userclk_tsize;
-    assign muxed_ufc_tvalid = ufc_tx_userclk_tvalid;
-    assign ufc_tx_userclk_tready = muxed_ufc_tready;
+    assign muxed_ufc_tvalid = ufc_tx_userclk_tvalid && !ufc_tx_cycle;
+    assign ufc_tx_userclk_tready = ufc_tx_cycle;
                         
     // hook up the link status
     assign link_status_userclk[0] = lane_up;            //userclk
@@ -350,7 +361,7 @@ module turf_aurora_wrapper(
                                .rd_en( tx_userclk_tvalid && tx_userclk_tready ));
     // and for UFC, which is 32 bits
     wire ufc_tx_ccfull;
-    assign ufc_tx_tready = !ufc_tx_ccfull;
+    assign s_cmd_data_tready = !ufc_tx_ccfull;
     assign ufc_tx_userclk_tlast = 1'b1;
     aurora_ufc_cc_wrfifo u_ufctxfifo( .din( s_cmd_data_tdata ),
                                       .dout( ufc_tx_userclk_tdata ),
@@ -383,6 +394,7 @@ module turf_aurora_wrapper(
     aurora_cmdgen u_cmdgen( .aclk(wb_clk_i),
                             .aresetn(1'b1),
                             `CONNECT_AXI4S_MIN_IF( s_axis_ , ufc_rx_ ),
+                            .s_axis_tkeep( ufc_rx_tkeep ),
                             .s_axis_tlast( ufc_rx_tlast ),
                             `CONNECT_AXI4S_MIN_IF( m_cmd_addr_ , m_cmd_addr_ ),
                             `CONNECT_AXI4S_MIN_IF( m_cmd_data_ , m_cmd_data_ ));
