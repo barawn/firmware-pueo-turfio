@@ -12,6 +12,9 @@ module turf_aurora_reset(
     
     localparam [47:0] HOTPLUG_DELAY = (SIM_SPEEDUP == "TRUE") ? 48'h10 : 48'h400_0000;
     
+    // we rising edge detect the input
+    reg reset_rereg = 0;
+    
     // OK these are the actual reset outputs. Note that they start HIGH
     // When gt_reset is asserted, user clk disappears, hence the reason it needs
     // to be in the init_clk domain.
@@ -41,19 +44,24 @@ module turf_aurora_reset(
     localparam [FSM_BITS-1:0] RESET_STARTING = 3;
     reg [FSM_BITS-1:0] state = RESET;
     
+    wire reset_flag = reset_i && !reset_rereg;
 
     always @(posedge init_clk_i) begin
+        reset_rereg <= reset_i;
+    
         case (state)
             RESET: if (!enable_hotplug_delay || hotplug_delay_reached) state <= RESET_ENDING;
-            RESET_ENDING: if (!system_reset_resync[2]) state <= IDLE;
-            IDLE: if (reset_i) state <= RESET_STARTING;
+            // avoid getting stuck in reset_ending
+            RESET_ENDING: if (reset_flag) state <= RESET_STARTING;
+                          else if (!system_reset_resync[2]) state <= IDLE;
+            IDLE: if (reset_flag) state <= RESET_STARTING;
             RESET_STARTING: if (gt_reset_delay_reached) state <= RESET;
         endcase
         if (state == RESET_STARTING && gt_reset_delay_reached) enable_hotplug_delay <= 1'b1;
         else if (state == RESET_ENDING) enable_hotplug_delay <= 1'b0;
         
-        if (state == RESET_ENDING) system_reset_initclk <= 1'b0;
-        else if (state == IDLE && reset_i) system_reset_initclk <= 1'b1;                
+        if (state == RESET_ENDING && !reset_flag) system_reset_initclk <= 1'b0;
+        else if ((state == IDLE || state == RESET_ENDING) && reset_flag) system_reset_initclk <= 1'b1;                
 
         if (state == RESET && (!enable_hotplug_delay || hotplug_delay_reached)) gt_reset <= 1'b0;
         else if (state == RESET_STARTING && gt_reset_delay_reached) gt_reset <= 1'b1;
