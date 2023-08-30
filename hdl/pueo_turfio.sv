@@ -11,7 +11,7 @@ module pueo_turfio #( parameter NSURF=1,
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd0,
-                      parameter [7:0] VER_REV =   8'd15,
+                      parameter [7:0] VER_REV =   8'd18,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -404,9 +404,9 @@ module pueo_turfio #( parameter NSURF=1,
                          .probe3( cmd_data_tvalid ),
                          .probe4( cmd_resp_tdata ),
                          .probe5( cmd_resp_tvalid) );
-    aurora_trig_ila u_atrig_ila(.clk(sysclk),
-                                .probe0( aurora_out_tdata ),
-                                .probe1( aurora_out_tvalid ));                 
+//    aurora_trig_ila u_atrig_ila(.clk(sysclk),
+//                                .probe0( aurora_out_tdata ),
+//                                .probe1( aurora_out_tvalid ));                 
     // ok here we go
     turf_aurora_wrapper u_aurora( .wb_clk_i(wb_clk),
                                   .wb_rst_i(1'b0),
