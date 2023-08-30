@@ -1,5 +1,6 @@
 `timescale 1ns / 1ps
 `include "interfaces.vh"
+`include "mgt.vh"
 
 // 12-bit address space, 10 bits real. Mapping is:
 // 0x000 - 0x7FF: control register space
@@ -41,6 +42,9 @@ module turf_aurora_wrapper(
     
     // link status register. This will be captured by wb_dat_reg.
     wire [31:0] link_status;
+    // this is just for debugging
+    (* CUSTOM_CC_DST = "INITCLK", KEEP = "TRUE" *)
+    reg [31:0] link_status_dbg = {32{1'b0}};
     // this is the pure link status register in userclk
     wire [31:0] link_status_userclk;
     // this is the *holding* register in userclk for link status
@@ -107,6 +111,18 @@ module turf_aurora_wrapper(
     // Basically nothing else needs to be done via the **ports**.
     
     // Status stuff.
+
+    // This is a *very* slow clock-enable to allow ILAs to capture on any change in the status
+    // OR on the watchdog. Basically makes it easy to measure time.
+    (* KEEP = "TRUE" *)
+    wire tenth_sec_timer;
+    (* KEEP = "TRUE" *)
+    dsp_counter_terminal_count #(.FIXED_TCOUNT("TRUE"),
+                                 .FIXED_TCOUNT_VALUE(8000000))
+              u_timer(.clk_i(init_clk),
+                      .rst_i(1'b0),
+                      .count_i(1'b1),
+                      .tcount_reached_o(tenth_sec_timer));    
     
     // Channel is up
     wire channel_up;
@@ -182,6 +198,13 @@ module turf_aurora_wrapper(
     assign muxed_ufc_tdata = ufc_tx_userclk_tsize;
     assign muxed_ufc_tvalid = ufc_tx_userclk_tvalid && !ufc_tx_cycle;
     assign ufc_tx_userclk_tready = ufc_tx_cycle;
+
+    // additional magic debugging
+    wire gt_rxbyteisaligned;
+    wire gt_rxcommadet;
+    wire gt_rxpmaresetdone;
+    wire gt_rxrealign;
+    wire gt_rxresetdone;    
                         
     // hook up the link status
     assign link_status_userclk[0] = lane_up;            //userclk
@@ -197,7 +220,12 @@ module turf_aurora_wrapper(
     assign link_status_userclk[8] = hard_err;           //userclk
     assign link_status_userclk[9] = soft_err;           //userclk
     assign link_status_userclk[10] = frame_err;         //userclk
-    assign link_status_userclk[31:11] = {21{1'b0}};
+    assign link_status_userclk[11] = gt_rxbyteisaligned; // userclk
+    assign link_status_userclk[12] = gt_rxcommadet;      // userclk
+    assign link_status_userclk[13] = gt_rxpmaresetdone;  // async
+    assign link_status_userclk[14] = gt_rxrealign;       // userclk
+    assign link_status_userclk[15] = gt_rxresetdone;     // GT rxresetdone
+    assign link_status_userclk[31:16] = {16{1'b0}};
 
     assign link_status[2:0] = link_status_userclk_reg[2:0];
     assign link_status[3] = tx_lock;
@@ -224,6 +252,12 @@ module turf_aurora_wrapper(
     assign link_eyescan[24 +: 8] = {8{1'b0}}; // top byte is open
     // and the link dmonitor
     assign link_dmonitor = { {16{1'b0}}, dmonitor };
+
+// goddamn it we need to do this in Tcl to grab the IP core shit
+//    aurora_ctrlstat_ila u_ila( .clk(init_clk),
+//                               .probe0( link_status_dbg[15:0] ),
+//                               .probe1( reset_in ),
+//                               .probe2( tenth_sec_timer ));
     
     // PLL stuff. There are all from exdes.
     wire quad1_common_lock_i;
@@ -268,6 +302,9 @@ module turf_aurora_wrapper(
 
     // ok, logic first
     always @(posedge wb_clk_i) begin
+        // this is only for debugging, and is trimmed if debugging isn't used
+        link_status_dbg <= link_status;
+    
         // demux wishbone register output
         if (state == IDLE && wb_cyc_i && wb_stb_i && !gt_drpaccess && !wb_we_i) begin
             wb_dat_reg <= ctrlstat[ wb_adr_i[2 +: 2] ];
@@ -355,6 +392,7 @@ module turf_aurora_wrapper(
                                .dout({ tx_userclk_tlast, tx_userclk_tkeep, tx_userclk_tdata } ),
                                .wr_clk( sys_clk_i ),
                                .rd_clk( user_clk ),
+                               .rst(1'b0),
                                .wr_en( s_axis_tvalid && s_axis_tready ),
                                .full(tx_ccfull),
                                .valid( tx_userclk_tvalid ),
@@ -377,6 +415,7 @@ module turf_aurora_wrapper(
                                .dout( { m_axis_tlast, m_axis_tkeep, m_axis_tdata } ),
                                .wr_clk( user_clk ),
                                .rd_clk( sys_clk_i ),
+                               .rst(1'b0),
                                .wr_en( rx_userclk_tvalid ),
                                .valid( m_axis_tvalid ),
                                .rd_en( m_axis_tvalid && m_axis_tready),
@@ -386,6 +425,7 @@ module turf_aurora_wrapper(
                                    .dout( {ufc_rx_tlast, ufc_rx_tkeep, ufc_rx_tdata } ),
                                    .wr_clk( user_clk ),
                                    .rd_clk( wb_clk_i ),
+                                   .rst(1'b0),
                                    .wr_en( ufc_rx_userclk_tvalid ),
                                    .valid( ufc_rx_tvalid ),
                                    .rd_en( ufc_rx_tvalid && ufc_rx_tready),
@@ -431,6 +471,7 @@ module turf_aurora_wrapper(
                           .m_axi_ufc_rx_tlast(ufc_rx_userclk_tlast),
                           .m_axi_ufc_rx_tvalid(ufc_rx_userclk_tvalid),
                           // DRP. NO_PREFIX doesn't work w/SystemVerilog, I think (weirdly)
+                          .drpclk_in( wb_clk_i ),
                           `CONNECT_GTW_DRP_IF(  , gt_ ),
                           // Commons
                           .gt_common_reset_out(common_reset_i),
@@ -441,7 +482,13 @@ module turf_aurora_wrapper(
                           .gt0_pll0outrefclk_in(gt0_pll0outrefclk_i),
                           .gt0_pll1outrefclk_in(gt0_pll1outrefclk_i),
                           // Done commons
-                          
+                          // magic debugs
+                          .gt0_rxbyteisaligned_out( gt_rxbyteisaligned ),
+                          .gt0_rxcommadet_out( gt_rxcommadet ),
+                          .gt0_rxpmaresetdone_out( gt_rxpmaresetdone ),
+                          .gt0_rx_realign_out( gt_rxrealign ),
+                          .gt0_rxresetdone_out( gt_rxresetdone ),
+                          // end magics
                           .loopback(loopback),
                           .pll_not_locked(pll_not_locked),
                           .power_down(powerdown),
@@ -454,7 +501,7 @@ module turf_aurora_wrapper(
                           
                           .channel_up(channel_up),
                           .lane_up(lane_up),
-                          .hard_err(hadr_err),
+                          .hard_err(hard_err),
                           .soft_err(soft_err),
                           .frame_err(frame_err),
                           .tx_resetdone_out(tx_resetdone_out),
@@ -470,7 +517,7 @@ module turf_aurora_wrapper(
                           .gt0_txprecursor_in( gt_txprecursor ),
                           .gt0_txpostcursor_in( gt_txpostcursor ),                          
                           .gt0_dmonitorout_out(dmonitor),
-                          
+                          `UNUSED_GTP_DEBUG_AURORA_PORTS,
                           .rxp(MGTRX_P),
                           .rxn(MGTRX_N),
                           .txp(MGTTX_P),
