@@ -51,7 +51,7 @@ module turfio_gen_shift_wrapper(
     wire [2:0] gen_aux_out;
     wire [4:0] gen_gpio_o;
     wire [4:0] gen_gpio_t;
-    gen_shift_if #(.DEBUG("TRUE"),
+    gen_shift_if #(.DEBUG("FALSE"),
                    .NUM_DEVICES(3),
                    .USE_CLK(    8'b0000_0011),
                    .USE_DIN(    8'b0000_0111),
