@@ -78,7 +78,7 @@ set clktypes($initclk) INITCLK
 set userclk [get_clocks -of_objects [get_nets -hier -filter { NAME =~ "u_aurora/user_clk"}]]
 set clktypes($userclk) USERCLK
 
-connect_debug_port dbg_hub/clk [get_nets -of_objects $initclk]
+#connect_debug_port dbg_hub/clk [get_nets -of_objects $initclk]
 
 # create clktypelist variable to save
 set clktypelist [array get clktypes]
@@ -135,8 +135,11 @@ set_max_delay -datapath_only -from $wb_dat_sources -to $wb_dat_regs 10.000
 # to rxclk in 2.4 ns (which is *not* what I want, it's the *opposite* of what I want)
 set rxsys_xfr_src_regs [get_cells -hier -filter {CUSTOM_SYSCLK_SOURCE=="TRUE"}]
 set rxsys_xfr_tgt_regs [get_cells -hier -filter {CUSTOM_SYSCLK_TARGET=="TRUE"}]
-set_min_delay -from $rxsys_xfr_src_regs -to $rxsys_xfr_tgt_regs 0.0
-
+if { [llength $rxsys_xfr_src_regs] != 0 } {
+    if { [llength $rxsys_xfr_tgt_regs] != 0 } {
+        set_min_delay -from $rxsys_xfr_src_regs -to $rxsys_xfr_tgt_regs 0.0
+    }
+}
 # These guys are properly tagged.
 set_cc_paths $initclk $rxclk $clktypelist
 set_cc_paths $initclk $sysclk $clktypelist
