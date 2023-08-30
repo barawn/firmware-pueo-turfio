@@ -15,6 +15,11 @@ module aurora_cmdgen( input aclk,
     `DEFINE_AXI4S_MIN_IF( cmdin_wrcheck_ , 32);
     wire cmdin_wrcheck_tdest;
     
+    // path to register slice, address
+    `DEFINE_AXI4S_MIN_IF( rs_cmd_addr_ , 32 );
+    // path to register slice, data
+    `DEFINE_AXI4S_MIN_IF( rs_cmd_data_ , 32 );
+    
     // OK, so now we're a 32-bit output.
     // Our trickery here is to make a fake tdest register
     // When cmdin_tvalid && cmdin_tready, cmd_tdest is !cmdin_tlast.
@@ -42,13 +47,19 @@ module aurora_cmdgen( input aclk,
     assign cmdin_wrcheck_tvalid = s_axis_tvalid;
     assign s_axis_tready = cmdin_wrcheck_tready;    
     assign cmdin_wrcheck_tdest = s_axis_tdest;
-    
+    // Switch. We need register slices after it, though, to decouple the two streams.
     cmd_switch u_switch( .aclk(aclk),.aresetn(aresetn),
                          `CONNECT_AXI4S_MIN_IF( s_axis_ , cmdin_wrcheck_ ),
                          .s_axis_tdest( cmdin_wrcheck_tdest ),
-                         .m_axis_tdata( { m_cmd_data_tdata,     m_cmd_addr_tdata } ),
-                         .m_axis_tvalid({ m_cmd_data_tvalid,    m_cmd_addr_tvalid }),
-                         .m_axis_tready({ m_cmd_data_tready,    m_cmd_addr_tready }));    
+                         .m_axis_tdata( { rs_cmd_data_tdata,     rs_cmd_addr_tdata } ),
+                         .m_axis_tvalid({ rs_cmd_data_tvalid,    rs_cmd_addr_tvalid }),
+                         .m_axis_tready({ rs_cmd_data_tready,    rs_cmd_addr_tready }));    
+    cmd_register_slice u_addrslice( .aclk(aclk),.aresetn(aresetn),
+                                    `CONNECT_AXI4S_MIN_IF( s_axis_ , rs_cmd_addr_ ),
+                                    `CONNECT_AXI4S_MIN_IF( m_axis_ , m_cmd_addr_ ));
+    cmd_register_slice u_dataslice( .aclk(aclk),.aresetn(aresetn),
+                                    `CONNECT_AXI4S_MIN_IF( s_axis_ , rs_cmd_data_ ),
+                                    `CONNECT_AXI4S_MIN_IF( m_axis_ , m_cmd_data_ ));
     // Outbound processing is then relatively simple:
     // cyc_i/stb_i = (m_cmd_addr_tvalid && (!m_cmd_addr_tdata[31] || m_cmd_data_tvalid))
     // we_i = m_cmd_addr[31]
