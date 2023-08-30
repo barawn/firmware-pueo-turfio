@@ -1,12 +1,16 @@
 ip/aurora/aurora_cc_rdfifo/aurora_cc_rdfifo.xci
 ip/aurora/aurora_cc_wrfifo/aurora_cc_wrfifo.xci
 ip/debug/aurora_cmd_ila/aurora_cmd_ila.xci
+ip/debug/aurora_cmdgen_ila/aurora_cmdgen_ila.xci
 ip/aurora/aurora_cmdresize/aurora_cmdresize.xci
+ip/debug/aurora_ctrlstat_ila/aurora_ctrlstat_ila.xci
 ip/debug/aurora_trig_ila/aurora_trig_ila.xci
 ip/aurora/aurora_turf/aurora_turf.xci
 ip/aurora/aurora_turf_v2/aurora_turf_v2.xci
+ip/testing/aurora_tx_test/aurora_tx_test.xci
 ip/aurora/aurora_ufc_cc_wrfifo/aurora_ufc_cc_wrfifo.xci
 ip/clock/clk200_wiz/clk200_wiz.xci
+ip/aurora/cmd_register_slice/cmd_register_slice.xci
 ip/aurora/cmd_switch/cmd_switch.xci
 ip/debug/cobs_ila/cobs_ila.xci
 ip/debug/gen_shift_ila/gen_shift_ila.xci

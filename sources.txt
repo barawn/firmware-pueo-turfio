@@ -38,3 +38,4 @@ hdl/turfio_intercon.sv
 hdl/turfio_sync_sysclk_count.sv
 hdl/pueo_turfio.sv
 hdl/aurora/aurora_turf_clock.sv
+hdl/aurora/aurora_wb_master.sv
