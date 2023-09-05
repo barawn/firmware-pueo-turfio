@@ -11,7 +11,7 @@ module pueo_turfio #( parameter NSURF=1,
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd0,
-                      parameter [7:0] VER_REV =   8'd18,
+                      parameter [7:0] VER_REV =   8'd20,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -255,7 +255,7 @@ module pueo_turfio #( parameter NSURF=1,
     wbm_dummy #(.ADDRESS_WIDTH(22),.DATA_WIDTH(32)) u_ctl_stub( `CONNECT_WBM_IFM(wb_ , ctl_ ));
     wbm_dummy #(.ADDRESS_WIDTH(22),.DATA_WIDTH(32)) u_ser_stub( `CONNECT_WBM_IFM(wb_ , ser_ ));
     // Interconnect
-    turfio_intercon #(.DEBUG("FALSE"))
+    turfio_intercon #(.DEBUG("TRUE"))
         u_intercon( .clk_i(wb_clk),
                     .rst_i(1'b0),
                     `CONNECT_WBS_IFM(gtp_ , gtp_),
