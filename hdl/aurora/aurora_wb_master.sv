@@ -21,7 +21,8 @@ module aurora_wb_master(
     localparam FSM_BITS=2;
     localparam [FSM_BITS-1:0] IDLE = 0;
     localparam [FSM_BITS-1:0] ISSUE = 1;
-    localparam [FSM_BITS-1:0] RESPOND = 2;
+    localparam [FSM_BITS-1:0] READ_RESPOND = 2;
+    localparam [FSM_BITS-1:0] WRITE_FINISH = 3;
     reg [FSM_BITS-1:0] state = IDLE;
     
     // just hold the WB data
@@ -37,12 +38,18 @@ module aurora_wb_master(
         else begin
             case (state)
                 IDLE: if (s_addr_tvalid && (s_addr_tdata[31] || s_data_tvalid)) state <= ISSUE;
-                ISSUE: if (wb_ack_i || wb_err_i || wb_rty_i) state <= RESPOND;
-                RESPOND: if (m_resp_tready) state <= IDLE;
+                ISSUE: if (wb_ack_i || wb_err_i || wb_rty_i) begin
+                    // No response if it's a write.
+                    if (wb_we_o) state <= WRITE_FINISH;
+                    // Otherwise respond.
+                    else state <= READ_RESPOND;
+                end
+                WRITE_FINISH: state <= IDLE;
+                READ_RESPOND: if (m_resp_tready) state <= IDLE;
             endcase
         end
         
-        // these will be 1-cycle acks
+        // these will be 1-cycle acks and will occur in either WRITE_FINISH or the first cycle of READ_RESPOND
         addr_tready <= (state == ISSUE && (wb_ack_i || wb_err_i || wb_rty_i));
         data_tready <= (state == ISSUE && (wb_ack_i || wb_err_i || wb_rty_i) && wb_we_o);
         
@@ -59,6 +66,6 @@ module aurora_wb_master(
     assign wb_dat_o = s_data_tdata;        
     assign wb_cyc_o = (state == ISSUE);
     assign wb_stb_o = wb_cyc_o;
-    assign m_resp_tvalid = (state == RESPOND);
+    assign m_resp_tvalid = (state == READ_RESPOND);
     assign m_resp_tdata = resp_data;
 endmodule
