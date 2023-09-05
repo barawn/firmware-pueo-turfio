@@ -140,7 +140,7 @@ module tio_id_ctrl(
     wire [31:0] dat_clockmon;
     
     always @(posedge wb_clk_i) begin
-        ack_internal <= wb_cyc_i && wb_stb_i && sel_internal;
+        ack_internal <= (wb_cyc_i && wb_stb_i && sel_internal) && !ack_internal;
         if (sel_dna && ~wb_we_i && wb_ack_o) dna_shift <= 1;
         else dna_shift <= 0;
         if (sel_dna && wb_we_i && wb_ack_o) dna_read <= wb_dat_i[31];
