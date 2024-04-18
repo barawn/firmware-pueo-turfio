@@ -17,10 +17,10 @@
         "HAS_TKEEP": [ { "value": "0", "resolve_type": "user", "format": "long", "usage": "all" } ],
         "HAS_TLAST": [ { "value": "0", "resolve_type": "user", "format": "long", "usage": "all" } ],
         "HAS_ACLKEN": [ { "value": "0", "resolve_type": "user", "format": "long", "usage": "all" } ],
-        "NUM_SLR_CROSSINGS": [ { "value": "0", "resolve_type": "user", "format": "long", "usage": "all" } ],
-        "PIPELINES_MASTER": [ { "value": "0", "resolve_type": "user", "format": "long", "usage": "all" } ],
-        "PIPELINES_MIDDLE": [ { "value": "0", "resolve_type": "user", "format": "long", "usage": "all" } ],
-        "PIPELINES_SLAVE": [ { "value": "0", "resolve_type": "user", "format": "long", "usage": "all" } ],
+        "NUM_SLR_CROSSINGS": [ { "value": "0", "resolve_type": "user", "format": "long", "enabled": false, "usage": "all" } ],
+        "PIPELINES_MASTER": [ { "value": "0", "resolve_type": "user", "format": "long", "enabled": false, "usage": "all" } ],
+        "PIPELINES_MIDDLE": [ { "value": "0", "resolve_type": "user", "format": "long", "enabled": false, "usage": "all" } ],
+        "PIPELINES_SLAVE": [ { "value": "0", "resolve_type": "user", "format": "long", "enabled": false, "usage": "all" } ],
         "Component_Name": [ { "value": "cmd_register_slice", "resolve_type": "user", "usage": "all" } ]
       },
       "model_parameters": {
