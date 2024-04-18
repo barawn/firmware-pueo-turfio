@@ -13,7 +13,7 @@ module rack_jtag(
         output tdo_o,
         
         output JTAG_EN,
-        output T_JCTRL_B,
+        inout T_JCTRL_B,
         output T_TCK,
         output T_TMS,
         output T_TDI,
@@ -23,9 +23,8 @@ module rack_jtag(
     parameter DEBUG = "TRUE";
     
     wire delay_done;
-    reg ce = 0;
-    always @(posedge clk) ce <= ~ce;
-    
+    wire ce;
+    clk_div_ce #(.CLK_DIVIDE(31),.EXTRA_DIV2("TRUE")) u_divce(.clk(clk),.ce(ce));    
     
     localparam FSM_BITS=3;
     localparam [FSM_BITS-1:0] IDLE = 0;
@@ -44,12 +43,13 @@ module rack_jtag(
     
     reg [7:0] shift_reg = {8{1'b0}};
 
-    // long time for the enable to complete
+    // Turn-on delay is listed as "typ" 1.5 us,
+    // we just run for like, forever
     dsp_counter_terminal_count #(.FIXED_TCOUNT("TRUE"),
                                  .FIXED_TCOUNT_VALUE(1000))
                                     u_delay(.clk_i(clk),
-                                            .rst_i(state != DELAY),
-                                            .count_i(state == DELAY),
+                                            .rst_i(state != DELAY && state != FINISH_LOW_1),
+                                            .count_i(state == DELAY || state == FINISH_LOW_1),
                                             .tcount_reached_o(delay_done));
     (* IOB = "TRUE" *)
     reg tck_reg = 1'b0;
@@ -62,6 +62,10 @@ module rack_jtag(
     (* IOB = "TRUE" *)
     reg tctrl_reg = 1'b1;
     
+    wire tck_out = (force_jtag_enable) ? (state == CLK_HIGH) : tck_i ;
+    wire tdi_out = (force_jtag_enable) ? shift_reg[7] : tdi_i;       ;
+    wire tms_out = (force_jtag_enable) ? 1'b1 : tms_i;               ;
+    
     always @(posedge clk) begin
         case (state)
             IDLE: if (load_i) state <= ENABLE;
@@ -73,7 +77,7 @@ module rack_jtag(
                         else state <= CLK_LOW;
                       end
             FINISH_LOW_0: if (ce) state <= FINISH_LOW_1;
-            FINISH_LOW_1: if (ce) state <= END_ENABLE;
+            FINISH_LOW_1: if (delay_done) state <= END_ENABLE;
             END_ENABLE: state <= IDLE;
         endcase
         if (state == IDLE) bit_counter <= {3{1'b0}};
@@ -89,11 +93,10 @@ module rack_jtag(
         if (state == DELAY) tctrl_reg <= 1'b0;
         else if (state == FINISH_LOW_0) tctrl_reg <= 1'b1;
 
-
-
-        tck_reg <= (force_jtag_enable) ? (state == CLK_HIGH) : tck_i;
-        tdi_reg <= (force_jtag_enable) ? shift_reg[7] : tdi_i;
-        tms_reg <= (force_jtag_enable) ? 1'b1 : tms_i;
+        // Make sure these are tristated when not in use
+        tck_reg <= tck_out;
+        tdi_reg <= tdi_out;
+        tms_reg <= tms_out;
         tdo_reg <= T_TDO;
         
         
@@ -114,15 +117,15 @@ module rack_jtag(
                 if (state == DELAY) tctrl_mon <= 1'b0;
                 else if (state == FINISH_LOW_0) tctrl_mon <= 1'b1;                
             end
-            rack_jtag_ila u_ila(.clk(clk),.probe0(state),.probe1(load_i),.probe2(dat_i),.probe3(tck_mon),.probe4(tdi_mon),.probe5(tctrl_mon));
+            rack_jtag_ila u_ila(.clk(clk),.probe0(state),.probe1(load_i),.probe2(dat_i),.probe3(tck_mon),.probe4(tdi_mon),.probe5(tctrl_mon),.probe6(tdo_reg));
          end
     endgenerate 
                   
-    
     assign T_TCK = tck_reg;
     assign T_TMS = tms_reg;
     assign T_TDI = tdi_reg;
-    assign T_JCTRL_B = tctrl_reg;
+    // this is functionally open drain, it goes through a Schottky diode to level convert
+    assign T_JCTRL_B = tctrl_reg ? 1'bZ : 1'b0;
     assign JTAG_EN = force_jtag_enable || jtag_enable_i;
     assign tdo_o = (force_jtag_enable) ? 1'b0 : tdo_reg;
     
