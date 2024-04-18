@@ -8,7 +8,6 @@ verilog-library-barawn/hdl/clk_div_ce.v
 verilog-library-barawn/hdl/dsp_counter_terminal_count.v
 verilog-library-barawn/hdl/dsp_timed_counter.v
 verilog-library-barawn/hdl/flag_sync.v
-hdl/rackbus/rackbus_to_surf_custom.v
 verilog-library-barawn/hdl/round_robin_arbiter.v
 verilog-library-barawn/hdl/srlvec.v
 hdl/uart/uart_rx6.v
@@ -17,11 +16,11 @@ verilog-library-barawn/hdl/wbm_dummy.v
 verilog-library-barawn/hdl/wbs_dummy.v
 verilog-library-barawn/hdl/wishbone_arbiter.v
 hdl/aurora/aurora_cmdgen.sv
+hdl/aurora/aurora_turf_clock.sv
+hdl/aurora/aurora_wb_master.sv
 hdl/boardman_wrapper.sv
 hdl/gen_shift_if/gen_shift_if.sv
-hdl/clock/lmk_shift_reg.sv
 hdl/pueo_command_decoder.sv
-hdl/rackjtag/rack_jtag.sv
 hdl/turf/rxclk_sysclk_transfer.sv
 hdl/clock/simple_clock_mon.sv
 hdl/tio_id_ctrl.sv
@@ -37,5 +36,3 @@ hdl/turfio_gen_shift_wrapper.sv
 hdl/turfio_intercon.sv
 hdl/turfio_sync_sysclk_count.sv
 hdl/pueo_turfio.sv
-hdl/aurora/aurora_turf_clock.sv
-hdl/aurora/aurora_wb_master.sv
