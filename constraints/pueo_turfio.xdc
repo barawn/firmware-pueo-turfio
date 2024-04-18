@@ -72,8 +72,10 @@ set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN H14} [get_ports EN_MYCLK_B]
 # crate JTAG
 set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN P5} [get_ports JTAG_EN]
 set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN J6} [get_ports T_JCTRL_B]
-set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN K6} [get_ports T_TDI]
-set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN K5} [get_ports T_TDO]
+# T_TDI and T_TDO are functionally switched with levconv v2
+set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN K5} [get_ports T_TDI]
+set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN K6} [get_ports T_TDO]
+
 set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN M4} [get_ports T_TCK]
 set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN N4} [get_ports T_TMS]
 
