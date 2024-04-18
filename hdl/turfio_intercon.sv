@@ -187,7 +187,7 @@ module turfio_intercon(
     `SLAVE_MAP( aurora_ , 4, AURORA_MASK, AURORA_BASE );
     
     generate
-        if (DEBUG == "TRUE") begin
+        if (DEBUG == "TRUE") begin : DBG
             // Minimal internal WISHBONE bus. Combines bidir data into one.
             reg [DATA_WIDTH-1:0] dbg_data = {32{1'b0}};
             reg [ADDR_WIDTH-1:0] dbg_addr = {22{1'b0}};
