@@ -1,3 +1,6 @@
 [submodule "verilog-library-barawn"]
 	path = verilog-library-barawn
 	url = https://github.com/barawn/verilog-library-barawn
+[submodule "picoblaze_utils"]
+	path = picoblaze_utils
+	url = ssh://git@github.com/barawn/picoblaze_utils
