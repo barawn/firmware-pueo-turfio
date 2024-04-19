@@ -48,6 +48,7 @@ module pueo_turfio #( parameter NSURF=1,
         // I2C
         inout F_SDA,
         inout F_SCL,
+        input I2C_RDY,
         
         // LMK data output
         output LMKDATA,
@@ -287,6 +288,8 @@ module pueo_turfio #( parameter NSURF=1,
                    
                    .enable_crate_o(ENABLE),
                    .enable_3v3_o(EN_3V3),
+                   .crate_conf_i(CONF),
+                   .i2c_rdy_i(I2C_RDY),
                    
                    .rx_clk_ok_o(rxclk_ok),
                    .sys_clk_ok_o(sysclk_ok),
@@ -309,7 +312,7 @@ module pueo_turfio #( parameter NSURF=1,
                     // DEBUG ONLY
                     .F_SDA(F_SDA),
                     .F_SCL(F_SCL),
-                    
+
                     // JTAG
                     .TCTRL_B(T_JCTRL_B),
                     .JTAG_OE(JTAG_EN),
