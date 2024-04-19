@@ -37,6 +37,8 @@ module tio_id_ctrl(
         output       enable_crate_o,
         output       enable_3v3_o,
         input [1:0]  crate_conf_i,
+        // probably temporary
+        input        i2c_rdy_i,
         
         // Clock counter offset. When a sync request
         // comes in, this is what we reset the sysclk
@@ -85,15 +87,18 @@ module tio_id_ctrl(
 
     (* IOB = "TRUE" *)
     reg [1:0] crate_conf = {2{1'b0}};
-                
+    // probably temporary
+    (* IOB = "TRUE" *)
+    reg i2c_rdy = 1'b0;                
     
     // Status/control register
     wire [31:0] ctrlstat_reg;
     assign ctrlstat_reg[0] = sys_clk_ok_o;
     assign ctrlstat_reg[1] = rx_clk_ok_o;
     assign ctrlstat_reg[2] = enable_crate;
-    assign ctrlstat_reg[3] = enable_3v3;            
-    assign ctrlstat_reg[7:4] = {4{1'b0}};
+    assign ctrlstat_reg[3] = enable_3v3;
+    assign ctrlstat_reg[4] = i2c_rdy;            
+    assign ctrlstat_reg[7:5] = {3{1'b0}};
     assign ctrlstat_reg[9:8] = crate_conf;
     assign ctrlstat_reg[15:10] = {6{1'b0}};
     assign ctrlstat_reg[31:16] = {16{1'b0}};
@@ -170,6 +175,7 @@ module tio_id_ctrl(
         end        
         
         crate_conf <= crate_conf_i;
+        i2c_rdy <= i2c_rdy_i;
     end    
 
     DNA_PORT u_dina(.DIN(1'b0),.READ(dna_read),.SHIFT(dna_shift),.CLK(wb_clk_i),.DOUT(dna_data));
