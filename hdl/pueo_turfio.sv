@@ -11,7 +11,7 @@ module pueo_turfio #( parameter NSURF=1,
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd0,
-                      parameter [7:0] VER_REV =   8'd21,
+                      parameter [7:0] VER_REV =   8'd22,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -39,6 +39,15 @@ module pueo_turfio #( parameter NSURF=1,
 
         // Enable crate 3V3 (for JTAG)
         output EN_3V3,
+        // Enable SURFs
+        output ENABLE,
+        
+        // Crate configuration
+        input [1:0] CONF,
+        
+        // I2C
+        inout F_SDA,
+        inout F_SCL,
         
         // LMK data output
         output LMKDATA,
@@ -275,6 +284,10 @@ module pueo_turfio #( parameter NSURF=1,
         u_id_ctrl( .wb_clk_i(wb_clk),
                    .wb_rst_i(1'b0),
                    `CONNECT_WBS_IFM( wb_ , tio_id_ctrl_ ),
+                   
+                   .enable_crate_o(ENABLE),
+                   .enable_3v3_o(EN_3V3),
+                   
                    .rx_clk_ok_o(rxclk_ok),
                    .sys_clk_ok_o(sysclk_ok),
                    .sys_clk_i(sysclk),
@@ -293,6 +306,10 @@ module pueo_turfio #( parameter NSURF=1,
         u_genshift( .wb_clk_i(wb_clk),
                     .wb_rst_i(1'b0),
                     `CONNECT_WBS_IFM( wb_ , genshift_ ),
+                    // DEBUG ONLY
+                    .F_SDA(F_SDA),
+                    .F_SCL(F_SCL),
+                    
                     // JTAG
                     .TCTRL_B(T_JCTRL_B),
                     .JTAG_OE(JTAG_EN),
@@ -433,8 +450,6 @@ module pueo_turfio #( parameter NSURF=1,
     // plus this!
     assign EN_LCLK_B = 1'b1;
     
-    // just leave this on for now
-    assign EN_3V3 = 1'b1;    
 endmodule
 
 `undef DLYFF
