@@ -33,6 +33,11 @@ module tio_id_ctrl(
         // Enable the external sync. This is optional because it will eff the SURF clocks when done.
         // Only needs to be done once.
         output       en_ext_sync_o,
+        
+        output       enable_crate_o,
+        output       enable_3v3_o,
+        input [1:0]  crate_conf_i,
+        
         // Clock counter offset. When a sync request
         // comes in, this is what we reset the sysclk
         // counter to.
@@ -74,11 +79,24 @@ module tio_id_ctrl(
     // Clock offset.
     (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
     reg [7:0] clock_offset = {8{1'b0}};
+
+    reg enable_crate = 1;
+    reg enable_3v3 = 1;
+
+    (* IOB = "TRUE" *)
+    reg [1:0] crate_conf = {2{1'b0}};
+                
     
     // Status/control register
     wire [31:0] ctrlstat_reg;
     assign ctrlstat_reg[0] = sys_clk_ok_o;
     assign ctrlstat_reg[1] = rx_clk_ok_o;
+    assign ctrlstat_reg[2] = enable_crate;
+    assign ctrlstat_reg[3] = enable_3v3;            
+    assign ctrlstat_reg[7:4] = {4{1'b0}};
+    assign ctrlstat_reg[9:8] = crate_conf;
+    assign ctrlstat_reg[15:10] = {6{1'b0}};
+    assign ctrlstat_reg[31:16] = {16{1'b0}};
     
     // Main internal register stuff. We have basically 64 groups of 16 registers.
     wire        sel_internal = (wb_adr_i[6 +: 6] == 0);
@@ -143,8 +161,15 @@ module tio_id_ctrl(
         ack_internal <= (wb_cyc_i && wb_stb_i && sel_internal) && !ack_internal;
         if (sel_dna && ~wb_we_i && wb_ack_o) dna_shift <= 1;
         else dna_shift <= 0;
-        if (sel_dna && wb_we_i && wb_ack_o) dna_read <= wb_dat_i[31];
+        if (sel_dna && wb_we_i && wb_ack_o && wb_sel_i[3]) dna_read <= wb_dat_i[31];
         else dna_read <= 0;
+        
+        if (sel_ctrlstat && wb_we_i && wb_ack_o && wb_sel_i[0]) begin
+            enable_crate <= wb_dat_i[2];
+            enable_3v3 <= wb_dat_i[3];
+        end        
+        
+        crate_conf <= crate_conf_i;
     end    
 
     DNA_PORT u_dina(.DIN(1'b0),.READ(dna_read),.SHIFT(dna_shift),.CLK(wb_clk_i),.DOUT(dna_data));
@@ -184,4 +209,8 @@ module tio_id_ctrl(
     assign sync_offset_o = sync_offset_plus_en[7:0];
     assign en_ext_sync_o = sync_offset_plus_en[8];
     assign clock_offset_o = clock_offset;
+
+    assign enable_crate_o = enable_crate;
+    assign enable_3v3_o = enable_3v3;
+
 endmodule

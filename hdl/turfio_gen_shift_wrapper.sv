@@ -12,6 +12,10 @@ module turfio_gen_shift_wrapper(
         input TDO,
         output TCK,
         output TMS,
+        // TEMPORARY TEMPORARY TEMPORARY
+        // LET'S JUST HOOK UP THE I2C PORT VIA GPIOS
+        inout F_SDA,
+        inout F_SCL,
         // LMK ports
         output LMKCLK,
         output LMKDATA,
@@ -44,21 +48,37 @@ module turfio_gen_shift_wrapper(
     // TURF interface.
     //
     
+    //localparam NUM_GPIO = 5;
+    // TEMPORARY
+    localparam NUM_GPIO = 7;
+    
     // General wires for connecting.
     wire [2:0] gen_cclk;
     wire [2:0] gen_din;
     wire [2:0] gen_dout;
     wire [2:0] gen_aux_out;
-    wire [4:0] gen_gpio_o;
-    wire [4:0] gen_gpio_t;
+    wire [NUM_GPIO-1:0] gen_gpio_o;
+    wire [NUM_GPIO-1:0] gen_gpio_t;    
+    wire [NUM_GPIO-1:0] gen_gpio_i;
+    
+    assign gen_gpio_i[4:0] = {5{1'b0}};
+
+    // TEMPORARY
+    IOBUF u_sda(.IO(F_SDA),.I(gen_gpio_o[5]),.O(gen_gpio_i[5]),.T(gen_gpio_t[5]));
+    IOBUF u_scl(.IO(F_SCL),.I(gen_gpio_o[6]),.O(gen_gpio_i[6]),.T(gen_gpio_t[6]));
+
+    //localparam [NUM_GPIO-1:0] INVERT_GPIO = 5'b10010;
+    localparam [NUM_GPIO-1:0] INVERT_GPIO = 7'b0010010;
+
+    
     gen_shift_if #(.DEBUG("FALSE"),
                    .NUM_DEVICES(3),
                    .USE_CLK(    8'b0000_0011),
                    .USE_DIN(    8'b0000_0111),
                    .USE_DOUT(   8'b0000_0101),
                    .USE_AUX_OUT(8'b0000_0001),
-                   .NUM_GPIO(5),
-                   .INVERT_GPIO(5'b10010))
+                   .NUM_GPIO(NUM_GPIO),
+                   .INVERT_GPIO(INVERT_GPIO))
         u_gen_shift( .clk(wb_clk_i),
                      .rst(wb_rst_i),
                      .en_i(wb_cyc_i && wb_stb_i),
@@ -72,7 +92,7 @@ module turfio_gen_shift_wrapper(
                      .DEV_DIN(gen_din),
                      .DEV_DOUT(gen_dout),
                      .DEV_AUX_OUT(gen_aux_out),
-                     .dev_gpio_i( {5{1'b0}} ),
+                     .dev_gpio_i( gen_gpio_i ),
                      .dev_gpio_o( gen_gpio_o ),
                      .dev_gpio_t( gen_gpio_t ));
 

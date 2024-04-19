@@ -49,9 +49,9 @@ set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN M17} [get_ports EN_3V3]
 #set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN R6  } [get_ports {    ALERT_B     }]
 #set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN P6  } [get_ports {    I2C_RDY     }]
 #set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN M14 } [get_ports {    PSYNC       }]
-#set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN N14 } [get_ports {    ENABLE      }]
-#set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN M16 } [get_ports {    CONF[1]     }]
-#set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN N17 } [get_ports {    CONF[0]     }]
+set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN N14 } [get_ports {    ENABLE      }]
+set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN M16 } [get_ports {    CONF[1]     }]
+set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN N17 } [get_ports {    CONF[0]     }]
 
 ## init clk, MGT clock, local system clock
 set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN E15} [get_ports INITCLK]
