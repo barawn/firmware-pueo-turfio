@@ -16,8 +16,6 @@ verilog-library-barawn/hdl/wbm_dummy.v
 verilog-library-barawn/hdl/wbs_dummy.v
 verilog-library-barawn/hdl/wishbone_arbiter.v
 hdl/aurora/aurora_cmdgen.sv
-hdl/aurora/aurora_turf_clock.sv
-hdl/aurora/aurora_wb_master.sv
 hdl/boardman_wrapper.sv
 hdl/gen_shift_if/gen_shift_if.sv
 hdl/pueo_command_decoder.sv
@@ -36,3 +34,9 @@ hdl/turfio_gen_shift_wrapper.sv
 hdl/turfio_intercon.sv
 hdl/turfio_sync_sysclk_count.sv
 hdl/pueo_turfio.sv
+hdl/aurora/aurora_turf_clock.sv
+hdl/aurora/aurora_wb_master.sv
+hdl/hski2c/hski2c_top.sv
+hdl/surf/surf_interface.sv
+verilog-library-barawn/hdl/obufds_autoinv.v
+hdl/surfturf_wrapper.sv
