@@ -375,7 +375,9 @@ module pueo_turfio #( parameter NSURF=1,
                .T_CIN_N(T_CIN_N),
                
                .RXCLK_P(RXCLK_P),
-               .RXCLK_N(RXCLK_N)
+               .RXCLK_N(RXCLK_N),
+               .CIN_P(CIN_P),
+               .CIN_N(CIN_N)
                );                     
 
     pueo_command_decoder u_decoder(.sysclk_i(sysclk),
