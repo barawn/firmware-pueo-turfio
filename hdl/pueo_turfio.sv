@@ -11,7 +11,7 @@ module pueo_turfio #( parameter NSURF=1,
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd0,
-                      parameter [7:0] VER_REV =   8'd22,
+                      parameter [7:0] VER_REV =   8'd23,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -66,10 +66,15 @@ module pueo_turfio #( parameter NSURF=1,
         // SPI flash chip select L15
         output SPI_CS_B,
         
-        
-//        // beginning
-//        output [NSURF-1:0] RXCLK_P,
-//        output [NSURF-1:0] RXCLK_N,
+        // 0: L18, K17 (inverted) 
+        // 1: T18, R18 (inverted)
+        // 2: U15, U16
+        // 3: R7, T7
+        // 4: V6, U7 (inverted)
+        // 5: U4, V4
+        // 6: L5, M5
+        output [NSURF-1:0] RXCLK_P,
+        output [NSURF-1:0] RXCLK_N,
 //        output [NSURF-1:0] CIN_P,
 //        output [NSURF-1:0] CIN_N, 
 
@@ -332,13 +337,18 @@ module pueo_turfio #( parameter NSURF=1,
     // SURFTURF module. This is just the TURF component for now.
     // Internally it gets mapped to a subset of the address space. Here it just
     // connects up what it can.
-    turf_interface #(.RXCLK_INV(T_RXCLK_INV),
-                     .TXCLK_INV(T_TXCLK_INV),
-                     .COUT_INV(T_COUT_INV),
-                     .COUTTIO_INV(T_COUTTIO_INV),
-                     .CIN_INV(T_CIN_INV),
-                     .WB_CLK_TYPE(WB_CLK_TYPE))
-        u_turf(.wb_clk_i(wb_clk),
+    surfturf_wrapper #(.T_RXCLK_INV(T_RXCLK_INV),
+                       .T_TXCLK_INV(T_TXCLK_INV),
+                       .T_COUT_INV(T_COUT_INV),
+                       .T_COUTTIO_INV(T_COUTTIO_INV),
+                       .T_CIN_INV(T_CIN_INV),
+                       .RXCLK_INV(RXCLK_INV),
+                       .TXCLK_INV(TXCLK_INV),
+                       .COUT_INV(COUT_INV),
+                       .CIN_INV(CIN_INV),
+                       .DOUT_INV(DOUT_INV),
+                       .WB_CLK_TYPE(WB_CLK_TYPE))
+        u_surfturf(.wb_clk_i(wb_clk),
                .wb_rst_i(1'b0),
                `CONNECT_WBS_IFM( wb_ , surfturf_ ),
                
@@ -352,16 +362,20 @@ module pueo_turfio #( parameter NSURF=1,
                .sysclk_i(sysclk),
                .sysclk_ok_i(sysclk_ok),
                .sysclk_x2_i(sysclk_x2),
-               .RXCLK_P(T_RXCLK_P),
-               .RXCLK_N(T_RXCLK_N),
-               .TXCLK_P(T_TXCLK_P),
-               .TXCLK_N(T_TXCLK_N),
-               .COUTTIO_P(T_COUTTIO_P),
-               .COUTTIO_N(T_COUTTIO_N),
+               .T_RXCLK_P(T_RXCLK_P),
+               .T_RXCLK_N(T_RXCLK_N),
+               .T_TXCLK_P(T_TXCLK_P),
+               .T_TXCLK_N(T_TXCLK_N),
+               .T_COUTTIO_P(T_COUTTIO_P),
+               .T_COUTTIO_N(T_COUTTIO_N),
                .T_COUT_P(T_COUT_P),
                .T_COUT_N(T_COUT_N),
-               .CIN_P(T_CIN_P),
-               .CIN_N(T_CIN_N));                     
+               .T_CIN_P(T_CIN_P),
+               .T_CIN_N(T_CIN_N),
+               
+               .RXCLK_P(RXCLK_P),
+               .RXCLK_N(RXCLK_N)
+               );                     
 
     pueo_command_decoder u_decoder(.sysclk_i(sysclk),
                                    .command_i(turf_command),
