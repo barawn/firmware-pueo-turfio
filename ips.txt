@@ -12,3 +12,5 @@ ip/debug/gen_shift_ila/gen_shift_ila.xci
 ip/debug/intercon_ila/intercon_ila.xci
 ip/debug/sync_ila/sync_ila.xci
 ip/clock/sys_clk_generator/sys_clk_generator.xci
+ip/debug/turf_cin_ila/turf_cin_ila.xci
+ip/debug/turfwb_ila/turfwb_ila.xci
