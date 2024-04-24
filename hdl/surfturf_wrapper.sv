@@ -47,6 +47,8 @@ module surfturf_wrapper #(
         input T_CIN_N,
         
         // surf-side
+        output [6:0] CIN_P,
+        output [6:0] CIN_N,
         output [6:0] RXCLK_P,
         output [6:0] RXCLK_N                
     );
@@ -115,6 +117,12 @@ module surfturf_wrapper #(
                             .sysclk_i(sysclk_i),
                             .sysclk_ok_i(sysclk_ok_i),
                             .sysclk_x2_i(sysclk_x2_i),
+                            .sync_i(sync_i),
+                            // sigh I have no idea if I'm going to do it
+                            // this way or not BUT FOR NOW!
+                            .command_i(command_o),
+                            .CIN_P(CIN_P[i-1]),
+                            .CIN_N(CIN_N[i-1]),
                             .RXCLK_P(RXCLK_P[i-1]),
                             .RXCLK_N(RXCLK_N[i-1]));
             end

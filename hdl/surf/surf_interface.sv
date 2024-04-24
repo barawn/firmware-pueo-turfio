@@ -17,25 +17,60 @@ module surf_interface #(parameter RXCLK_INV = 1'b0,
         input sysclk_i,
         input sysclk_x2_i,
         
-        // just implement the clock for now, get things working
+        input [31:0] command_i,
+        input sync_i,
+                
+        output CIN_P,
+        output CIN_N,
         output RXCLK_P,
         output RXCLK_N
     );
 
-    reg ack_internal = 0;
-    always @(posedge wb_clk_i) ack_internal <= wb_cyc_i && wb_stb_i;
-    assign wb_ack_o = ack_internal && wb_cyc_i;
-    assign wb_dat_o = {32{1'b0}};
+    // IDELAY controls.
+    wire idelay_load;
+    wire [5:0] idelay_value;
+    wire [5:0] idelay_current;
+    // ISERDES controls
+    wire iserdes_rst;
+    wire iserdes_bitslip;
+    wire [31:0] cout_data;
+    wire cout_capture;
+    wire cout_biterr;
+    // OSERDES controls
+    wire oserdes_rst;
+    wire cin_train;
+    
+    surf_cin_interface #(.CIN_INV(CIN_INV),
+                         .RXCLK_INV(RXCLK_INV))
+        u_surf_cin(.sysclk_i(sysclk_i),
+                   .sysclk_x2_i(sysclk_x2_i),
+                   .oserdes_rst_i(oserdes_rst),
+                   .train_i(cin_train),
+                   .sync_i(sync_i),
+                   .command_i(command_i),
+                   .CIN_P(CIN_P),
+                   .CIN_N(CIN_N),
+                   .RXCLK_P(RXCLK_P),
+                   .RXCLK_N(RXCLK_N));
 
-    wire rxclk_in;
-    ODDR #(.DDR_CLK_EDGE("SAME_EDGE"),.INIT(RXCLK_INV),.SRTYPE("SYNC"))
-        u_rxclk_oddr(.C(sysclk_i),
-                     .CE(1'b1),
-                     .D1(~RXCLK_INV),
-                     .D2(RXCLK_INV),
-                     .R(1'b0),
-                     .S(1'b0),
-                     .Q(rxclk_in));
-    obufds_autoinv #(.INV(RXCLK_INV)) u_rxclk(.I(rxclk_in),.O_P(RXCLK_P),.O_N(RXCLK_N));    
+    // we're a slave inside a slave so we need WBS_IFS
+    surfctl_register_core #(.WB_CLK_TYPE(WB_CLK_TYPE))
+        u_core( .wb_clk_i(wb_clk_i),
+                .wb_rst_i(wb_rst_i),
+                `CONNECT_WBS_IFS(wb_ , wb_ ),
+                .sysclk_ok_i(sysclk_ok_i),
+                .sysclk_i(sysclk_i),
+                
+                .idelay_load_o(idelay_load),
+                .idelay_value_o(idelay_value),
+                .idelay_current_i(idelay_current),
+                .iserdes_rst_o(iserdes_rst),
+                .iserdes_bitslip_o(iserdes_bitsip),
+                .oserdes_rst_o(oserdes_rst),
+                
+                .cout_data_i(cout_data),
+                .cout_capture_o(cout_capture),
+                .cout_biterr_i(cout_biterr),
+                .cin_train_o(cin_train));
 
 endmodule

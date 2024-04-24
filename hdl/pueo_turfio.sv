@@ -75,8 +75,9 @@ module pueo_turfio #( parameter NSURF=1,
         // 6: L5, M5
         output [NSURF-1:0] RXCLK_P,
         output [NSURF-1:0] RXCLK_N,
-//        output [NSURF-1:0] CIN_P,
-//        output [NSURF-1:0] CIN_N, 
+        
+        output [NSURF-1:0] CIN_P,
+        output [NSURF-1:0] CIN_N, 
 
         // TURF comms
         input T_RXCLK_P,              // C13 - inverted
