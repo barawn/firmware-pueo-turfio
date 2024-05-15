@@ -46,6 +46,7 @@ module surf_cin_interface(
         else command_phase <= command_phase + 1;
         
         if (command_phase == 7) command_hold <= value_to_send;
+        else command_hold <= { {4{1'b0}}, command_hold[4 +: 28] };        
     end        
     
     // OSERDES. LSB is first out.
