@@ -44,8 +44,8 @@ set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN J14} [get_ports CLK_SYNC]
 
 ## crate interface
 set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN M17} [get_ports EN_3V3]
-set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN M15 } [get_ports {    F_SDA       }]
-set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN N16 } [get_ports {    F_SCL       }]
+set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN M15 PULLTYPE PULLUP } [get_ports {    F_SDA       }]
+set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN N16 PULLTYPE PULLUP } [get_ports {    F_SCL       }]
 #set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN R6  } [get_ports {    ALERT_B     }]
 set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN P6 PULLTYPE PULLUP} [get_ports {    I2C_RDY     }]
 #set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN M14 } [get_ports {    PSYNC       }]
