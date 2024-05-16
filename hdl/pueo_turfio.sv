@@ -6,12 +6,12 @@
 // Still a horrible work in progress: however, I'm trying to move to a more normalized
 // setup for interfacing with the flight computer. Serial port debug interface is based
 // on the RADIANT comms.
-module pueo_turfio #( parameter NSURF=1, 
+module pueo_turfio #( parameter NSURF=7, 
                       parameter SIMULATION="FALSE",
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd0,
-                      parameter [7:0] VER_REV =   8'd24,
+                      parameter [7:0] VER_REV =   8'd25,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
