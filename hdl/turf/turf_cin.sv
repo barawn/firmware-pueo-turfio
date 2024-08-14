@@ -30,8 +30,10 @@ module turf_cin #(parameter CIN_INV = 1'b0)( input rxclk_i,
     wire cin_delayed;
 
     // CIN path        
+    // source (current value) and destination (load)
     IBUFDS_DIFF_OUT #(.IBUF_LOW_PWR("FALSE"))
         u_cin_ibuf(.I(cin_in_p),.IB(cin_in_n),.O(cin_out_p),.OB(cin_out_n));
+    (* CUSTOM_CC_DST = "RXCLK", CUSTOM_CC_SRC = "RXCLK" *)
     IDELAYE2 #(.IDELAY_TYPE("VAR_LOAD"),
                .HIGH_PERFORMANCE_MODE("TRUE"))
              u_cin_idelay(.C(rxclk_i),
@@ -46,6 +48,8 @@ module turf_cin #(parameter CIN_INV = 1'b0)( input rxclk_i,
     // So that means we need to flop the ISERDES here.
     // We also use the TOP bits (which... we're not supposed to) because they still
     // actually do work to do an 8-fold deserialization over 2 clock periods.
+    // just a destination (bitslip)
+    (* CUSTOM_CC_DST = "RXCLK" *)
     ISERDESE2 #(.INTERFACE_TYPE("NETWORKING"),
                 .DATA_RATE("DDR"),
                 .DATA_WIDTH(4),

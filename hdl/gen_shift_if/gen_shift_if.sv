@@ -40,6 +40,8 @@ module gen_shift_if
         parameter [7:0] USE_DOUT = 8'h1,    // if 1 for device, implement DOUT (input) as IOB
         parameter [7:0] USE_AUX_OUT = 8'h1, // if 1 for device, implement AUX_OUT (out) as IOB
         parameter NUM_GPIO=1,               // Number of GPIOs go implement
+        parameter [NUM_GPIO-1:0] GPIO_DEFAULT_TRI={NUM_GPIO{1'b0}},
+        parameter [NUM_GPIO-1:0] GPIO_DEFAULT_OUT={NUM_GPIO{1'b0}},
         parameter [NUM_GPIO-1:0] INVERT_GPIO={NUM_GPIO{1'b0}},  // Invert selected GPIO
         parameter USE_SINGLE_DOUT = "FALSE" // if multiple interfaces are enabled, use only lowest-numbered
                                             // DOUT (as opposed to taking the logical OR of all of them).
@@ -97,8 +99,8 @@ module gen_shift_if
 
     // GPIOs. We have GPIOs here to deal with stuff like chip selects
     // and latch enables and who knows what else.
-    reg [NUM_GPIO-1:0] gpio_tristate = {NUM_GPIO{1'b0}};
-    reg [NUM_GPIO-1:0] gpio_output_reg = {NUM_GPIO{1'b0}};
+    reg [NUM_GPIO-1:0] gpio_tristate = GPIO_DEFAULT_TRI;
+    reg [NUM_GPIO-1:0] gpio_output_reg = GPIO_DEFAULT_OUT;
     wire [NUM_GPIO-1:0] gpio_input;
     reg [NUM_GPIO-1:0] gpio_input_reg = {NUM_GPIO{1'b0}};;    
 

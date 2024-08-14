@@ -93,8 +93,9 @@ set_max_delay -datapath_only -from $sync_flag_regs -to $sync_sync_regs 10.000
 set_max_delay -datapath_only -from $sync_sync_regs -to $sync_syncB_regs 10.000
 
 # ignore the initclk/sysclk path. I need to make these automagic or something
-set_max_delay -datapath_only -from $sysclk -to $initclk 25.000
-set_max_delay -datapath_only -from $initclk -to $sysclk 25.000
+# no no no, let's *actually* find all of the damn paths
+#set_max_delay -datapath_only -from $sysclk -to $initclk 25.000
+#set_max_delay -datapath_only -from $initclk -to $sysclk 25.000
 
 # These pretty much get automatically satisfied. It should work because CLK_SYNC is definitively after the input clock,
 # and this adds a pretty significant delay.
@@ -111,23 +112,24 @@ set_max_delay -datapath_only -from $clockmon_level_regs -to $clockmon_cc_regs 10
 set_max_delay -datapath_only -from $clockmon_run_reset_regs -to $clockmon_run_regs 10.000
 set_max_delay -datapath_only -from $clockmon_run_regs -to $clockmon_run_cc_regs 10.000
 
+# These all now get automatically set by the CUSTOM_CC_SRC/DST attributes.
 # the TURF module has a bajillion clock-crosses to deal with. This is our first set...
-set wb_static_regs [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_core/*static_reg*}]
-set wb_static_targets [get_cells -hier -filter {NAME =~ u_surfturf/*u_turf/u_turfcin/u_cin_idelay*}]
-lappend wb_static_targets [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_core/u_cin_biterr/u_dsp}]
-lappend wb_static_targets [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_cin_sync/cin_capture*}]
-lappend wb_static_targets [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_turfcin/u_cin_iserdes*}]
-set_max_delay -datapath_only -from $wb_static_regs -to $wb_static_targets 10.000
+#set wb_static_regs [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_core/*static_reg*}]
+#set wb_static_targets [get_cells -hier -filter {NAME =~ u_surfturf/*u_turf/u_turfcin/u_cin_idelay*}]
+#lappend wb_static_targets [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_core/u_cin_biterr/u_dsp}]
+#lappend wb_static_targets [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_cin_sync/cin_capture*}]
+#lappend wb_static_targets [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_turfcin/u_cin_iserdes*}]
+#set_max_delay -datapath_only -from $wb_static_regs -to $wb_static_targets 10.000
 
 # I really should add an optional CLKTYPE attribute to the DSP here to automate this
-set biterr_count_rxclk [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_core/u_cin_biterr/u_dsp}]
-set biterr_count_wbclk [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_core/bit_error_count_wbclk_reg*}]
-set_max_delay -datapath_only -from $biterr_count_rxclk -to $biterr_count_wbclk 10.000
+#set biterr_count_rxclk [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_core/u_cin_biterr/u_dsp}]
+#set biterr_count_wbclk [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_core/bit_error_count_wbclk_reg*}]
+#set_max_delay -datapath_only -from $biterr_count_rxclk -to $biterr_count_wbclk 10.000
 
-set wb_dat_regs [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_core/dat_reg_reg*}]
-set wb_dat_sources [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_cin_sync/cin_capture*}]
-lappend wb_dat_sources [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_turfcin/u_cin_idelay*}]
-set_max_delay -datapath_only -from $wb_dat_sources -to $wb_dat_regs 10.000
+#set wb_dat_regs [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_core/dat_reg_reg*}]
+#set wb_dat_sources [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_cin_sync/cin_capture*}]
+#lappend wb_dat_sources [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_turfcin/u_cin_idelay*}]
+#set_max_delay -datapath_only -from $wb_dat_sources -to $wb_dat_regs 10.000
 
 # RXCLK/SYSCLK registers. Here we set a *min* delay. I should probably change this
 # and just set them up in an RLOC with some distance from each other. This does what
@@ -142,6 +144,10 @@ if { [llength $rxsys_xfr_src_regs] != 0 } {
 }
 # These guys are properly tagged.
 set_cc_paths $initclk $rxclk $clktypelist
+set_cc_paths $rxclk $initclk $clktypelist
+
 set_cc_paths $initclk $sysclk $clktypelist
+set_cc_paths $sysclk $initclk $clktypelist
+
 set_cc_paths $userclk $initclk $clktypelist
 set_cc_paths $initclk $userclk $clktypelist

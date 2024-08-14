@@ -40,3 +40,6 @@ hdl/hski2c/hski2c_top.sv
 hdl/surf/surf_interface.sv
 verilog-library-barawn/hdl/obufds_autoinv.v
 hdl/surfturf_wrapper.sv
+hdl/surf/surf_cout_interface.sv
+hdl/surf/surf_cin_interface.sv
+hdl/surf/surfctl_register_core.sv

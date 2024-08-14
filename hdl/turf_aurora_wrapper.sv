@@ -431,7 +431,8 @@ module turf_aurora_wrapper(
                                    .rd_en( ufc_rx_tvalid && ufc_rx_tready),
                                    .overflow( ufc_rx_overflow ));
     // ok, now we need to *parse* the inbound RX path.
-    aurora_cmdgen u_cmdgen( .aclk(wb_clk_i),
+    aurora_cmdgen #(.DEBUG("FALSE"))
+                  u_cmdgen( .aclk(wb_clk_i),
                             .aresetn(1'b1),
                             `CONNECT_AXI4S_MIN_IF( s_axis_ , ufc_rx_ ),
                             .s_axis_tkeep( ufc_rx_tkeep ),

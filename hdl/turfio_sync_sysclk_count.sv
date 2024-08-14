@@ -133,7 +133,7 @@ module turfio_sync_sysclk_count(
                            .probe4(dbg_ext_sync));
         end
     endgenerate
-    
+    // This is actually a flag, since the counter only runs the bottom 4 bits.
     assign sync_o = clk_phase_counter[4];
     assign sysclk_count_o = sysclk_counter;
     assign SYNC = ext_sync;

@@ -33,6 +33,8 @@ module surfturf_wrapper #(
         output          command_valid_o,
         // response inputs
         input [31:0]    response_i,
+
+        // need to figure out the surfbridge stuff!!!
         
         // turf-side
         input T_RXCLK_P,
@@ -47,13 +49,19 @@ module surfturf_wrapper #(
         input T_CIN_N,
         
         // surf-side
+        input  [6:0] COUT_P,
+        input  [6:0] COUT_N,
+        input  [6:0] DOUT_P,
+        input  [6:0] DOUT_N,
+        input  [6:0] TXCLK_P,
+        input  [6:0] TXCLK_N,
         output [6:0] CIN_P,
         output [6:0] CIN_N,
         output [6:0] RXCLK_P,
         output [6:0] RXCLK_N                
     );
     
-    localparam [6:0] SURF_DEBUG = {7{1'b0}};
+    localparam [6:0] SURF_DEBUG = 7'b0000011;
     
     // create a vector of WB interfaces to use.
     `DEFINE_WB_IFV( wbvec_ , 12, 32, [7:0] );
@@ -110,7 +118,7 @@ module surfturf_wrapper #(
                                  .DOUT_INV(  DOUT_INV[i-1] ),
                                  .TRAIN_SEQUENCE(TRAIN_SEQUENCE),
                                  .WB_CLK_TYPE(WB_CLK_TYPE),
-                                 .DEBUG( SURF_DEBUG[i-1] == 1'b1 ? "TRUE" : "FALSE" ))
+                                 .DEBUG( SURF_DEBUG[i-1] == 1'b1 ? "PHY" : "FALSE" ))
                     u_surf( .wb_clk_i(wb_clk_i),
                             .wb_rst_i(wb_rst_i),
                             `CONNECT_WBS_IFMV(wb_ , wbvec_, [i] ),
@@ -121,6 +129,12 @@ module surfturf_wrapper #(
                             // sigh I have no idea if I'm going to do it
                             // this way or not BUT FOR NOW!
                             .command_i(command_o),
+                            .COUT_P(COUT_P[i-1]),
+                            .COUT_N(COUT_N[i-1]),
+                            .DOUT_P(DOUT_P[i-1]),
+                            .DOUT_N(DOUT_N[i-1]),
+                            .TXCLK_P(TXCLK_P[i-1]),
+                            .TXCLK_N(TXCLK_N[i-1]),
                             .CIN_P(CIN_P[i-1]),
                             .CIN_N(CIN_N[i-1]),
                             .RXCLK_P(RXCLK_P[i-1]),

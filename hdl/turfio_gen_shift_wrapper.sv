@@ -70,6 +70,8 @@ module turfio_gen_shift_wrapper(
     //localparam [NUM_GPIO-1:0] INVERT_GPIO = 5'b10010;
     localparam [NUM_GPIO-1:0] INVERT_GPIO = 7'b0010010;
 
+    localparam [NUM_GPIO-1:0] GPIO_DEFAULT_TRI = (1 << 5) | (1 << 6) | (1 << GPIO_TCTRL_B);
+    localparam [NUM_GPIO-1:0] GPIO_DEFAULT_OUT = (1 << GPIO_JTAG_OE);
     
     gen_shift_if #(.DEBUG("FALSE"),
                    .NUM_DEVICES(3),
@@ -78,6 +80,8 @@ module turfio_gen_shift_wrapper(
                    .USE_DOUT(   8'b0000_0101),
                    .USE_AUX_OUT(8'b0000_0001),
                    .NUM_GPIO(NUM_GPIO),
+                   .GPIO_DEFAULT_TRI(GPIO_DEFAULT_TRI),
+                   .GPIO_DEFAULT_OUT(GPIO_DEFAULT_OUT),
                    .INVERT_GPIO(INVERT_GPIO))
         u_gen_shift( .clk(wb_clk_i),
                      .rst(wb_rst_i),

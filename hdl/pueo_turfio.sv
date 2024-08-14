@@ -11,7 +11,7 @@ module pueo_turfio #( parameter NSURF=7,
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd0,
-                      parameter [7:0] VER_REV =   8'd25,
+                      parameter [7:0] VER_REV =   8'd32,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -78,7 +78,30 @@ module pueo_turfio #( parameter NSURF=7,
         
         output [NSURF-1:0] CIN_P,
         output [NSURF-1:0] CIN_N, 
+    
+        // COUT0: V14, U14  (inverted)
+        // COUT1: U11, V11
+        // COUT2: T12, U12
+        // COUT3: U1, U2 (inverted)
+        // COUT4: V2, V3 (inverted)
+        // COUT5: M1, M2 (inverted)
+        // COUT6: L2, K3 (inverted)
+        input [NSURF-1:0] COUT_P,
+        input [NSURF-1:0] COUT_N,
+        
+        // TXCLK0: R17, R16
+        // TXCLK1: T14, T15
+        // TXCLK2: P14, R15
+        // TXCLK3: R3, T2
+        // TXCLK4: R2, R1 (inverted)
+        // TXCLK5: P4, P3
+        // TXCLK6: N3, N2
+        input [NSURF-1:0] TXCLK_P,
+        input [NSURF-1:0] TXCLK_N,
 
+        input [NSURF-1:0] DOUT_P,
+        input [NSURF-1:0] DOUT_N,
+    
         // TURF comms
         input T_RXCLK_P,              // C13 - inverted
         input T_RXCLK_N,              // D13 - inverted
@@ -271,7 +294,7 @@ module pueo_turfio #( parameter NSURF=7,
     wbm_dummy #(.ADDRESS_WIDTH(22),.DATA_WIDTH(32)) u_ctl_stub( `CONNECT_WBM_IFM(wb_ , ctl_ ));
     wbm_dummy #(.ADDRESS_WIDTH(22),.DATA_WIDTH(32)) u_ser_stub( `CONNECT_WBM_IFM(wb_ , ser_ ));
     // Interconnect
-    turfio_intercon #(.DEBUG("TRUE"))
+    turfio_intercon #(.DEBUG("FALSE"))
         u_intercon( .clk_i(wb_clk),
                     .rst_i(1'b0),
                     `CONNECT_WBS_IFM(gtp_ , gtp_),
@@ -374,6 +397,12 @@ module pueo_turfio #( parameter NSURF=7,
                .T_CIN_P(T_CIN_P),
                .T_CIN_N(T_CIN_N),
                
+               .COUT_P(COUT_P),
+               .COUT_N(COUT_N),
+               .DOUT_P(DOUT_P),
+               .DOUT_N(DOUT_N),
+               .TXCLK_P(TXCLK_P),
+               .TXCLK_N(TXCLK_N),
                .RXCLK_P(RXCLK_P),
                .RXCLK_N(RXCLK_N),
                .CIN_P(CIN_P),
@@ -392,7 +421,8 @@ module pueo_turfio #( parameter NSURF=7,
                                    .trig_time_o(turf_trigtime),
                                    .trig_valid_o(turf_trigtime_valid));
 
-    turfio_sync_sysclk_count u_synccount(.sysclk_i(sysclk),
+    turfio_sync_sysclk_count #(.DEBUG("FALSE"))
+                             u_synccount(.sysclk_i(sysclk),
                                          .sync_offset_i(sync_offset),
                                          .clock_offset_i(clock_offset),
                                          .en_ext_sync_i(en_ext_sync),

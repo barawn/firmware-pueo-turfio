@@ -63,6 +63,7 @@ module turfctl_register_core(
     localparam [8:0] RXCLK_FINE_PS_MAX = 448 - 1;
 
     // Demultiplexed output register.
+    (* CUSTOM_CC_DST = WB_CLK_TYPE *)
     reg [31:0] dat_reg = {32{1'b0}};
 
     //////////////////////////////////////////
@@ -81,9 +82,13 @@ module turfctl_register_core(
     // static here.
     //////////////////////////////////////////
     
+    (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
     reg [31:0] dat_in_static = {32{1'b0}};
+    (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
     reg [5:0]  adr_in_static = {6{1'b0}};
+    (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
     reg [3:0]  sel_in_static = {4{1'b0}};
+    (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
     reg        we_in_static = 0;
 
     // These determine whether we're jumping over to the rxclk or sysclk sides.
@@ -141,6 +146,7 @@ module turfctl_register_core(
                                     .out_clkB(sysclk_bit_error_count_ack),
                                     .clkA(wb_clk_i),
                                     .clkB(sysclk_i));
+    (* CUSTOM_CC_DST = WB_CLK_TYPE *)                                    
     reg [24:0]  sysclk_bit_error_count_wbclk = {25{1'b0}};
     always @(posedge wb_clk_i)
         if (sysclk_bit_error_count_valid_wbclk) 
@@ -149,7 +155,7 @@ module turfctl_register_core(
     // We use the timed counters in acknowledge mode so we don't need a separate set of clock-cross.
     // Note: this implies you *probably* should write an interval in first rather than
     // trusting them to run with max interval in the beginning.
-    dsp_timed_counter #(.MODE("ACKNOWLEDGE"))
+    dsp_timed_counter #(.MODE("ACKNOWLEDGE"),.CLKTYPE_SRC("SYSCLK"),.CLKTYPE_DST("SYSCLK"))
             u_sysclk_biterr( .clk(sysclk_i),
                              .rst(sysclk_bit_error_count_ack),
                              .count_in(sysclk_rxclk_biterr_i),
@@ -176,10 +182,11 @@ module turfctl_register_core(
     flag_sync   u_bit_error_ack_sync(.clkA(wb_clk_i),.clkB(sysclk_i),
                                      .in_clkA(bit_error_count_valid_wbclk),
                                      .out_clkB(bit_error_count_ack));    
+    (* CUSTOM_CC_DST = WB_CLK_TYPE *)                                     
     reg [24:0]  bit_error_count_wbclk = {25{1'b0}};
     always @(posedge wb_clk_i) if (bit_error_count_valid_wbclk) bit_error_count_wbclk <= bit_error_count;
         
-    dsp_timed_counter #(.MODE("ACKNOWLEDGE"))
+    dsp_timed_counter #(.MODE("ACKNOWLEDGE"),.CLKTYPE_SRC("SYSCLK"),.CLKTYPE_DST("SYSCLK"))
                         u_cin_biterr( .clk(sysclk_i),
                                       .rst(bit_error_count_ack),
                                       .count_in(cin_sync_biterr_i),
@@ -191,11 +198,12 @@ module turfctl_register_core(
                                       .count_out_valid(bit_error_count_valid));
 
     // CIN parallelization and lock.
+    (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
     reg enable_lock = 0;
-    (* ASYNC_REG = "TRUE" *)
+    (* ASYNC_REG = "TRUE", CUSTOM_CC_DST = "SYSCLK" *)
     reg [1:0] enable_lock_sysclk = {2{1'b0}};    
     always @(posedge sysclk_i) enable_lock_sysclk <= {enable_lock_sysclk[0], enable_lock };
-    (* ASYNC_REG = "TRUE" *)
+    (* ASYNC_REG = "TRUE", CUSTOM_CC_DST = WB_CLK_TYPE *)
     reg [1:0] cin_locked_wbclk = {2{1'b0}};
     always @(posedge wb_clk_i) cin_locked_wbclk <= {cin_locked_wbclk[0], cin_sync_locked_i };    
     wire cin_locked = cin_locked_wbclk[1];
@@ -246,7 +254,11 @@ module turfctl_register_core(
                                     .clkB(sysclk_i));
     
     // Enable training on COUT registers
+    (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
     reg       cout_train_enable = 0;
+    // in sysclk land
+    (* ASYNC_REG = "TRUE", CUSTOM_CC_DST = "SYSCLK" *)
+    reg [1:0] cout_train_enable_sysclk = {2{1'b0}};
     
     
     wire [31:0] reset_register;
@@ -342,6 +354,10 @@ module turfctl_register_core(
         end
     end            
 
+    always @(posedge sysclk_i) begin
+        cout_train_enable_sysclk <= { cout_train_enable_sysclk[0], cout_train_enable };
+    end
+    
     generate
         if (DEBUG == "TRUE") begin : DBG    
             turfwb_ila u_ila(.clk(wb_clk_i),
@@ -383,5 +399,5 @@ module turfctl_register_core(
     assign oserdes_rst_o = oserdes_reset_resync[1];
     // parallel sync comes out of the flag synchronizer
 
-    assign cout_train_o = cout_train_enable;
+    assign cout_train_o = cout_train_enable_sysclk[1];
 endmodule
