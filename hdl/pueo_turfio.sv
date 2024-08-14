@@ -142,29 +142,17 @@ module pueo_turfio #( parameter NSURF=7,
     localparam [15:0] FIRMWARE_VERSION = {VER_MAJOR, VER_MINOR, VER_REV};
     localparam [31:0] DATEVERSION = { FIRMWARE_DATE, FIRMWARE_VERSION };
         
-    // OK, here's the inversion craziness. EVERYTHING is always handled at the TURFIO. It's just easier.
-    // At the SURF: DOUT, CIN, RXCLK, are all INVERTED
-    //              COUT, TXCLK are NOT
-    // At the TURFIO:
+    // TURFIO inversion:
     // RXCLK[6:0] = 001_0011
     // CIN[6:0]   = 011_0001
     // COUT[6:0] =  111_1001
     // DOUT[6:0] =  010_1000
-    // TXCLK[6:0] = 001_0000                          = 7'h10
-    // We add an additional parameter to determine if it's inverted at remote.
-    // Therefore, we *logically* invert if xx_INV ^ xx_REMOTE_INV and we connect N to the P-side
-    // if xx_INV.
-    
+    // TXCLK[6:0] = 001_0000                          = 7'h10    
     localparam [6:0] RXCLK_INV = 7'b001_0011;
-    localparam [6:0] RXCLK_REMOTE_INV = {7{1'b1}};
     localparam [6:0] CIN_INV   = 7'b011_0001;
-    localparam [6:0] CIN_REMOTE_INV = {7{1'b1}};
     localparam [6:0] COUT_INV  = 7'b111_1001;
-    localparam [6:0] COUT_REMOTE_INV = {7{1'b0}};
     localparam [6:0] DOUT_INV  = 7'b010_1000;
-    localparam [6:0] DOUT_REMOTE_INV = {7{1'b0}};
     localparam [6:0] TXCLK_INV = 7'b001_0000;        
-    localparam [6:0] TXCLK_REMOTE_INV = {7{1'b0}};
             
     // And here are the TURF connection definitions.
     localparam T_RXCLK_INV = 1'b1;
