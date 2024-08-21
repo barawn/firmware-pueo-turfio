@@ -43,7 +43,7 @@ module surf_cout_phy #(parameter INV = 1'b0,
     
     ibufds_autoinv #(.INV(INV)) u_cout(.I_P(COUT_P),.I_N(COUT_N),.O(cout_norm),.OB(cout_inv));
     ibufds_autoinv #(.INV(DOUT_INV)) u_dout(.I_P(DOUT_P),.I_N(DOUT_N),.O(dout_norm),.OB(dout_inv));
-    ibufds_autoinv #(.INV(TXCLK_INV)) u_txclk(.I_P(TXCLK_P),.I_N(TXCLK_N),.O(txclk_norm),.OB(txclk_inv));
+//    ibufds_autoinv #(.INV(TXCLK_INV)) u_txclk(.I_P(TXCLK_P),.I_N(TXCLK_N),.O(txclk_norm),.OB(txclk_inv));
     
     assign cout = (INV == 1'b1) ? cout_inv : cout_norm;
     assign dout = (DOUT_INV == 1'b1) ? dout_inv : dout_norm;

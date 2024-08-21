@@ -53,8 +53,8 @@ module surfturf_wrapper #(
         input  [6:0] COUT_N,
         input  [6:0] DOUT_P,
         input  [6:0] DOUT_N,
-        input  [6:0] TXCLK_P,
-        input  [6:0] TXCLK_N,
+        inout  [6:0] TXCLK_P,
+        inout  [6:0] TXCLK_N,
         output [6:0] CIN_P,
         output [6:0] CIN_N,
         output [6:0] RXCLK_P,
@@ -111,6 +111,12 @@ module surfturf_wrapper #(
                               .CIN_P(T_CIN_P),
                               .CIN_N(T_CIN_N)); 
             end else begin : SURFS
+                if (i == 1 || i == 2) begin : TEST
+                    surf_rackctl_test #(.INV(TXCLK_INV[i-1]),.DEBUG("TRUE"))
+                                   u_test(.sysclk_i(sysclk_i),
+                                          .RACKCTL_P(TXCLK_P[i-1]),
+                                          .RACKCTL_N(TXCLK_N[i-1]));
+                end
                 surf_interface #(.RXCLK_INV( RXCLK_INV[i-1] ),
                                  .TXCLK_INV( TXCLK_INV[i-1] ),
                                  .COUT_INV(  COUT_INV[i-1] ),
@@ -133,8 +139,8 @@ module surfturf_wrapper #(
                             .COUT_N(COUT_N[i-1]),
                             .DOUT_P(DOUT_P[i-1]),
                             .DOUT_N(DOUT_N[i-1]),
-                            .TXCLK_P(TXCLK_P[i-1]),
-                            .TXCLK_N(TXCLK_N[i-1]),
+//                            .TXCLK_P(TXCLK_P[i-1]),
+//                            .TXCLK_N(TXCLK_N[i-1]),
                             .CIN_P(CIN_P[i-1]),
                             .CIN_N(CIN_N[i-1]),
                             .RXCLK_P(RXCLK_P[i-1]),
