@@ -207,8 +207,7 @@ module surf_rackctl_test #(parameter INV=1'b0, parameter DEBUG = "FALSE")(
 
         // we count in (MODE0_PREAMBLE_4) || (MODE0_TXN) || (MODE0_DATA) || (START_BIT) || CAPTURE
         if (state == MODE0_PREAMBLE_4 || state == MODE0_TXN ||
-            state == MODE0_DATA || (state == START_BIT && !rackctl_in_ff) ||
-            state == CAPTURE)
+            state == MODE0_DATA || (state == START_BIT && !rackctl_in_ff) || state == CAPTURE)
             data_counter <= data_counter[4:0] + data_counter_addend[3:0];
         else
             data_counter <= {6{1'b0}};

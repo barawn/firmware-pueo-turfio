@@ -43,3 +43,6 @@ hdl/surfturf_wrapper.sv
 hdl/surf/surf_cout_interface.sv
 hdl/surf/surf_cin_interface.sv
 hdl/surf/surfctl_register_core.sv
+verilog-library-barawn/hdl/ibufds_autoinv.v
+hdl/surf/surf_cout_phy.sv
+hdl/surf/surf_byte_capture.sv
