@@ -11,7 +11,7 @@ module pueo_turfio #( parameter NSURF=7,
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd0,
-                      parameter [7:0] VER_REV =   8'd32,
+                      parameter [7:0] VER_REV =   8'd36,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -96,8 +96,8 @@ module pueo_turfio #( parameter NSURF=7,
         // TXCLK4: R2, R1 (inverted)
         // TXCLK5: P4, P3
         // TXCLK6: N3, N2
-        input [NSURF-1:0] TXCLK_P,
-        input [NSURF-1:0] TXCLK_N,
+        inout [NSURF-1:0] TXCLK_P,
+        inout [NSURF-1:0] TXCLK_N,
 
         input [NSURF-1:0] DOUT_P,
         input [NSURF-1:0] DOUT_N,
