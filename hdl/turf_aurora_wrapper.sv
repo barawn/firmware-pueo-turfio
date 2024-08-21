@@ -479,7 +479,7 @@ module turf_aurora_wrapper(
                           .gt0_pll0refclklost_in(gt0_pll0refclklost_i),
                           .quad1_common_lock_in(quad1_common_lock_i),
                           .gt0_pll0outclk_in(gt0_pll0outclk_i),
-                          .gt0_pll1outclk_in(gt1_pll1outclk_i),
+                          .gt0_pll1outclk_in(gt0_pll1outclk_i),
                           .gt0_pll0outrefclk_in(gt0_pll0outrefclk_i),
                           .gt0_pll1outrefclk_in(gt0_pll1outrefclk_i),
                           // Done commons
