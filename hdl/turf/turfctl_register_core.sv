@@ -224,6 +224,7 @@ module turfctl_register_core(
     reg [8:0] target_ps_value = {9{1'b0}};
     reg       ps_waiting = 0;
     reg       ps_enable = 0;
+    wire      fine_ps_enable;
     assign    fine_ps_enable = ps_enable && !ps_waiting;
     reg       ps_incomplete = 0;        
 
