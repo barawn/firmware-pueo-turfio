@@ -202,43 +202,9 @@ set_property CONFIG_VOLTAGE 2.5 [current_design]
 set_property BITSTREAM.CONFIG.SPI_32BIT_ADDR NO [current_design]
 set_property BITSTREAM.CONFIG.SPI_BUSWIDTH 2 [current_design]
 
-
-
-create_debug_core u_ila_3 ila
-set_property ALL_PROBE_SAME_MU true [get_debug_cores u_ila_3]
-set_property ALL_PROBE_SAME_MU_CNT 2 [get_debug_cores u_ila_3]
-set_property C_ADV_TRIGGER false [get_debug_cores u_ila_3]
-set_property C_DATA_DEPTH 1024 [get_debug_cores u_ila_3]
-set_property C_EN_STRG_QUAL true [get_debug_cores u_ila_3]
-set_property C_INPUT_PIPE_STAGES 0 [get_debug_cores u_ila_3]
-set_property C_TRIGIN_EN false [get_debug_cores u_ila_3]
-set_property C_TRIGOUT_EN false [get_debug_cores u_ila_3]
-set_property port_width 1 [get_debug_ports u_ila_3/clk]
-connect_debug_port u_ila_3/clk [get_nets [list init_clk]]
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_3/probe0]
-set_property port_width 16 [get_debug_ports u_ila_3/probe0]
-connect_debug_port u_ila_3/probe0 [get_nets [list {u_aurora/link_status_dbg[0]} {u_aurora/link_status_dbg[1]} {u_aurora/link_status_dbg[2]} {u_aurora/link_status_dbg[3]} {u_aurora/link_status_dbg[4]} {u_aurora/link_status_dbg[5]} {u_aurora/link_status_dbg[6]} {u_aurora/link_status_dbg[7]} {u_aurora/link_status_dbg[8]} {u_aurora/link_status_dbg[9]} {u_aurora/link_status_dbg[10]} {u_aurora/link_status_dbg[11]} {u_aurora/link_status_dbg[12]} {u_aurora/link_status_dbg[13]} {u_aurora/link_status_dbg[14]} {u_aurora/link_status_dbg[15]}]]
-create_debug_port u_ila_3 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_3/probe1]
-set_property port_width 1 [get_debug_ports u_ila_3/probe1]
-connect_debug_port u_ila_3/probe1 [get_nets [list u_aurora/reset_in]]
-create_debug_port u_ila_3 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_3/probe2]
-set_property port_width 1 [get_debug_ports u_ila_3/probe2]
-connect_debug_port u_ila_3/probe2 [get_nets [list u_aurora/tenth_sec_timer]]
-create_debug_port u_ila_3 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_3/probe3]
-set_property port_width 4 [get_debug_ports u_ila_3/probe3]
-connect_debug_port u_ila_3/probe3 [get_nets [list {u_aurora/u_aurora/inst/gt_wrapper_i/gt_rxresetfsm_i/rx_state[0]} {u_aurora/u_aurora/inst/gt_wrapper_i/gt_rxresetfsm_i/rx_state[1]} {u_aurora/u_aurora/inst/gt_wrapper_i/gt_rxresetfsm_i/rx_state[2]} {u_aurora/u_aurora/inst/gt_wrapper_i/gt_rxresetfsm_i/rx_state[3]}]]
-create_debug_port u_ila_3 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_3/probe4]
-set_property port_width 8 [get_debug_ports u_ila_3/probe4]
-connect_debug_port u_ila_3/probe4 [get_nets [list u_aurora/u_aurora/inst/gt_wrapper_i/aurora_turf_multi_gt_i/gt0_aurora_turf_i/gtrxreset_seq_i/flag {u_aurora/u_aurora/inst/gt_wrapper_i/aurora_turf_multi_gt_i/gt0_aurora_turf_i/gtrxreset_seq_i/FSM_onehot_state_reg_n_0_[1]} {u_aurora/u_aurora/inst/gt_wrapper_i/aurora_turf_multi_gt_i/gt0_aurora_turf_i/gtrxreset_seq_i/Q[0]} {u_aurora/u_aurora/inst/gt_wrapper_i/aurora_turf_multi_gt_i/gt0_aurora_turf_i/gtrxreset_seq_i/FSM_onehot_state_reg_n_0_[3]} {u_aurora/u_aurora/inst/gt_wrapper_i/aurora_turf_multi_gt_i/gt0_aurora_turf_i/gtrxreset_seq_i/FSM_onehot_state_reg_n_0_[4]} {u_aurora/u_aurora/inst/gt_wrapper_i/aurora_turf_multi_gt_i/gt0_aurora_turf_i/gtrxreset_seq_i/Q[1]} u_aurora/u_aurora/inst/gt_wrapper_i/aurora_turf_multi_gt_i/gt0_aurora_turf_i/gtrxreset_seq_i/p_0_in0_in {u_aurora/u_aurora/inst/gt_wrapper_i/aurora_turf_multi_gt_i/gt0_aurora_turf_i/gtrxreset_seq_i/FSM_onehot_state_reg_n_0_[7]}]]
-create_debug_port u_ila_3 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_3/probe5]
-set_property port_width 22 [get_debug_ports u_ila_3/probe5]
-connect_debug_port u_ila_3/probe5 [get_nets [list {u_aurora/u_aurora/inst/aurora_turf_aurora_lane_4byte_0_i/aurora_turf_hotplug_i/count_for_reset_r_reg[0]} {u_aurora/u_aurora/inst/aurora_turf_aurora_lane_4byte_0_i/aurora_turf_hotplug_i/count_for_reset_r_reg[10]} {u_aurora/u_aurora/inst/aurora_turf_aurora_lane_4byte_0_i/aurora_turf_hotplug_i/count_for_reset_r_reg[11]} {u_aurora/u_aurora/inst/aurora_turf_aurora_lane_4byte_0_i/aurora_turf_hotplug_i/count_for_reset_r_reg[12]} {u_aurora/u_aurora/inst/aurora_turf_aurora_lane_4byte_0_i/aurora_turf_hotplug_i/count_for_reset_r_reg[13]} {u_aurora/u_aurora/inst/aurora_turf_aurora_lane_4byte_0_i/aurora_turf_hotplug_i/count_for_reset_r_reg[14]} {u_aurora/u_aurora/inst/aurora_turf_aurora_lane_4byte_0_i/aurora_turf_hotplug_i/count_for_reset_r_reg[15]} {u_aurora/u_aurora/inst/aurora_turf_aurora_lane_4byte_0_i/aurora_turf_hotplug_i/count_for_reset_r_reg[16]} {u_aurora/u_aurora/inst/aurora_turf_aurora_lane_4byte_0_i/aurora_turf_hotplug_i/count_for_reset_r_reg[17]} {u_aurora/u_aurora/inst/aurora_turf_aurora_lane_4byte_0_i/aurora_turf_hotplug_i/count_for_reset_r_reg[18]} {u_aurora/u_aurora/inst/aurora_turf_aurora_lane_4byte_0_i/aurora_turf_hotplug_i/count_for_reset_r_reg[19]} {u_aurora/u_aurora/inst/aurora_turf_aurora_lane_4byte_0_i/aurora_turf_hotplug_i/count_for_reset_r_reg[1]} {u_aurora/u_aurora/inst/aurora_turf_aurora_lane_4byte_0_i/aurora_turf_hotplug_i/count_for_reset_r_reg[20]} {u_aurora/u_aurora/inst/aurora_turf_aurora_lane_4byte_0_i/aurora_turf_hotplug_i/count_for_reset_r_reg[21]} {u_aurora/u_aurora/inst/aurora_turf_aurora_lane_4byte_0_i/aurora_turf_hotplug_i/count_for_reset_r_reg[2]} {u_aurora/u_aurora/inst/aurora_turf_aurora_lane_4byte_0_i/aurora_turf_hotplug_i/count_for_reset_r_reg[3]} {u_aurora/u_aurora/inst/aurora_turf_aurora_lane_4byte_0_i/aurora_turf_hotplug_i/count_for_reset_r_reg[4]} {u_aurora/u_aurora/inst/aurora_turf_aurora_lane_4byte_0_i/aurora_turf_hotplug_i/count_for_reset_r_reg[5]} {u_aurora/u_aurora/inst/aurora_turf_aurora_lane_4byte_0_i/aurora_turf_hotplug_i/count_for_reset_r_reg[6]} {u_aurora/u_aurora/inst/aurora_turf_aurora_lane_4byte_0_i/aurora_turf_hotplug_i/count_for_reset_r_reg[7]} {u_aurora/u_aurora/inst/aurora_turf_aurora_lane_4byte_0_i/aurora_turf_hotplug_i/count_for_reset_r_reg[8]} {u_aurora/u_aurora/inst/aurora_turf_aurora_lane_4byte_0_i/aurora_turf_hotplug_i/count_for_reset_r_reg[9]}]]
-set_property C_CLK_INPUT_FREQ_HZ 300000000 [get_debug_cores dbg_hub]
-set_property C_ENABLE_CLK_DIVIDER false [get_debug_cores dbg_hub]
-set_property C_USER_SCAN_CHAIN 1 [get_debug_cores dbg_hub]
-connect_debug_port dbg_hub/clk [get_nets u_clk200/inst/clk_out2_clk200_wiz]
+# The debug_hub stuff needs to be in the tcl version so it can dodge
+# it if it doesn't exist.
+#set_property C_CLK_INPUT_FREQ_HZ 300000000 [get_debug_cores dbg_hub]
+#set_property C_ENABLE_CLK_DIVIDER false [get_debug_cores dbg_hub]
+#set_property C_USER_SCAN_CHAIN 1 [get_debug_cores dbg_hub]
+#connect_debug_port dbg_hub/clk [get_nets u_clk200/inst/clk_out2_clk200_wiz]
