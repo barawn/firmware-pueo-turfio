@@ -4,11 +4,9 @@
 // TURFIO interconnect. Right now we generate 5 slave
 // address spaces.
 //
-// Plan for *four* master interfaces (jeez)
+// masters
 // 0: gigabit transceiver path (gtp)
-// 1: cin/cout path (ctl)
-// 2: debug serial path (dbg)
-// 3: TURF serial path (ser)
+// 1: debug serial path (dbg)
 //
 // Currently implement 5 slaves, with 12 bit address space
 // 
@@ -23,9 +21,7 @@ module turfio_intercon(
         input rst_i,
         // Masters
         `TARGET_NAMED_PORTS_WB_IF( gtp_ , 22, 32 ),
-        `TARGET_NAMED_PORTS_WB_IF( ctl_ , 22, 32 ),
         `TARGET_NAMED_PORTS_WB_IF( dbg_ , 22, 32 ),
-        `TARGET_NAMED_PORTS_WB_IF( ser_ , 22, 32 ),
         // Slaves
         `HOST_NAMED_PORTS_WB_IF( tio_id_ctrl_ , 12, 32),
         `HOST_NAMED_PORTS_WB_IF( genshift_ , 12, 32),
@@ -65,7 +61,7 @@ module turfio_intercon(
     localparam [21:0] AURORA_MASK      = 22'h3F8FFF;
     
     // START BOILERPLATE INTERCONNECT
-    localparam NUM_MASTERS = 4;
+    localparam NUM_MASTERS = 2;
     localparam NUM_SLAVES = 5;    
     localparam ADDR_WIDTH = 22;
     localparam DATA_WIDTH = 32;
@@ -176,9 +172,7 @@ module turfio_intercon(
     
     // Map masters
     `MASTER( gtp_ , 0);
-    `MASTER( ctl_ , 1);
-    `MASTER( dbg_ , 2);
-    `MASTER( ser_ , 3);
+    `MASTER( dbg_ , 1);
     // Map slaves
     `SLAVE_MAP( tio_id_ctrl_ , 0 , TIO_ID_CTRL_MASK, TIO_ID_CTRL_BASE );
     `SLAVE_MAP( genshift_ , 1, GENSHIFT_MASK, GENSHIFT_BASE );
