@@ -134,6 +134,8 @@ module turf_interface #(
     wire cin_sync_lock;
     // Command interface is locked
     wire cin_sync_locked;
+    // Reset the command interface
+    wire cin_sync_reset;
     // SYSCLK side cin
     wire [3:0] cin_parallel_sysclk;
     // Capture error.
