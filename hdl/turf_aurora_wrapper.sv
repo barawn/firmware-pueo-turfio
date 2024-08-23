@@ -448,7 +448,7 @@ module turf_aurora_wrapper(
     .gt0_gtrefclk0_in       (gtp_inclk_i             ),
     .gt0_pll0lock_out       (quad1_common_lock_i       ),
     .gt0_pll1lock_out       (quad1_common_pll1_lock_i       ),
-    .gt0_pll0lockdetclk_in  (init_clk_i            ),
+    .gt0_pll0lockdetclk_in  (init_clk             ),
     .gt0_pll0refclklost_out (gt0_pll0refclklost_i ),
     .gt0_pll0outclk_i   ( gt0_pll0outclk_i    ),
     .gt0_pll1outclk_i   ( gt0_pll1outclk_i    ),
