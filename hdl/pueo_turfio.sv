@@ -6,12 +6,13 @@
 // Still a horrible work in progress: however, I'm trying to move to a more normalized
 // setup for interfacing with the flight computer. Serial port debug interface is based
 // on the RADIANT comms.
+//
 module pueo_turfio #( parameter NSURF=7, 
                       parameter SIMULATION="FALSE",
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd0,
-                      parameter [7:0] VER_REV =   8'd36,
+                      parameter [7:0] VER_REV =   8'd39,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -201,34 +202,74 @@ module pueo_turfio #( parameter NSURF=7,
     IDELAYCTRL u_idelayctrl(.RST(!clk200_locked),.REFCLK(clk200));
 
 
-    // Main wishbone bus. The address is a byte address, but it'll always be aligned on 32-bits
-    // We have 4 master devices on the bus:
-    // 0: gigabit transceiver (gtp)
-    // 1: cin/cout (ctl)
-    // 2: debug rx/tx (dbg)
-    // 3: turf serial (ser)
-    
+    //////////////////////////////////////////////////////////////////////////////////
+    //                               WISHBONE BUS                                   //
+    //////////////////////////////////////////////////////////////////////////////////
+    // The WISHBONE bus inside the TURFIO is a little complicated.
+    // We're currently simplifying it a bit by cutting things down.
+    // There are only going to be 2 overall masters: the debug path and the GTP path.
+    // - except each of the debug/GTP paths are split into "SURFbridge" and "TURFIO"
+    // masters based on their address selection, and then there are arbiters inside
+    // the SURFbridges and TURFIO intercon separately.
+    // 
     // We define this here so it's switchable for whatever reason.
     localparam WB_CLK_TYPE = "INITCLK";
     wire wb_clk = init_clk;
 
-    `DEFINE_WB_IF( gtp_ , 22, 32);
-    `DEFINE_WB_IF( ctl_ , 22, 32);
-    `DEFINE_WB_IF( dbg_ , 22, 32);
-    `DEFINE_WB_IF( ser_ , 22, 32);
-    
-    // And hook up the debug port which comes from the boardman interface.
-    // fix this later
-    wire [1:0] burst_size = 2'b00;
-    boardman_wrapper #(.SIMULATION(SIMULATION),
-                       .CLOCK_RATE(INITCLK_RATE),
-                       .BAUD_RATE(BOARDMAN_BAUD))
+    // These are the MAIN masters. They have 25-bit addresses.
+    // Bits [25:23] determine which space is being accessed.
+    // (bits 27:26 determine which of the 4 TURFIOs at the TURF, and
+    //  bit 28 determines TURF via crate).
+
+    // GTP master
+    `DEFINE_WB_IF( gtp_ , 25, 32);
+    // Debug master
+    `DEFINE_WB_IF( dbg_ , 25, 32);
+    // Burst size when burst is set (comes from tio_id_ctrl)
+    wire [1:0] dbg_burst_size;
+    // Upper addr when upper addr bit is set (comes from tio_id_ctrl)
+    wire [3:0] dbg_upper_addr;        
+    turfio_boardman_wrapper #(.SIMULATION(SIMULATION),
+                              .CLOCK_RATE(INITCLK_RATE),
+                              .BAUD_RATE(BOARDMAN_BAUD))
             u_boardman( .wb_clk_i(wb_clk),
                         .wb_rst_i(1'b0),
                         `CONNECT_WBM_IFM( wb_ , dbg_ ),
-                        .burst_size_i(burst_size),
+                        .burst_size_i(dbg_burst_size),
+                        .upper_addr_i(dbg_upper_addr),
                         .TX(DBG_TX),
                         .RX(DBG_RX));            
+
+    `DEFINE_AXI4S_MIN_IF( cmd_addr_ , 32 );
+    `DEFINE_AXI4S_MIN_IF( cmd_data_ , 32 );
+    `DEFINE_AXI4S_MIN_IF( cmd_resp_ , 32 );
+    aurora_wb_master #(.ADDR_BITS(25),.DEBUG("FALSE"))
+                     u_wbgtp( .aclk(wb_clk),
+                              .aresetn(1'b1),
+                              `CONNECT_AXI4S_MIN_IF( s_addr_ , cmd_addr_ ),
+                              `CONNECT_AXI4S_MIN_IF( s_data_ , cmd_data_ ),
+                              `CONNECT_AXI4S_MIN_IF( m_resp_ , cmd_resp_ ),
+                              
+                              `CONNECT_WBM_IFM( wb_ , gtp_ ));
+
+    // We then split each of the masters into a TURFIO and a SURFbridge master based on 
+    // address access. An additional 3-bit user value handles which SURF is being accessed (0 is never used).
+    `DEFINE_WB_IF( gtp_turfio_ , 22, 32);
+    `DEFINE_WB_IF( gtp_surf_ , 22, 32);
+    wire [2:0] gtp_surf_select;
+    `DEFINE_WB_IF( dbg_turfio_ , 22, 32);
+    `DEFINE_WB_IF( dbg_surf_ , 22, 32);
+    wire [2:0] dbg_surf_select;
+    // Split happens here.
+    wb_surfturfio_splitter u_gtp_split(`CONNECT_WBS_IFM( wb_ , gtp_ ),
+                                       `CONNECT_WBM_IFM( wb_turfio_ , gtp_turfio_ ),
+                                       `CONNECT_WBM_IFM( wb_surf_ , gtp_surf_ ),
+                                       .wb_surf_select_o(gtp_surf_select));
+    wb_surfturfio_splitter u_dbg_split(`CONNECT_WBS_IFM( wb_ , dbg_ ),
+                                       `CONNECT_WBM_IFM( wb_turfio_ , dbg_turfio_ ),
+                                       `CONNECT_WBM_IFM( wb_surf_ , dbg_surf_ ),
+                                       .wb_surf_select_o(dbg_surf_select));
+    // TURFIO INTERCONS
     // We don't need a lot of registers but we have a *huge* space available (24 bit byte address)
     // We'll give each module 1024 32-bit registers (12 bit address space)
     // Right now we'll implement 4 quick modules:
@@ -277,18 +318,12 @@ module pueo_turfio #( parameter NSURF=7,
 
     // Slave stubs    
     wbs_dummy #(.ADDRESS_WIDTH(12),.DATA_WIDTH(32)) u_hski2c_stub( `CONNECT_WBS_IFM(wb_ , hski2c_) );
-    // Master stubs
-//    wbm_dummy #(.ADDRESS_WIDTH(22),.DATA_WIDTH(32)) u_gtp_stub( `CONNECT_WBM_IFM(wb_ , gtp_ ));
-    wbm_dummy #(.ADDRESS_WIDTH(22),.DATA_WIDTH(32)) u_ctl_stub( `CONNECT_WBM_IFM(wb_ , ctl_ ));
-    wbm_dummy #(.ADDRESS_WIDTH(22),.DATA_WIDTH(32)) u_ser_stub( `CONNECT_WBM_IFM(wb_ , ser_ ));
-    // Interconnect
+    // Interconnect, now reduced.
     turfio_intercon #(.DEBUG("FALSE"))
         u_intercon( .clk_i(wb_clk),
                     .rst_i(1'b0),
-                    `CONNECT_WBS_IFM(gtp_ , gtp_),
-                    `CONNECT_WBS_IFM(ctl_ , ctl_),
-                    `CONNECT_WBS_IFM(dbg_ , dbg_),
-                    `CONNECT_WBS_IFM(ser_ , ser_),
+                    `CONNECT_WBS_IFM(gtp_ , gtp_turfio_),
+                    `CONNECT_WBS_IFM(dbg_ , dbg_turfio_),
                     
                     `CONNECT_WBM_IFM(tio_id_ctrl_ , tio_id_ctrl_ ),
                     `CONNECT_WBM_IFM(genshift_ , genshift_ ),
@@ -302,6 +337,9 @@ module pueo_turfio #( parameter NSURF=7,
         u_id_ctrl( .wb_clk_i(wb_clk),
                    .wb_rst_i(1'b0),
                    `CONNECT_WBS_IFM( wb_ , tio_id_ctrl_ ),
+                   
+                   .burst_size_o(dbg_burst_size),
+                   .upper_addr_o(dbg_upper_addr),
                    
                    .enable_crate_o(ENABLE),
                    .enable_3v3_o(EN_3V3),
@@ -346,16 +384,23 @@ module pueo_turfio #( parameter NSURF=7,
                     .SPI_MISO(SPI_MISO),
                     .SPI_MOSI(SPI_MOSI),
                     .SPI_CS_B(SPI_CS_B));
+
+//                if (i == 1 || i == 2) begin : TEST
+//                    surf_rackctl_test #(.INV(TXCLK_INV[i-1]),.DEBUG("TRUE"))
+//                                   u_test(.sysclk_i(sysclk_i),
+//                                          .RACKCTL_P(TXCLK_P[i-1]),
+//                                          .RACKCTL_N(TXCLK_N[i-1]));
+//                end
+
     // SURFTURF module. This is just the TURF component for now.
     // Internally it gets mapped to a subset of the address space. Here it just
     // connects up what it can.
-    surfturf_wrapper #(.T_RXCLK_INV(T_RXCLK_INV),
+    surfturf_wrapper_v2 #(.T_RXCLK_INV(T_RXCLK_INV),
                        .T_TXCLK_INV(T_TXCLK_INV),
                        .T_COUT_INV(T_COUT_INV),
                        .T_COUTTIO_INV(T_COUTTIO_INV),
                        .T_CIN_INV(T_CIN_INV),
                        .RXCLK_INV(RXCLK_INV),
-                       .TXCLK_INV(TXCLK_INV),
                        .COUT_INV(COUT_INV),
                        .CIN_INV(CIN_INV),
                        .DOUT_INV(DOUT_INV),
@@ -389,13 +434,30 @@ module pueo_turfio #( parameter NSURF=7,
                .COUT_N(COUT_N),
                .DOUT_P(DOUT_P),
                .DOUT_N(DOUT_N),
-               .TXCLK_P(TXCLK_P),
-               .TXCLK_N(TXCLK_N),
                .RXCLK_P(RXCLK_P),
                .RXCLK_N(RXCLK_N),
                .CIN_P(CIN_P),
                .CIN_N(CIN_N)
                );                     
+
+    surf_bridge #(.RACKCTL_INV( TXCLK_INV ),
+                  .WB_CLK_TYPE(WB_CLK_TYPE))
+        u_bridge( .wb_clk_i(wb_clk),
+                  .wb_rst_i(1'b0),
+                  `CONNECT_WBS_IFM( gtp_ , gtp_surf_ ),
+                  .gtp_select_i(gtp_surf_select),
+                  `CONNECT_WBS_IFM( dbg_ , dbg_surf_ ),
+                  .dbg_select_i(dbg_surf_select),
+                  // HOOK THESE UP
+                  .bridge_err_o(),
+                  .err_rst_i(1'b0),
+                  .sysclk_i(sysclk),
+                  .sysclk_ok_i(sysclk_ok),
+                  .RACKCTL_P(TXCLK_P),
+                  .RACKCTL_N(TXCLK_N));
+//    // STUB OFF THE SURF INTERFACE FOR NOW TO TEST TO MAKE SURE IT STILL WORKS
+//    wbs_dummy #(.ADDRESS_WIDTH(22),.DATA_WIDTH(32)) u_dbgsurf_stub( `CONNECT_WBS_IFM(wb_ , dbg_surf_ ) );
+//    wbs_dummy #(.ADDRESS_WIDTH(22),.DATA_WIDTH(32)) u_gtpsurf_stub( `CONNECT_WBS_IFM(wb_ , gtp_surf_ ) );    
 
     pueo_command_decoder u_decoder(.sysclk_i(sysclk),
                                    .command_i(turf_command),
@@ -433,16 +495,6 @@ module pueo_turfio #( parameter NSURF=7,
     IBUFDS_GTE2 u_gtpclk( .I(F_LCLK_P),.IB(F_LCLK_N),.CEB(1'b0),.O(gtp_inclk));
     BUFG u_gtpclk_bufg(.I(gtp_inclk),.O(gtp_clk));
     // Now we hook up Aurora. Really need to figure out the whole aresetn thing
-    `DEFINE_AXI4S_MIN_IF( cmd_addr_ , 32 );
-    `DEFINE_AXI4S_MIN_IF( cmd_data_ , 32 );
-    `DEFINE_AXI4S_MIN_IF( cmd_resp_ , 32 );
-    aurora_wb_master u_wbgtp( .aclk(wb_clk),
-                              .aresetn(1'b1),
-                              `CONNECT_AXI4S_MIN_IF( s_addr_ , cmd_addr_ ),
-                              `CONNECT_AXI4S_MIN_IF( s_data_ , cmd_data_ ),
-                              `CONNECT_AXI4S_MIN_IF( m_resp_ , cmd_resp_ ),
-                              
-                              `CONNECT_WBM_IFM( wb_ , gtp_ ));
         
     // Main path ifs. Just killed for now.
     `DEFINE_AXI4S_MIN_IF( aurora_in_ , 32 );
@@ -451,17 +503,6 @@ module pueo_turfio #( parameter NSURF=7,
     assign aurora_out_tready = 1'b1;
     assign aurora_in_tvalid = 1'b0;
     assign aurora_in_tdata = {32{1'b0}};
-    // shove inbounds into ilas
-    aurora_cmd_ila u_acmd_ila(.clk(wb_clk),
-                         .probe0( cmd_addr_tdata ),
-                         .probe1( cmd_addr_tvalid ),
-                         .probe2( cmd_data_tdata ),
-                         .probe3( cmd_data_tvalid ),
-                         .probe4( cmd_resp_tdata ),
-                         .probe5( cmd_resp_tvalid) );
-//    aurora_trig_ila u_atrig_ila(.clk(sysclk),
-//                                .probe0( aurora_out_tdata ),
-//                                .probe1( aurora_out_tvalid ));                 
     // ok here we go
     turf_aurora_wrapper u_aurora( .wb_clk_i(wb_clk),
                                   .wb_rst_i(1'b0),
