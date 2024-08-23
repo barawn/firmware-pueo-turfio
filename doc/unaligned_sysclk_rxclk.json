@@ -1,0 +1,11 @@
+{signal: [
+  {name: 'SYSCLK', wave: 'P........', period: 2},
+  {name: 'RXCLK' , wave: 'P.........', period: 2, phase: 1.6},
+  {name: 'sysclk_toggle', wave: '0.1.0.1.0.1.0.1.0.'},
+  {name: 'rxclk_capture', wave: '0..1.0.1.0.1.0.1.0.',phase:0.7},
+  {name: 'sysclk_recapt', wave: '1.0.1.0.1.0.1.0.1.'},
+  {name: 'sysclk_biterr', wave: '1.................'}
+], head: {
+  text: 'Unaligned SYSCLK/RXCLK'
+}
+}
