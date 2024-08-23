@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wave_config>
+   <wave_state>
+   </wave_state>
+   <db_ref_list>
+      <db_ref path="turf_aurora_reset_tb_behav.wdb" id="1">
+         <top_modules>
+            <top_module name="glbl" />
+            <top_module name="turf_aurora_reset_tb" />
+         </top_modules>
+      </db_ref>
+   </db_ref_list>
+   <zoom_setting>
+      <ZoomStartTime time="0.000 ns"></ZoomStartTime>
+      <ZoomEndTime time="1,062.685 ns"></ZoomEndTime>
+      <Cursor1Time time="1,000.000 ns"></Cursor1Time>
+   </zoom_setting>
+   <column_width_setting>
+      <NameColumnWidth column_width="240"></NameColumnWidth>
+      <ValueColumnWidth column_width="86"></ValueColumnWidth>
+   </column_width_setting>
+   <WVObjectSize size="7" />
+   <wvobject fp_name="/turf_aurora_reset_tb/init_clk" type="logic">
+      <obj_property name="ElementShortName">init_clk</obj_property>
+      <obj_property name="ObjectShortName">init_clk</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turf_aurora_reset_tb/user_clk_fr" type="logic">
+      <obj_property name="ElementShortName">user_clk_fr</obj_property>
+      <obj_property name="ObjectShortName">user_clk_fr</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turf_aurora_reset_tb/user_clk" type="logic">
+      <obj_property name="ElementShortName">user_clk</obj_property>
+      <obj_property name="ObjectShortName">user_clk</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turf_aurora_reset_tb/gt_reset" type="logic">
+      <obj_property name="ElementShortName">gt_reset</obj_property>
+      <obj_property name="ObjectShortName">gt_reset</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turf_aurora_reset_tb/sys_reset" type="logic">
+      <obj_property name="ElementShortName">sys_reset</obj_property>
+      <obj_property name="ObjectShortName">sys_reset</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turf_aurora_reset_tb/gt_userclk_holdoff" type="array">
+      <obj_property name="ElementShortName">gt_userclk_holdoff[3:0]</obj_property>
+      <obj_property name="ObjectShortName">gt_userclk_holdoff[3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turf_aurora_reset_tb/reset" type="logic">
+      <obj_property name="ElementShortName">reset</obj_property>
+      <obj_property name="ObjectShortName">reset</obj_property>
+   </wvobject>
+</wave_config>
