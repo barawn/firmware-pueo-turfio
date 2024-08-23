@@ -12,7 +12,8 @@
 // 0x00C: General status/control.
 // 0x010: Sync offset register/sync enable.
 // 0x014: Clock offset register.
-// 0x018-0x3F: Reserved
+// 0x018: Debug board manager control (burst size/upper address bits).
+// 0x01C-0x3F: Reserved
 // 0x040: Sys clock monitor (125 MHz)
 // 0x044: Local GTP clock monitor (125 MHz)
 // 0x048: RX clock monitor (125 MHz)
@@ -24,6 +25,11 @@ module tio_id_ctrl(
         input wb_clk_i,
         input wb_rst_i,
         `TARGET_NAMED_PORTS_WB_IF( wb_ , 12, 32),
+
+        // Debug boardman interface burst size when burst bit (bit 22) is set.
+        output [1:0] burst_size_o,
+        // Debug boardman interface upper addr bits when upper addr bit (bit 21) is set.
+        output [3:0] upper_addr_o,
 
         // Sync sequence offset. When a sync sequence
         // comes in, this is the number of sysclks
@@ -67,6 +73,16 @@ module tio_id_ctrl(
     parameter WB_CLK_TYPE = "INITCLK";
     localparam [31:0] ICAP_KEY = "FKey";
 
+    // Board manager stuff
+    // Upper address bits when upper bit is set. Aligned to match addr (e.g. just write the address).
+    reg [3:0] boardman_upper_addr = {4{1'b0}};    
+    // Burst size when burst bit is set. Bottom 2 bits so they don't clash with the upper addr since all
+    // addrs are 32 bits.
+    reg [1:0] boardman_burst_size = {2{1'b0}};
+    // Full register.
+    // 31 30 29 28 27 26 25 24 23 22 21
+    // B1 B0 0  0  0  0  0  U3 U2 U1 U0
+    wire [31:0] boardman_debug_ctrl = { boardman_burst_size, {5{1'b0}}, boardman_upper_addr, {21{1'b0}} };
     // Output from the DNA port.
     wire dna_data;
     // Shift the DNA port
@@ -145,7 +161,7 @@ module tio_id_ctrl(
     `WISHBONE_ADDRESS( 12'h00C, ctrlstat_reg, OUTPUTSELECT, sel_ctrlstat, 0);
     `WISHBONE_ADDRESS( 12'h010, sync_offset_plus_en, SIGNALRESET, [8:0], 9'h00);
     `WISHBONE_ADDRESS( 12'h014, clock_offset, SIGNALRESET, [7:0], 8'h00);
-    assign wishbone_registers[6] = wishbone_registers[2];
+    `WISHBONE_ADDRESS( 12'h018, boardman_debug_ctrl, OUTPUTSELECT, sel_boardman_debug, 0);
     assign wishbone_registers[7] = wishbone_registers[3];
     assign wishbone_registers[8] = wishbone_registers[0];
     assign wishbone_registers[9] = wishbone_registers[1];
@@ -173,6 +189,15 @@ module tio_id_ctrl(
             enable_crate <= wb_dat_i[2];
             enable_3v3 <= wb_dat_i[3];
         end        
+
+        // the alignment here lets you just write the desired address here unless you're
+        // trying to burst or something
+        if (sel_boardman_debug && wb_we_i && wb_ack_o) begin
+            if (wb_sel_i[0]) boardman_burst_size <= wb_dat_i[1:0];
+            // the upper addr spans 2 bytes
+            if (wb_sel_i[2]) boardman_upper_addr[2:0] <= wb_dat_i[23:21];
+            if (wb_sel_i[3]) boardman_upper_addr[3] <= wb_dat_i[24];
+        end
         
         crate_conf <= crate_conf_i;
         i2c_rdy <= i2c_rdy_i;
@@ -214,9 +239,12 @@ module tio_id_ctrl(
 
     assign sync_offset_o = sync_offset_plus_en[7:0];
     assign en_ext_sync_o = sync_offset_plus_en[8];
-    assign clock_offset_o = clock_offset;
+    assign clk_offset_o = clock_offset;
 
     assign enable_crate_o = enable_crate;
     assign enable_3v3_o = enable_3v3;
+
+    assign burst_size_o = boardman_burst_size;
+    assign upper_addr_o = boardman_upper_addr;
 
 endmodule
