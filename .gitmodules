@@ -4,3 +4,6 @@
 [submodule "picoblaze_utils"]
 	path = picoblaze_utils
 	url = ssh://git@github.com/barawn/picoblaze_utils
+[submodule "firmware-pueo-common"]
+	path = firmware-pueo-common
+	url = https://github.com/barawn/firmware-pueo-common
