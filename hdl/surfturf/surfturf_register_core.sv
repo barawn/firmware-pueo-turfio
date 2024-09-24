@@ -79,10 +79,10 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
 
     always @(posedge sysclk_i) begin
         if (runcmd_tready) runcmd_holding_valid <= 1'b0;
-        else if (runcmd_is_valid_wbclk) runcmd_holding_valid <= 1'b1;
+        else if (runcmd_is_valid_sysclk) runcmd_holding_valid <= 1'b1;
         
         if (trig_tready) trig_holding_valid <= 1'b0;
-        else if (trig_is_valid_wbclk) trig_holding_valid <= 1'b1;
+        else if (trig_is_valid_sysclk) trig_holding_valid <= 1'b1;
         
         fw_empty_sysclk <= fw_empty;
     end
