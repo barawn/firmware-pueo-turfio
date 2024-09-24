@@ -5,7 +5,8 @@
 // This currently only handles mode 0. To handle mode 1
 // we need an AXI4-Stream output for each SURF
 module surf_bridge #(parameter [6:0] RACKCTL_INV=7'h00,
-                     parameter WB_CLK_TYPE = "INITCLK")(
+                     parameter WB_CLK_TYPE = "INITCLK",
+                     parameter DEBUG = "FALSE")(
         input                       wb_clk_i,
         input                       wb_rst_i,
         `TARGET_NAMED_PORTS_WB_IF(  gtp_ , 25, 32 ),
@@ -102,5 +103,27 @@ module surf_bridge #(parameter [6:0] RACKCTL_INV=7'h00,
     assign dbg_err_o = muxed_dbg_err[dbg_select_i];
     assign dbg_rty_o = muxed_dbg_rty[dbg_select_i];
 
-    
+    generate
+        if (DEBUG == "TRUE") begin : ILA
+            reg dbg_cycstb = 0;
+            reg [2:0] dbg_select = {3{1'b0}};
+            reg [21:0] dbg_addr = {22{1'b0}};
+            reg [32:0] dbg_data = {32{1'b0}};
+            reg dbg_ack = 0;
+            always @(posedge wb_clk_i) begin : MX
+                dbg_cycstb <= dbg_cyc_i && dbg_stb_i;
+                dbg_select <= dbg_select_i;
+                dbg_addr <= dbg_adr_i;
+                if (dbg_we_i) dbg_data <= dbg_dat_i;
+                else dbg_data <= dbg_dat_o;
+                dbg_ack <= dbg_ack_o;
+            end
+            surfbridge_ila u_ila(.clk(wb_clk_i),
+                                 .probe0(dbg_cycstb),
+                                 .probe1(dbg_select),
+                                 .probe2(dbg_addr),
+                                 .probe3(dbg_data),
+                                 .probe4(dbg_ack));
+        end
+    endgenerate    
 endmodule
