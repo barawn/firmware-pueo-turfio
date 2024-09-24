@@ -8,7 +8,6 @@ module surf_cin_interface(
         input train_i,
         input sync_i,
         input [31:0] command_i,
-        
         output CIN_P,
         output CIN_N,
         output RXCLK_P,
@@ -39,6 +38,8 @@ module surf_cin_interface(
 
     // don't need a full 16-clock phase
     reg [2:0] command_phase = {3{1'b0}};    
+    // this ends up being a cross-clock from WB due to the debug crap
+    (* CUSTOM_CC_DST = "SYSCLK" *)
     reg [31:0] command_hold = {32{1'b0}};
     
     always @(posedge sysclk_i) begin
@@ -48,7 +49,7 @@ module surf_cin_interface(
         if (command_phase == 7) command_hold <= value_to_send;
         else command_hold <= { {4{1'b0}}, command_hold[4 +: 28] };        
     end        
-    
+        
     // OSERDES. LSB is first out.
     OSERDESE2 #(.DATA_RATE_OQ("DDR"),
                 .DATA_WIDTH(4),

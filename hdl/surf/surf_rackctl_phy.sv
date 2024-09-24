@@ -210,9 +210,31 @@ module surf_rackctl_phy #(parameter INV=1'b0,
         // It's also loaded in MODE0_TXN if data_counter[5].
         // It then shifts in MODE0_PREAMBLE_4/MODE0_TXN/MODE0_DATA/CAPTURE.
         if (state == MODE0_PREAMBLE_3) begin
-            data_reg[31:8] <= txn_addr_i;
+            // OK, this is ultra-sleaze. We need txn_data_i[31] to be in the top bit of data_reg
+            // when data_counter is 31 in MODE0_TXN state. But we have no way to signal that.
+            // Except we don't need to - we can capture it *here*, and let it shift up naturally,
+            // and then fill in the rest of the bits at MODE0_TXN. && data_counter[5].
+            // In reads, that value just gets dropped, so it doesn't matter.
+            // We don't care about the bottom 7 bits (they get dropped) so we actually keep their logic
+            // the same as below.
+            //
+            // Basically, if you work out the entire logic here:
+            // data_reg[0] is ALWAYS capturing rackctl_in in ANY of these states.
+            // data_reg[1] is capturing either data_reg[0] or txn_data_i[0]
+            // data_reg[2] is capturing either data_reg[1] or txn_data_i[1] etc.
+            // data_reg[7] is capturing either data_reg[6] or txn_data_i[6] or txn_data_i[31]
+            // data_reg[8] is capturing either data_reg[7] or txn_data_i[7] or txn_addr_i[0].
+            // Because we FULLY capture data_reg as well, the synthesizer can convert the entire if block
+            // here to a control set CE and then use the various state encodings to mux the data.
+            // God knows if it'll be that smart.
+            data_reg[31:7] <= {txn_addr_i, txn_data_i[31]};
+            data_reg[6:0] <= {data_reg[5:0], rackctl_in};
         end else if (state == MODE0_TXN && data_counter[5]) begin
-            data_reg <= txn_data_i;
+            // txn_data_i[31] is captured at MODE0_PREAMBLE_3, we just need to fill in the rest here.
+            // The top bit is being loaded into rackctl_out here.
+            // Note the sleaze here of grabbing rackctl_in: we don't care what value we shift in,
+            // and this means the bottom bit only grabs from rackctl_in, period. 
+            data_reg <= {txn_data_i[30:0], rackctl_in };
         end else if (state == MODE0_TXN || state == MODE0_DATA || state == CAPTURE || state == MODE0_PREAMBLE_4) begin
             data_reg <= {data_reg[30:0], rackctl_in};
         end     
@@ -237,7 +259,7 @@ module surf_rackctl_phy #(parameter INV=1'b0,
         end
     endgenerate
 
-    // our final data is either the preamble data, or the shift register
+    // our final data is either the preamble data, the shift register
     assign rackctl_out = (state == MODE0_PREAMBLE_4 || state == MODE0_TXN || state == MODE0_DATA) 
                             ? data_reg[31] : preamble_data;
     // we're tristated only in these states
