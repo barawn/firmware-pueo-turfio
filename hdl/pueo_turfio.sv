@@ -12,7 +12,7 @@ module pueo_turfio #( parameter NSURF=7,
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd0,
-                      parameter [7:0] VER_REV =   8'd39,
+                      parameter [7:0] VER_REV =   8'd44,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -167,8 +167,11 @@ module pueo_turfio #( parameter NSURF=7,
     // Clock rate
     localparam INITCLK_RATE = 80000000;
     // Baud rate
-    localparam BOARDMAN_BAUD = 115200;
-
+    //    localparam BOARDMAN_BAUD = 115200;
+    // Up the baudrate, 115,200 is stupidly slow. 80 MHz can generate a 16x oversampled clock fine.
+    localparam BOARDMAN_BAUD = 1000000;
+    
+    
     //////////////////////////////////////////////
     // CLOCKS                                   //
     //////////////////////////////////////////////
@@ -288,18 +291,14 @@ module pueo_turfio #( parameter NSURF=7,
     wire [31:0] turf_command;
     // Command path data is valid
     wire        turf_command_valid;
-    // Sync request from command path
-    wire        turf_cmdsync;
-    // PPS request from command path
+    // Sync request from runcmds
+    wire        turf_runsync;
+    // Start a run (reset your damn timer)
+    wire        turf_runreset;
+    // Stop a run (uh this is totally ignored here)
+    wire        turf_runstop;
+    // PPS via CIN commanding
     wire        turf_cmdpps;
-    // Command processor reset
-    wire        turf_cmdproc_rst;
-    // Command processor data
-    wire [7:0]  turf_cmdproc_tdata;
-    // Command processor data valid
-    wire        turf_cmdproc_tvalid;
-    // Command processor data last
-    wire        turf_cmdproc_tlast;
     // Trigger time
     wire [14:0] turf_trigtime;
     // Trigger time valid
@@ -395,6 +394,13 @@ module pueo_turfio #( parameter NSURF=7,
     // SURFTURF module. This is just the TURF component for now.
     // Internally it gets mapped to a subset of the address space. Here it just
     // connects up what it can.
+    
+    // HOOK THESE UP TO FRIGGIN SOMETHING    
+    `DEFINE_AXI4S_MIN_IF( mode1_ , 8);
+    wire [1:0] mode1_tuser;
+    `DEFINE_AXI4S_MIN_IF( tfio_runcmd_ , 2);
+    `DEFINE_AXI4S_MIN_IF( tfio_trig_ , 15);
+    
     surfturf_wrapper_v2 #(.T_RXCLK_INV(T_RXCLK_INV),
                        .T_TXCLK_INV(T_TXCLK_INV),
                        .T_COUT_INV(T_COUT_INV),
@@ -441,7 +447,8 @@ module pueo_turfio #( parameter NSURF=7,
                );                     
 
     surf_bridge #(.RACKCTL_INV( TXCLK_INV ),
-                  .WB_CLK_TYPE(WB_CLK_TYPE))
+                  .WB_CLK_TYPE(WB_CLK_TYPE),
+                  .DEBUG("TRUE"))
         u_bridge( .wb_clk_i(wb_clk),
                   .wb_rst_i(1'b0),
                   `CONNECT_WBS_IFM( gtp_ , gtp_surf_ ),
@@ -459,17 +466,29 @@ module pueo_turfio #( parameter NSURF=7,
 //    wbs_dummy #(.ADDRESS_WIDTH(22),.DATA_WIDTH(32)) u_dbgsurf_stub( `CONNECT_WBS_IFM(wb_ , dbg_surf_ ) );
 //    wbs_dummy #(.ADDRESS_WIDTH(22),.DATA_WIDTH(32)) u_gtpsurf_stub( `CONNECT_WBS_IFM(wb_ , gtp_surf_ ) );    
 
-    pueo_command_decoder u_decoder(.sysclk_i(sysclk),
-                                   .command_i(turf_command),
-                                   .command_valid_i(turf_command_valid),
-                                   .cmdsync_o(turf_cmdsync),
-                                   .cmdpps_o(turf_cmdpps),
-                                   .cmdproc_rst_o(turf_cmdproc_rst),
-                                   .cmdproc_tdata(turf_cmdproc_tdata),
-                                   .cmdproc_tvalid(turf_cmdproc_tvalid),
-                                   .cmdproc_tlast(turf_cmdproc_tlast),
-                                   .trig_time_o(turf_trigtime),
-                                   .trig_valid_o(turf_trigtime_valid));
+    // V2 COMMAND DECODER IS WAY EFFING SIMPLER
+    // WE DON'T EVEN BOTHER WITH COMMAND PROCESSOR STUFF IT WON'T COME THIS WAY IT'LL BE SPLICED IN
+    // AT LEAST FROM THE TURFIO'S POINT OF VIEW IT'S TOTALLY USELESS EXCEPT FOR SPYING
+
+    // AT THE TURFIO SIDE, WE ONLY CARE ABOUT
+    // -> DO_SYNC
+    // -> RESET
+    // -> STOP
+    // -> TRIGGER OUTPUTS
+    // -> PPS
+    // THE MODE1 STUFF CAN BE IGNORED AT THE TURFIO SIDE EXCEPT TO SPY
+    pueo_turfio_command_decoder u_decoder(.sysclk_i(sysclk),
+                                      .command_i(turf_command),
+                                      .command_valid_i(turf_command_valid),
+
+                                      .sync_o(turf_runsync),
+                                      .reset_o(turf_runreset),
+                                      .stop_o(turf_runstop),
+
+                                      .pps_o(turf_cmdpps),
+                                      
+                                      .trig_time_o(turf_trigtime),
+                                      .trig_time_valid_o(turf_trigtime_valid));
 
     turfio_sync_sysclk_count #(.DEBUG("FALSE"))
                              u_synccount(.sysclk_i(sysclk),
@@ -477,7 +496,7 @@ module pueo_turfio #( parameter NSURF=7,
                                          .clock_offset_i(clock_offset),
                                          .en_ext_sync_i(en_ext_sync),
                                          .sysclk_count_o(sysclk_count),
-                                         .sync_req_i(turf_cmdsync),
+                                         .sync_req_i(turf_runsync ),
                                          .sync_o(sync),
                                          .dbg_surf_clk_o(DBG_LED),
                                          .SYNC(CLK_SYNC));
