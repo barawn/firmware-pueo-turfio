@@ -28,14 +28,16 @@ module rackctl_wb_bridge #(parameter INV = 1'b0,
     localparam GTP_BUS = 1;
     reg master_select = DBG_BUS;
     
-    wire any_cyc_stb = (gtp_cyc_i && gtp_stb_i) || (dbg_cyc_i || dbg_stb_i);
+    wire any_cyc_stb = (gtp_cyc_i && gtp_stb_i) || (dbg_cyc_i && dbg_stb_i);
     wire mux_we = (master_select == GTP_BUS) ? gtp_we_i : dbg_we_i;
     wire [21:0] mux_addr = (master_select == GTP_BUS) ? gtp_adr_i : dbg_adr_i;
     wire [31:0] mux_data = (master_select == GTP_BUS) ? gtp_dat_i : dbg_dat_i;
     wire [3:0] mux_sel = (master_select == GTP_BUS) ? gtp_sel_i : dbg_sel_i;        
         
     reg bridge_timeout = 0;    
+    (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
     reg mode = 0;
+    (* CUSTOM_CC_DST = "SYSCLK", ASYNC_REG = "TRUE" *)
     reg [1:0] mode_sysclk = {2{1'b0}};
     
     // 0 if a write, 1 if a read
@@ -118,6 +120,12 @@ module rackctl_wb_bridge #(parameter INV = 1'b0,
         endcase           
     end
     
+    always @(posedge sysclk_i) begin
+        mode_sysclk <= { mode_sysclk[0], mode };
+    end
+    
+    assign txn_start_flag_wbclk = (state == ISSUE);
+    
     // cross-clocks
     flag_sync u_start_sync(.clkA(wb_clk_i),.clkB(sysclk_i),
                            .in_clkA(txn_start_flag_wbclk),.out_clkB(txn_start_flag_sysclk));
@@ -127,7 +135,7 @@ module rackctl_wb_bridge #(parameter INV = 1'b0,
                          .in_clkA(txn_err_flag_sysclk),.out_clkB(txn_err_flag_wbclk));                                      
     
     surf_rackctl_phy #(.INV(INV),.DEBUG((DEBUG == "PHY" || DEBUG == "FULL") ? "TRUE" : "FALSE"))
-        u_phy( .sysclk_i(sysclk_i),.mode_i(mode),
+        u_phy( .sysclk_i(sysclk_i),.mode_i(mode_sysclk[1]),
                .txn_addr_i(txn_address_full),
                .txn_data_i(txn_data),
                .txn_resp_o(response_data),
