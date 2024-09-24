@@ -78,10 +78,16 @@ module turfio_cmd_splice(
     
     generate
         if (DEBUG == "TRUE") begin : ILA
+            // sigh, we need to recapture splice here because it's cross-clock.
+            (* CUSTOM_CC_DST = "SYSCLK" *)
+            reg [31:0] dbg_splice = {32{1'b0}};
+            always @(posedge sysclk_i) begin : DSL
+                dbg_splice <= spliced_o;
+            end                
             turfio_cmd_splice_ila u_ila(.clk(sysclk_i),
                                         .probe0( command_i),
                                         .probe1( command_valid_i ),
-                                        .probe2( spliced_o ));
+                                        .probe2( dbg_splice ));
         end
     endgenerate        
 

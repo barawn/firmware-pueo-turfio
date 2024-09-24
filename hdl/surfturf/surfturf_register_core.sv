@@ -28,6 +28,8 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
     localparam [3:0] RUNCMD_ADDR = 4'h8;
     localparam [3:0] TRIG_ADDR = 4'hC;
     
+    // capture in wb clk and hold it: it's flag-synced over to
+    // sysclk, so we can just make a datapath only delay to the hold register
     (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
     reg [`RACKBUS_RUNCMD_BITS-1:0] runcmd_holding_reg = {`RACKBUS_RUNCMD_BITS{1'b0}};
     (* CUSTOM_CC_SRC = "SYSCLK" *)
@@ -36,7 +38,9 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
     wire runcmd_is_valid_sysclk;
     (* CUSTOM_CC_DST = WB_CLK_TYPE, ASYNC_REG = "TRUE" *)
     reg [1:0] runcmd_holding_valid_wbclk = {2{1'b0}};
-    (* CUSTOM_CC_SRC = "SYSCLK" *)
+
+    // same as above
+    (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
     reg [`RACKBUS_TRIG_BITS-1:0] trig_holding_reg = {`RACKBUS_TRIG_BITS{1'b0}};
     (* CUSTOM_CC_SRC = "SYSCLK" *)
     reg trig_holding_valid = 0;
@@ -45,6 +49,7 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
     (* CUSTOM_CC_DST = WB_CLK_TYPE, ASYNC_REG = "TRUE" *)
     reg [1:0] trig_holding_valid_wbclk = {2{1'b0}};
     
+    // fwupdate uses a real FIFO for now
     wire fw_write = (wb_cyc_i && wb_stb_i && wb_ack_o && (wb_adr_i[3:0] == FWUPDATE_ADDR) && wb_we_i);
     wire fw_empty;
     (* CUSTOM_CC_SRC = "SYSCLK" *)
