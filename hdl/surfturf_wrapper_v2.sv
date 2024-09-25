@@ -108,6 +108,7 @@ module surfturf_wrapper_v2 #(
                                .sync_i(sync_i),
                                .command_i(command_o),
                                .command_valid_i(command_valid_o),
+                               .command_locked_i(command_locked_o),
                                `CONNECT_AXI4S_MIN_IF( mode1_ , mode1_ ),
                                .mode1_tuser(mode1_tuser),
                                `CONNECT_AXI4S_MIN_IF( tfio_runcmd_ , tfio_runcmd_ ),
