@@ -94,6 +94,8 @@ module surfturf_wrapper_v2 #(
     `DEFINE_AXI4S_MIN_IF( tfio_runcmd_ , 2);
     `DEFINE_AXI4S_MIN_IF( tfio_trig_ , 15);
     `DEFINE_AXI4S_MIN_IF( tfio_fw_ , 8);
+    wire tfio_fw_mark;
+    wire tfio_fw_marked;
     
     surfturf_register_core #(.WB_CLK_TYPE(WB_CLK_TYPE))
             u_st_core(.wb_clk_i(wb_clk_i),
@@ -101,6 +103,8 @@ module surfturf_wrapper_v2 #(
                       `CONNECT_WBS_IFM( wb_ , surfturf_ ),
                       .sysclk_i(sysclk_i),
                       `CONNECT_AXI4S_MIN_IF( fw_ , tfio_fw_ ),
+                      .fw_mark_o(tfio_fw_mark),
+                      .fw_marked_i(tfio_fw_marked),
                       `CONNECT_AXI4S_MIN_IF( runcmd_ , tfio_runcmd_ ),
                       `CONNECT_AXI4S_MIN_IF( trig_ , tfio_trig_ ));                                    
 
@@ -114,6 +118,8 @@ module surfturf_wrapper_v2 #(
                                `CONNECT_AXI4S_MIN_IF( tfio_runcmd_ , tfio_runcmd_ ),
                                `CONNECT_AXI4S_MIN_IF( tfio_trig_ , tfio_trig_ ),
                                `CONNECT_AXI4S_MIN_IF( tfio_fw_ , tfio_fw_ ),
+                               .tfio_fw_mark_i(tfio_fw_mark),
+                               .tfio_fw_marked_o(tfio_fw_marked),
                                .tfio_pps_i(tfio_pps_i),
                                .use_tfio_pps_i(use_tfio_pps_i),
                                .spliced_o(surf_command));

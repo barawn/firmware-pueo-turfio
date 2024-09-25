@@ -13,8 +13,10 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
         // we likely won't need anywhere NEAR that
         `TARGET_NAMED_PORTS_WB_IF(wb_ , 10, 32),
         input sysclk_i,
-        // FW update output port
+        // FW update output port stuff
         `HOST_NAMED_PORTS_AXI4S_MIN_IF( fw_ , 8),
+        output fw_mark_o,
+        input fw_marked_i,
         `HOST_NAMED_PORTS_AXI4S_MIN_IF( runcmd_ , `RACKBUS_RUNCMD_BITS ),
         `HOST_NAMED_PORTS_AXI4S_MIN_IF( trig_ , `RACKBUS_TRIG_BITS )       
     );
@@ -56,6 +58,19 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
     reg fw_empty_sysclk = 0;
     (* CUSTOM_CC_DST = WB_CLK_TYPE, ASYNC_REG = "TRUE" *)
     reg [1:0] fw_empty_wbclk = {2{1'b0}};
+    // mark we make a bit more complicated here: there are basically paired registers here
+    // if something goes wrong (like you write to this when sysclk is not running)
+    // writing again will fix it.
+    wire fw_do_mark_wbclk = (wb_cyc_i && wb_stb_i && wb_ack_o && (wb_adr_i[3:0] == CONTROL_ADDR) && wb_we_i && wb_dat_i[8] && wb_sel_i[1]);
+    wire fw_do_mark_sysclk;
+    reg fw_mark_wbclk = 0;
+    reg fw_mark_sysclk = 0;
+    wire fw_marked_sysclk = fw_mark_o && fw_marked_i;
+    wire fw_marked_wbclk;
+    flag_sync u_mark_sync(.in_clkA(fw_do_mark_wbclk),.out_clkB(fw_do_mark_sysclk),
+                            .clkA(wb_clk_i),.clkB(sysclk_i));
+    flag_sync u_marked_sync(.in_clkA(fw_marked_sysclk),.out_clkB(fw_marked_wbclk),
+                              .clkA(sysclk_i),.clkB(wb_clk_i));    
 
     reg ack = 0;
     reg fwupdate_fifo_reset = 0;
@@ -90,9 +105,15 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
         else if (trig_is_valid_sysclk) trig_holding_valid <= 1'b1;
         
         fw_empty_sysclk <= fw_empty;
+        
+        if (fw_do_mark_sysclk) fw_mark_sysclk <= 1;
+        else if (fw_marked_i) fw_mark_sysclk <= 0;
     end
     
     always @(posedge wb_clk_i) begin        
+        if (fw_do_mark_wbclk) fw_mark_wbclk <= 1;
+        else if (fw_marked_wbclk) fw_mark_wbclk <= 0;
+
         fw_empty_wbclk <= {fw_empty_wbclk[0], fw_empty_sysclk};
 
         ack <= wb_cyc_i && wb_stb_i;
@@ -111,6 +132,8 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
             trig_holding_reg <= wb_dat_i[0 + `RACKBUS_TRIG_BITS];                                
     end
     
+    assign fw_mark_o = fw_mark_sysclk;
+    
     assign runcmd_tvalid = runcmd_holding_valid;
     assign runcmd_tdata = runcmd_holding_reg;
     
@@ -119,6 +142,6 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
     
     assign wb_err_o = 1'b0;
     assign wb_rty_o = 1'b0;
-    assign wb_dat_o = { {28{1'b0}}, !trig_holding_valid_wbclk[1], !runcmd_holding_valid_wbclk[1], fw_empty_wbclk[1], fwupdate_fifo_reset };
+    assign wb_dat_o = { {23{1'b0}}, fw_mark_wbclk, {4{1'b0}}, !trig_holding_valid_wbclk[1], !runcmd_holding_valid_wbclk[1], fw_empty_wbclk[1], fwupdate_fifo_reset };
     
 endmodule
