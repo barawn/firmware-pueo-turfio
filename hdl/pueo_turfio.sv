@@ -12,16 +12,31 @@ module pueo_turfio #( parameter NSURF=7,
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd0,
-                      parameter [7:0] VER_REV =   8'd46,
+                      parameter [7:0] VER_REV =   8'd51,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
         // Force initclk into standby
         output INITCLKSTDBY,
+        
         // Debug receive (from FT2232)
         input DBG_RX,
         // Debug transmit (to FT2232) 
         output DBG_TX,
+        // Crate RX (L14) - same side as ENABLE - this goes to pin 53 on SURF
+        // This is just called RX on schematic
+        output SURF_RX,         // this is just straight output, hopefully the 2.5V is OK
+                                // DS926 lists Vihmin as 2.00 so it should be fine.
+        // Crate TX (U10) - same side as \ALERT - this goes to pin 54 on SURF
+        // this is just called TX on schematic
+        input SURF_TX,          // this is an open-drain input and might need to be retimed
+
+        // serial output to TURF - only enabled with T_CTRL low
+        output F_TTX,   // D15
+        // serial input from TURF - only valid with T_CTRL low
+        input TRX,      // B15
+        // control input : selects between serial path and remote I2C control
+        input TCTRL_B,  // D9
         
         // Enable local system clock
         output EN_MYCLK_B,
@@ -170,8 +185,39 @@ module pueo_turfio #( parameter NSURF=7,
     //    localparam BOARDMAN_BAUD = 115200;
     // Up the baudrate, 115,200 is stupidly slow. 80 MHz can generate a 16x oversampled clock fine.
     localparam BOARDMAN_BAUD = 1000000;
+
+    // debugging!!
+    wire [7:0] user4_gpo;
+        
+    //////////////////////////////////////////////
+    // UART GOOFINESS                           //
+    //////////////////////////////////////////////    
+    wire uart_from_turf;
+    wire uart_to_turf;
     
+    wire uart_from_surf;
+    wire uart_to_surf;
     
+    wire uart_from_boardman;
+    wire uart_to_boardman;
+        
+    // DBG uart ->boardman uart only when user4_gpo[0] is low, otherwise it's crate
+    assign uart_to_boardman = (user4_gpo[0]) ? 1'b0 : DBG_RX;
+    assign DBG_TX = (user4_gpo[0]) ? uart_from_surf: uart_from_boardman;
+    // uart from turf <-> surf only when TCTRL_B is low and user4_gpo[0] is low
+    assign uart_from_turf = (!TCTRL_B) ? TRX : 1'b0;
+    assign uart_to_turf = (!user4_gpo[0]) ? uart_from_surf : 1'b0;
+    
+    assign uart_to_surf = (user4_gpo[0]) ? DBG_RX : uart_from_turf;
+    // retimed using an 0.5 Mbaud baud rate and a 1 us risetime.
+    uart_retime #(.SAMPLE_POINT(120),
+                  .BAUD_PERIOD(160)) u_retimer(.clk(init_clk),
+                                               .RX(SURF_TX),
+                                               .RX_RETIMED(uart_from_surf));
+                                               
+    assign SURF_RX = uart_to_surf;
+    assign F_TTX = uart_to_turf;
+
     //////////////////////////////////////////////
     // CLOCKS                                   //
     //////////////////////////////////////////////
@@ -219,6 +265,11 @@ module pueo_turfio #( parameter NSURF=7,
     localparam WB_CLK_TYPE = "INITCLK";
     wire wb_clk = init_clk;
 
+    // this swaps our debug UART to the rack UART for testing
+    jtaguser4 #(.DATA_WIDTH(8))
+        u_user4(.clk_i(init_clk),
+                .dat_o(user4_gpo));
+
     // These are the MAIN masters. They have 25-bit addresses.
     // Bits [25:23] determine which space is being accessed.
     // (bits 27:26 determine which of the 4 TURFIOs at the TURF, and
@@ -240,8 +291,8 @@ module pueo_turfio #( parameter NSURF=7,
                         `CONNECT_WBM_IFM( wb_ , dbg_ ),
                         .burst_size_i(dbg_burst_size),
                         .upper_addr_i(dbg_upper_addr),
-                        .TX(DBG_TX),
-                        .RX(DBG_RX));            
+                        .TX(uart_from_boardman),
+                        .RX(uart_to_boardman));            
 
     `DEFINE_AXI4S_MIN_IF( cmd_addr_ , 32 );
     `DEFINE_AXI4S_MIN_IF( cmd_data_ , 32 );
@@ -539,7 +590,6 @@ module pueo_turfio #( parameter NSURF=7,
                                   .MGTTX_P(MGTTX_P),
                                   .MGTTX_N(MGTTX_N));
     
-
 
     // this is dumbass-edly inverted with no hint in the name
     assign INITCLKSTDBY = 1'b1;
