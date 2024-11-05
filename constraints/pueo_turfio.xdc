@@ -20,8 +20,9 @@
 # RXCLK4
 
 ## crate serial
-#set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN L14 } [get_ports {    RX          }]
-#set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN U10 } [get_ports {    TX          }]
+set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN L14 } [get_ports { SURF_RX }]
+## this is open drain from SURFs
+set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN U10 PULLUP TRUE} [get_ports { SURF_TX }]
 
 ## debug serial. These were named from the FT2232's perspective originally, so they're swapped here
 ## relative to the schematic.
@@ -29,6 +30,10 @@ set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN D8} [get_ports DBG_TX]
 set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN C9} [get_ports DBG_RX]
 set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN D14} [get_ports DBG_LED]
 
+## turf serial.
+set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN D15} [get_ports F_TTX]
+set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN B15} [get_ports TRX]
+set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN D9} [get_ports TCTRL_B]
 
 ## SPI (cclk is internal)
 set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN K16} [get_ports SPI_MOSI]
