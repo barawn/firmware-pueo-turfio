@@ -5,6 +5,7 @@ module surf_cin_interface(
         input sysclk_i,
         input sysclk_x2_i,
         input oserdes_rst_i,
+        input disable_rxclk_i,
         input train_i,
         input sync_i,
         input [31:0] command_i,
@@ -25,14 +26,19 @@ module surf_cin_interface(
     // didn't have this module when turf_cout was first written, need to update
     obufds_autoinv #(.INV(CIN_INV)) u_cin_obuf(.I(cin_out),.O_P(CIN_P),.O_N(CIN_N));
 
+    // disable rxclk by using either reset or set, depending on RXCLK_INV
+    // state. if RXCLK_INV == 0, we use reset, if RXCLK_INV == 1 we use set
+    wire rxclk_reset = (RXCLK_INV == 1'b0) ? disable_rxclk_i : 1'b0;
+    wire rxclk_set = (RXCLK_INV == 1'b0) ? 1'b0 : disable_rxclk_i;
+
     wire rxclk_in;
     ODDR #(.DDR_CLK_EDGE("SAME_EDGE"),.INIT(RXCLK_INV),.SRTYPE("SYNC"))
         u_rxclk_oddr(.C(sysclk_i),
                      .CE(1'b1),
                      .D1(~RXCLK_INV),
                      .D2(RXCLK_INV),
-                     .R(1'b0),
-                     .S(1'b0),
+                     .R(rxclk_reset),
+                     .S(rxclk_set),
                      .Q(rxclk_in));
     obufds_autoinv #(.INV(RXCLK_INV)) u_rxclk(.I(rxclk_in),.O_P(RXCLK_P),.O_N(RXCLK_N));    
 

@@ -57,11 +57,13 @@ module surf_interface_v2 #(parameter RXCLK_INV = 1'b0,
     // OSERDES controls
     wire oserdes_rst;
     wire cin_train;
+    wire disable_rxclk;
     
     surf_cin_interface #(.CIN_INV(CIN_INV),
                          .RXCLK_INV(RXCLK_INV))
         u_surf_cin(.sysclk_i(sysclk_i),
                    .sysclk_x2_i(sysclk_x2_i),
+                   .disable_rxclk_i(disable_rxclk),
                    .oserdes_rst_i(oserdes_rst),
                    .train_i(cin_train),
                    .sync_i(sync_i),
@@ -131,6 +133,8 @@ module surf_interface_v2 #(parameter RXCLK_INV = 1'b0,
                 .dout_biterr_i(dout_biterr),
                 .dout_capture_o(dout_capture),
                 .dout_enable_o(dout_enable),
+
+                .disable_rxclk_o(disable_rxclk),
 
                 .cin_train_o(cin_train));
 

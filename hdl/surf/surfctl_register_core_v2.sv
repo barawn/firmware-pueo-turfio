@@ -53,6 +53,9 @@ module surfctl_register_core_v2(
         input dout_biterr_i,
         output dout_enable_o,
         output dout_capture_o,
+
+        // rxclk disable
+        output disable_rxclk_o,
                 
         // train enable
         output cin_train_o
@@ -180,6 +183,17 @@ module surfctl_register_core_v2(
     (* CUSTOM_CC_DST = "SYSCLK", ASYNC_REG = "TRUE" *)
     reg [1:0] cin_train_enable_sysclk = {2{1'b0}};
     
+    // RXCLK disabling. It starts off disabled and has to be enabled.
+    // This is needed for a clean startup: when we program
+    // the clock in the TURFIO, we might need to wait to sync to TURF
+    // so don't signal to the SURFs that we're ready yet.
+    // note that if you set this and sysclk isn't running, uh... nothing happens
+    (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
+    reg disable_rxclk = 1;
+    // in sysclk domain
+    (* CUSTOM_CC_DST = "SYSCLK", ASYNC_REG = "TRUE" *)
+    reg [1:0] disable_rxclk_sysclk = {2{1'b1}};
+        
     // treat the DOUT data as valid
     (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
     reg dout_enable = 0;
@@ -209,7 +223,8 @@ module surfctl_register_core_v2(
     assign control_register[8] = 1'b0;              // not common (enable or lock enable)
     assign control_register[9] = 1'b0;              // not common (lock status or copy of bit 8)
     assign control_register[10] = cin_train_enable; // train enable (common)
-    assign control_register[15:11] = {5{1'b0}};     // reserved
+    assign control_register[11] = disable_rxclk;    // disable rxclk
+    assign control_register[15:12] = {4{1'b0}};     // reserved
     assign control_register[31:16] = {16{1'b0}};    // RXCLK phase adjust
     // Duplicate this so it acts the same as the lock req/status.
     assign cout_control_register[7:0] = control_register[7:0];
