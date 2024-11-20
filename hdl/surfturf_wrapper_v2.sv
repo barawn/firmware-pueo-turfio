@@ -97,11 +97,14 @@ module surfturf_wrapper_v2 #(
     wire tfio_fw_mark;
     wire tfio_fw_marked;
     
+    wire disable_rxclk;
+    
     surfturf_register_core #(.WB_CLK_TYPE(WB_CLK_TYPE))
             u_st_core(.wb_clk_i(wb_clk_i),
                       .wb_rst_i(wb_rst_i),
                       `CONNECT_WBS_IFM( wb_ , surfturf_ ),
                       .sysclk_i(sysclk_i),
+                      .disable_rxclk_o(disable_rxclk),
                       `CONNECT_AXI4S_MIN_IF( fw_ , tfio_fw_ ),
                       .fw_mark_o(tfio_fw_mark),
                       .fw_marked_i(tfio_fw_marked),
@@ -180,6 +183,9 @@ module surfturf_wrapper_v2 #(
                             .sysclk_i(sysclk_i),
                             .sysclk_ok_i(sysclk_ok_i),
                             .sysclk_x2_i(sysclk_x2_i),
+
+                            .disable_rxclk_i(disable_rxclk),
+                            
                             .sync_i(sync_i),
                             // sigh I have no idea if I'm going to do it
                             // this way or not BUT FOR NOW!

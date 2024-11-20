@@ -6,6 +6,7 @@
 // and it might need to be spliced with actual fw_ data from
 // Aurora.
 // But I need to be able to Test Stuff Now, so this is what it is.
+// OK so probably not temporary, since we add the rxclk disable here.
 module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
         input wb_clk_i,
         input wb_rst_i,
@@ -13,6 +14,7 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
         // we likely won't need anywhere NEAR that
         `TARGET_NAMED_PORTS_WB_IF(wb_ , 10, 32),
         input sysclk_i,
+        output disable_rxclk_o,
         // FW update output port stuff
         `HOST_NAMED_PORTS_AXI4S_MIN_IF( fw_ , 8),
         output fw_mark_o,
@@ -29,6 +31,11 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
     localparam [3:0] FWUPDATE_ADDR = 4'h4;
     localparam [3:0] RUNCMD_ADDR = 4'h8;
     localparam [3:0] TRIG_ADDR = 4'hC;
+
+    (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
+    reg disable_rxclk = 1;
+    (* CUSTOM_CC_DST = "SYSCLK", ASYNC_REG = "TRUE" *)
+    reg [1:0] disable_rxclk_sysclk = {2{1'b1}};
     
     // capture in wb clk and hold it: it's flag-synced over to
     // sysclk, so we can just make a datapath only delay to the hold register
@@ -108,6 +115,8 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
         
         if (fw_do_mark_sysclk) fw_mark_sysclk <= 1;
         else if (fw_marked_i) fw_mark_sysclk <= 0;
+
+        disable_rxclk_sysclk <= {disable_rxclk_sysclk[0], disable_rxclk};
     end
     
     always @(posedge wb_clk_i) begin        
@@ -120,6 +129,9 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
         
         if (wb_cyc_i && wb_stb_i && wb_we_i && wb_adr_i[3:0] == CONTROL_ADDR && wb_sel_i[0])
             fwupdate_fifo_reset <= wb_dat_i[0];
+
+        if (wb_cyc_i && wb_stb_i && wb_we_i && wb_adr_i[3:0] == CONTROL_ADDR && wb_sel_i[3])
+            disable_rxclk <= wb_dat_i[31];
 
         // this is probably batshit stupid: it won't stay set that long so checking if it's zero
         // will probably just get you zero right away        
@@ -139,9 +151,11 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
     
     assign trig_tvalid = trig_holding_valid;
     assign trig_tdata = trig_holding_reg;
+
+    assign disable_rxclk_o = disable_rxclk_sysclk[1];
     
     assign wb_err_o = 1'b0;
     assign wb_rty_o = 1'b0;
-    assign wb_dat_o = { {23{1'b0}}, fw_mark_wbclk, {4{1'b0}}, !trig_holding_valid_wbclk[1], !runcmd_holding_valid_wbclk[1], fw_empty_wbclk[1], fwupdate_fifo_reset };
+    assign wb_dat_o = { disable_rxclk, {22{1'b0}}, fw_mark_wbclk, {4{1'b0}}, !trig_holding_valid_wbclk[1], !runcmd_holding_valid_wbclk[1], fw_empty_wbclk[1], fwupdate_fifo_reset };
     
 endmodule
