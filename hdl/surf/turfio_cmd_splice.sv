@@ -137,7 +137,7 @@ module turfio_cmd_splice(
     wire pps = (use_tfio_pps_i) ? tfio_pps : turf_pps;
     
     // this gets set if the TURFIO has *any* data to insert
-    wire tfio_has_command_data = (holding_mode1 || holding_fwu || holding_runcmd || (tfio_pps && use_tfio_pps_i));
+    wire tfio_has_command_data = (holding_mode1 || holding_mark || holding_fwu || holding_runcmd || (tfio_pps && use_tfio_pps_i));
 
     // and this combines the ignores. Note that if the TURF sends all zeros, IGNORE will not be set,
     // but nothing will happen (since it generates MODE1_SPECIAL/MODE1_NOOP and RUNCMD_NOOP, plus no PPS.
