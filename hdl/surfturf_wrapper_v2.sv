@@ -94,7 +94,7 @@ module surfturf_wrapper_v2 #(
     `DEFINE_AXI4S_MIN_IF( tfio_runcmd_ , 2);
     `DEFINE_AXI4S_MIN_IF( tfio_trig_ , 15);
     `DEFINE_AXI4S_MIN_IF( tfio_fw_ , 8);
-    wire tfio_fw_mark;
+    wire [1:0] tfio_fw_mark;
     wire tfio_fw_marked;
     
     wire disable_rxclk;

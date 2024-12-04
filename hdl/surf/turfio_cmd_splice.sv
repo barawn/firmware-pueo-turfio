@@ -20,7 +20,7 @@ module turfio_cmd_splice(
         `TARGET_NAMED_PORTS_AXI4S_MIN_IF( tfio_fw_ , 8 ),
         `TARGET_NAMED_PORTS_AXI4S_MIN_IF( tfio_runcmd_ , `RACKBUS_RUNCMD_BITS),
         `TARGET_NAMED_PORTS_AXI4S_MIN_IF( tfio_trig_ , `RACKBUS_TRIG_BITS ),
-        input tfio_fw_mark_i,
+        input [1:0] tfio_fw_mark_i,
         output tfio_fw_marked_o,
         // INPUT FLAG FOR FAKEYFAKEY PPS
         input tfio_pps_i,
@@ -80,7 +80,7 @@ module turfio_cmd_splice(
     // note these do NOT need to be cross-clock, because the 
     reg       holding_mode1 = 0;
     reg       holding_fwu = 0;
-    reg       holding_mark = 0;
+    reg       holding_mark = 0;      // holding either of them. just used to ack
     reg       mode1_ack = 0;
     reg       tfio_fw_ack = 0;
     reg       tfio_fw_marked = 0;
@@ -174,18 +174,22 @@ module turfio_cmd_splice(
         
         if (command_precapture) begin
             if (mode1_tvalid) mode1data_holding <= mode1_tdata;
-            else if (tfio_fw_mark_i) mode1data_holding <= `RACKBUS_MODE1_MARK_FWU;
+            else if (tfio_fw_mark_i[0]) mode1data_holding <= `RACKBUS_MODE1_MARK0_FWU;
+            else if (tfio_fw_mark_i[1]) mode1data_holding <= `RACKBUS_MODE1_MARK1_FWU;
             else if (tfio_fw_tvalid) mode1data_holding <= tfio_fw_tdata;
             else mode1data_holding <= `RACKBUS_MODE1_NOOP;
             
             if (mode1_tvalid) mode1type_holding <= mode1_tuser;
-            else if (tfio_fw_mark_i) mode1type_holding <= `RACKBUS_MODE1_SPECIAL;
+            else if (|tfio_fw_mark_i) mode1type_holding <= `RACKBUS_MODE1_SPECIAL;
             else if (tfio_fw_tvalid) mode1type_holding <= `RACKBUS_MODE1_FWU;
             else mode1type_holding <= `RACKBUS_MODE1_SPECIAL;
             
             holding_mode1 <= mode1_tvalid;
-            holding_mark <= tfio_fw_mark_i && !mode1_tvalid;
-            holding_fwu <= tfio_fw_tvalid && !tfio_fw_mark_i && !mode1_tvalid;
+            // this indicates we're holding one of the marks.
+            // DO NOT flag both the marks!
+            holding_mark <= |tfio_fw_mark_i && !mode1_tvalid;
+            // indicates we're holding a fwu          
+            holding_fwu <= tfio_fw_tvalid && (tfio_fw_mark_i==2'b00) && !mode1_tvalid;
             
             if (tfio_runcmd_tvalid) runcmd_holding <= tfio_runcmd_tdata;
             else runcmd_holding <= `RACKBUS_RUNCMD_NOOP;
