@@ -82,11 +82,26 @@
 // separate system so if you don't use that, it'll get trimmed entirely.
 // It creates a separate interval counter based on the interface clock
 // to monitor clocks up to 1/64th the interface clock's speed.
+//
+// NOTE NOTE NOTE NOTE NOTE:
+// This module can introduce VERY SLIGHT glitches in the count due to a
+// 2-cycle lag between the counter and the clock select.
+// You can fix this with
+// GLITCH_HANDLING = "SIMPLE" which 1. eliminates the 1 cycle lag on the
+// DSP input (results in tighter timing margins) and 2. prevents the
+// DSP from counting on the 1 cycle when the interval ends
+// or 
+// GLITCH_HANDLING = "ACCURATE" which both eliminates the 1 cycle lag
+// on the DSP input and switches the inputs immediately.
+// 
+// GLITCH_HANDLING = "NONE" just says skip it and allows the glitches
+// to happen.
 module simple_clock_mon #(
         parameter NUM_CLOCKS = 8,       // Number of clocks to monitor
         parameter CLOCK_BITS = 16,      // Precision to store. Can be up to 24
         parameter CLOCK_SHIFT_CNT = 0,  // Number of bits to shift DSP output *down*
-        parameter CLOCK_SHIFT_DAT = 14  // Number of bits to upshift the output.
+        parameter CLOCK_SHIFT_DAT = 14, // Number of bits to upshift the output.
+        parameter GLITCH_HANDLING = "NONE"
     )(
         input clk_i,
         input [$clog2(NUM_CLOCKS)-1:0] adr_i,
@@ -131,8 +146,22 @@ module simple_clock_mon #(
     // This is the actual rising edge for each flag.
     reg [NUM_CLOCKS-1:0] level_flag = {NUM_CLOCKS{1'b0}};
 
+    // counts out of the dsp_timed_counter
+    wire [24:0] count_out;
+    // indicates that the count is done and valid
+    wire        count_done;
+
     reg [SELECT_BITS-1:0] clock_select = {SELECT_BITS{1'b0}};
-    wire selected_clock_cnt64 = level_flag[clock_select];
+    // This simplifies the GLITCH_HANDLING == "ACCURATE" case
+    wire [SELECT_BITS-1:0] clock_select_next = (clock_select == (NUM_CLOCKS-1)) ? 
+        {SELECT_BITS{1'b0}} : clock_select + 1;
+    // glitch handling selection
+    wire [SELECT_BITS-1:0] clock_select_accurate = (count_done) ? clock_select_next : clock_select;
+    // switch between the cheapo way and the harder-but-accurate way
+    wire [SELECT_BITS-1:0] this_clock_select = (GLITCH_HANDLING == "ACCURATE") ? clock_select_accurate : clock_select;
+    wire selected_clock_cnt64 = level_flag[this_clock_select];
+    // and this is the cheapo method, which just suppresses level_flag during the interval switch.
+    wire this_clock = (GLITCH_HANDLING == "SIMPLE") ? selected_clock_cnt64 && !count_done : selected_clock_cnt64;
     
     // Clock running subsystem.
     wire clk_running_will_reset;
@@ -169,10 +198,10 @@ module simple_clock_mon #(
     end            
 
     // use the DSP timed counter module.
-    wire [24:0] count_out;
-    wire        count_done;
-    dsp_timed_counter u_counter( .clk( clk_i ),
-                                 .count_in( selected_clock_cnt64 ),
+    localparam COUNT_IN_PIPELINE = (GLITCH_HANDLING == "ACCURATE" || GLITCH_HANDLING == "SIMPLE") ? "TRUE" : "FALSE";
+    dsp_timed_counter #(.COUNT_IN_PIPELINE(COUNT_IN_PIPELINE))
+                      u_counter( .clk( clk_i ),
+                                 .count_in( this_clock ),
                                  // Grab the top 24 bits of dat_i to
                                  // accomplish the divide by 256.
                                  // So if you write in 40,000,000 (0x2625A00)
