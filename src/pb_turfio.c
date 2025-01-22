@@ -235,9 +235,6 @@
 // just constant
 #define I2C_ADDR_TURFIO     (0x48 << 1)
 
-// ADM1278 addresses go
-// 
-
 // this is an output/outputk port which
 // indicates which buffer we're working on.
 // It knows what bank we're using,
@@ -389,6 +386,14 @@ void init() {
   output(GC_PORT, curTmp);
 
   // and the state machine
+  // timer starts at 0 which begins
+  // the readout right away.
+  // originally this was huge
+  // but the full overhead is HUGE since in the
+  // update thread we do idle last
+  // overall each pass through IDLE_WAIT takes
+  // like nearly 700 ns or so
+  
   curTmp = 0;
   store(scratch_TIMER_LOW, curTmp);
   store(scratch_TIMER_HIGH, curTmp);
@@ -417,7 +422,10 @@ void loop() {
   update_housekeeping();
 }
 
-// sigh, need to figure out why this is needed
+
+//////////////////////////////////////////////////////////////
+//                I2C MONITORING LOOP                       //
+//////////////////////////////////////////////////////////////
 void update_housekeeping(void) __attribute__((noreturn));
 void update_housekeeping() {
   fetch(scratch_STATE, &curTmp);
@@ -437,8 +445,18 @@ void update_housekeeping() {
   fetch(scratch_TIMER_HIGH, &curTmp2);
   curTmp2.curTmp--;
   store(scratch_TIMER_LOW, curTmp);
-  store(scratch_TIMER_HIGH, &curTmp2);
+  store(scratch_TIMER_HIGH, curTmp2);
   if (!C) return;
+  // the I2C upper timer loop is stored in hwbuild
+  // so it can be shortened. The operational loop
+  // adds something like a ~800 us delay between devices
+  // leading to something like a 100 Hz update rate.
+  // Simulation is more like 100 us.
+  curTmp = 0x80;
+  psm("hwbuild %1", curTmp2);
+  store(scratch_TIMER_LOW, curTmp);
+  store(scratch_TIMER_HIGH, curTmp2);
+  
   // timer expired, do next device
   fetch(scratch_DEVICE, &curTmp);
   // if turfio go to turfio mode
@@ -545,7 +563,9 @@ void update_housekeeping() {
     output(TURFIO_BASE+1, s6);
     output(TURFIO_BASE+2, s7);
     output(TURFIO_BASE+3, s5);
+    // move to the temperature stage
     curTmp = stage_TURFIO_TEMP;
+    store(scratch_STAGE, curTmp);
     return;
   }
   input(TEMP_0, &curTmp);
