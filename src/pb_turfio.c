@@ -233,7 +233,7 @@
 #define I2C_ADDR_SP_STOP    (scratch_TURFIO)
 #define I2C_SP_BUFFERSTOP   (scratch_I2CBUFFER-1)
 // just constant
-#define I2C_ADDR_TURFIO     0x48
+#define I2C_ADDR_TURFIO     (0x48 << 1)
 
 // ADM1278 addresses go
 // 
@@ -523,7 +523,7 @@ void update_housekeeping() {
   fetch(scratch_STAGE, &curTmp);
   if (curTmp == stage_TURFIO_I2C) {
     // read 3 bytes from TURFIO swap controller
-    s4 = I2C_ADDR_TURFIO;
+    s4 = I2C_ADDR_TURFIO;    
     store(scratch_I2CBUFFER1, s4);
     s6 = scratch_I2CBUFFER2;
     I2C_read();
