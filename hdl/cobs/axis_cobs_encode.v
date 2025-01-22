@@ -31,7 +31,7 @@ THE SOFTWARE.
  */
 module axis_cobs_encode #
 (
-    // append zero for in band framing
+    // append zero for in band framing    
     parameter APPEND_ZERO = 1
 )
 (
@@ -56,6 +56,11 @@ module axis_cobs_encode #
     output wire        m_axis_tlast,
     output wire        m_axis_tuser
 );
+
+// this is pretty much necessary
+// when encoding you need to look ahead to the first zero
+// so this needs to be your max packet size.
+localparam FIFO_DEPTH = 256;
 
 // state register
 localparam [1:0]
@@ -99,7 +104,7 @@ wire code_fifo_out_tuser;
 reg code_fifo_out_tready;
 
 axis_fifo #(
-    .DEPTH(256),
+    .DEPTH(FIFO_DEPTH),
     .DATA_WIDTH(8),
     .KEEP_ENABLE(0),
     .LAST_ENABLE(1),
@@ -147,7 +152,7 @@ wire data_fifo_out_tlast;
 reg data_fifo_out_tready;
 
 axis_fifo #(
-    .DEPTH(256),
+    .DEPTH(FIFO_DEPTH),
     .DATA_WIDTH(8),
     .KEEP_ENABLE(0),
     .LAST_ENABLE(1),
