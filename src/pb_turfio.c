@@ -4,7 +4,7 @@
  *
  */
 
-#define PB_TURFIO_VERSION 1
+#define PB_TURFIO_VERSION 2
 
 // We use the stock UART/COBS decoder, but we don't
 // buffer except at the UART level.
@@ -73,6 +73,8 @@
 #define PACKET_LEN   0x83
 #define PACKET_LEN_K 0x03
 #define PACKET_DATA  0x84
+#define PACKET_DATA_K 0x04
+// we also have PACKET_DATA_K+1 through PACKET_DATA_K+3
 
 // housekeeping base
 // SURFs are in multiples of 8 (4x2 shorts each)
@@ -191,8 +193,39 @@
 #define scratch_DEVICE      0x12
 #define scratch_TIMER_LOW   0x13
 #define scratch_TIMER_HIGH  0x14
-// PMBus buffer
-#define scratch_PMBus_Ptr   0x17
+// PMBus buffer.
+// here's how PMBus works for an I2C WRITE
+// housekeeping sends: 0x80 0xD9 (power cycle addr 0x40)
+// parse_housekeeping first checks if *0x17 is zero - returns 0 if not
+// then stores
+// *(0x18) = 0x80 *(0x19) = 0xD9 *(0x17) = 2 *(0x16) = 0
+// and returns 2 (bytes stored in buffer)
+// update_housekeeping in WAIT_IDLE sees non-zero *(0x17)
+// reads *(0x18) - sees zero bit 0
+// writes 0x80, sees ack, writes 0x00 to *0x18 (if NACK stores 0x1)
+// writes 0xD9, sees ack, writes 0x00 to *0x19 (if NACK stores 0x1)
+// writes 2 to *(0x16) and 0 to *(0x17)
+//
+// housekeeping then receives another PMBus command that is EMPTY DATA (rd)
+// it checks *0x16, sees 2
+// reads *(0x18) 0x00, *(0x19) 0x00, sends those two bytes
+// writes *0x16 = 0x00
+// if *0x16 is empty it returns empty
+//
+// a read works similar except the housekeeping command sends e.g.
+// 0x81 0x00 0x00
+// parse_housekeeping writes *(0x18) = 0x81 *(0x19) = 0x0, *(0x1A) = 0x0
+// *0x17 = 3, *0x16 = 0
+// update_housekeeping in WAIT_IDLE sees non-zero *0x17
+// reads *0x18, sees nonzero bit 0
+// writes 0x80, sees ack, writes 0x00 to *0x18
+// reads 8 bits, writes value to *0x19
+// reads 8 bits, writes value to *0x1A
+// writes 3 to *0x16 and 0 to *0x17
+//
+// SO COMPLICATED
+#define scratch_PMBus_RPtr  0x16
+#define scratch_PMBus_WPtr  0x17
 #define scratch_PMBus_BASE  0x18
 
 // this is where the I2C user buffer stuff is.
@@ -260,6 +293,8 @@
 #define Volts_LENGTH 30
 // always 16 bytes
 #define Currents_LENGTH 16
+// always 1 byte
+#define Enable_LENGTH 1
 
 // we steal 256 bytes for the buffer
 // this is 128 instructions
@@ -359,7 +394,7 @@ void init() {
     // this means that when C ends up being
     // set after this, we've looped through
     // this eight times.
-    psm("sr0 %1", curPacket);
+    psm("sra %1", curPacket);
   } while (!C);
   // we actually got MISSING not PRESENT so flip the bits
   curPacket ^= 0xFF;
@@ -385,6 +420,11 @@ void init() {
   curTmp &= ~HSK_BUF_BIT;
   output(GC_PORT, curTmp);
 
+  // and the PMBus buffer
+  curTmp = 0;
+  store(scratch_PMBus_WPtr, curTmp);
+  store(scratch_PMBus_RPtr, curTmp);
+  
   // and the state machine
   // timer starts at 0 which begins
   // the readout right away.
@@ -426,7 +466,6 @@ void loop() {
 //////////////////////////////////////////////////////////////
 //                I2C MONITORING LOOP                       //
 //////////////////////////////////////////////////////////////
-void update_housekeeping(void) __attribute__((noreturn));
 void update_housekeeping() {
   fetch(scratch_STATE, &curTmp);
 
@@ -437,9 +476,11 @@ void update_housekeeping() {
   if (curTmp == state_SURF_WRITE_REG) goto SURF_WRITE_REG;
   if (curTmp == state_SURF_READ_REG) goto SURF_READ_REG;
   if (curTmp == state_TURFIO) goto TURFIO;
-  if (curTmp == state_PMBUS) goto PMBUS;
-  // default is IDLE_WAIT
+  // default is IDLE_WAIT. PMBus isn't a real state
+  // just a goto
  IDLE_WAIT:
+  fetch(scratch_PMBus_WPtr, &curTmp);
+  if (curTmp != 0) goto PMBUS;
   // next decrement timer
   fetch(scratch_TIMER_LOW, &curTmp);
   fetch(scratch_TIMER_HIGH, &curTmp2);
@@ -461,18 +502,17 @@ void update_housekeeping() {
   fetch(scratch_DEVICE, &curTmp);
   // if turfio go to turfio mode
   if (curTmp == device_TURFIO) {
-    curTmp2 = state_TURFIO;
-    store(scratch_STATE, curTmp2);
+    curTmp = state_TURFIO;
     curTmp2 = stage_TURFIO_I2C;
-    store(scratch_STAGE, curTmp2);
   } else {
-    curTmp2 = state_SURF_CHECK;
-    store(scratch_STATE, curTmp2);
+    curTmp = state_SURF_CHECK;
     curTmp2 = stage_SURF_VIN;
-    store(scratch_STAGE, curTmp2);
   }
+  store(scratch_STATE, curTmp);
+  store(scratch_STAGE, curTmp2);
   return;
  SURF_CHECK:
+  fetch(scratch_DEVICE, &curTmp);
   fetch(scratch_PRESENT, &curTmp2);
   if (!(curTmp & curTmp2)) goto hskNextDevice;
  SURF_WRITE_REG:
@@ -508,9 +548,6 @@ void update_housekeeping() {
   s6 = scratch_I2CBUFFER1;
   I2C_read();
 
-  // get the data
-  fetch(scratch_I2CBUFFER1, &s4);
-  fetch(scratch_I2CBUFFER, &s5);
   // calc the pointer
   // the pointer calc is
   // SURF_BASE_VIN + (stage*2) + (device*8)
@@ -524,11 +561,19 @@ void update_housekeeping() {
   curTmp2 <<= 1;
   curTmp2 <<= 1;
   s6 += curTmp2;
-  // save the data
-  output(s6, s4);
-  s6 += 1;
+  // we save ALL of our data MSB, LSB since that's
+  // how we're going to transmit it.
+  // fetch LSB
+  fetch(scratch_I2CBUFFER1, &s4);
+  // fetch MSB
+  fetch(scratch_I2CBUFFER, &s5);
+  // store MSB
   output(s6, s5);
+  s6 += 1;
+  // store LSB
+  output(s6, s4);
   // increment stage, jump device if we need to
+  fetch(scratch_STAGE, &s7);
   s7++;
   if (s7 == stage_TURFIO_I2C) goto hskNextDevice;
   store(scratch_STAGE, s7);
@@ -552,37 +597,162 @@ void update_housekeeping() {
     fetch(scratch_I2CBUFFER2, &s4);
     fetch(scratch_I2CBUFFER1, &s5);
     fetch(scratch_I2CBUFFER, &s6);
-    s7 = 0;
     // convert into sane values
-    adm1176_shift();
-    // s4.s6 contains voltages
-    // s7.s5 contains currents
+
+    // utter magic shit
+    // we have
+    // VVVV_VVVV s4
+    // IIII_IIII s5
+    // vvvv_iiii s6
+    // step 1: imagine this as
+    // s7        s4        s6        s5
+    // 0000_0000 VVVV_VVVV vvvv_iiii IIII_IIII
+    // first s7.s4.s6 <<= 4;
+    // 0000_VVVV VVVV_vvvv iiii_0000 IIII_IIII
+    // step 2: now imagine this as
+    // s7        s4        s5        s6
+    // 0000_VVVV VVVV_vvvv IIII_IIII iiii_0000
+    // s5.s6 >>= 4
+    // to give
+    // 0000_VVVV VVVV_vvvv 0000_IIII IIII_iiii
+    // to simplify the loops, before step 1
+    // set s7 as 0001_0000 (0x08)
+    // and before step2 OR s6 with 0000_1000
+    // and do the shifts until the bit falls out
+    s7 = 0x10;
+    do {
+      s7.s4.s6 <<= 1;
+    } while (!C);
+    s6 |= 0x08;
+    do {
+      s5.s6 >>= 1;
+    } while (!C);
+  
+    // s7.s4 contains voltages
+    // s5.s6 contains currents
     // TURFIO_BASE/TURFIO_BASE+1 = voltage
     // TURFIO_BASE+2/TURFIO_BASE+3 = current
-    output(TURFIO_BASE, s4);
-    output(TURFIO_BASE+1, s6);
-    output(TURFIO_BASE+2, s7);
-    output(TURFIO_BASE+3, s5);
+    // we always store MSB/LSB
+    output(TURFIO_BASE, s7);
+    output(TURFIO_BASE+1, s4);
+    output(TURFIO_BASE+2, s5);
+    output(TURFIO_BASE+3, s6);
     // move to the temperature stage
     curTmp = stage_TURFIO_TEMP;
     store(scratch_STAGE, curTmp);
     return;
   }
+  // temp0 is LSB, we need to read it first
   input(TEMP_0, &curTmp);
-  output(TURFIO_BASE+4, curTmp);
-  input(TEMP_1, &curTmp);
   output(TURFIO_BASE+5, curTmp);
+  input(TEMP_1, &curTmp);
+  output(TURFIO_BASE+4, curTmp);
   // done with TURFIO, change device
   goto hskNextDevice;
  PMBUS:
-  return;
+  // PMBus stuff only happens in IDLE_WAIT
+  // and housekeeping stuff better not be
+  // stupid. It shouldn't be an issue because
+  // if we're in here we can't be in here
+  // realistically longer than a packet.
+
+  // start with the address
+  fetch(scratch_PMBus_BASE, &curTmp2);
+  if (curTmp2 & 0x1) {
+    // this is a read
+    // I2C_read() wants address stored in scratch_I2CBUFFER1 and
+    // pointer in s6
+    store(scratch_I2CBUFFER1, curTmp2);
+    // curTmp is number of bytes but it includes header
+    s6 = curTmp;
+    // s6 is supposed to be the start pointer, moving backwards
+    s6 += (scratch_I2CBUFFER-1);
+    I2C_read();
+    // check C to store the ack
+    curTmp = 0;
+
+    // fetch the number of bytes we wrote
+    fetch(scratch_PMBus_WPtr, &s4);
+    // and null it. we do this here b/c
+    // we've got a zero register (curTmp)
+    store(scratch_PMBus_WPtr, curTmp);
+    // now save the NAK/ACK
+    psm("sla %1", curTmp);
+    store(scratch_PMBus_BASE, curTmp);    
+    // and update the RPtr
+    store(scratch_PMBus_RPtr, s4);
+
+    // ok, the only thing left is to memcpy.
+    // WPtr is 0 and RPtr contains # of bytes.
+
+    // from nbytes+scratch_I2CBUFFER-2 downto scratch_I2CBUFFER
+    // to scratch_PMBus_BASE+1
+    // but there's a chance we might already be done
+    s4 += (scratch_I2CBUFFER-2);
+    // s4 is the start pointer
+    s5 = scratch_PMBus_BASE+1;
+    // if *scratch_PMBus_WPtr is 1, this will be skipped
+    while (!(s4 < scratch_I2CBUFFER)) {
+      fetch(s4, &curTmp);
+      store(s5, curTmp);
+      s4--;
+      s5++;
+    }
+    return;
+  } else {
+    // this is a write
+    //
+    // curTmp contains # of bytes to write including
+    // address. e.g. for just the address it's just 0x01
+    // we want to copy from
+    // scratch_PMBus_BASE[0:(curTmp-1)]
+    // to
+    // scratch_I2CBUFFER+(curTmp-1) downto scratch_I2CBUFFER
+    s4 = curTmp;  // e.g. it might be 1
+    s4 += scratch_I2CBUFFER-1; // if it's 1, this is just scratch_I2CBUFFER
+    // this now points one past the end
+    curTmp += scratch_PMBus_BASE;
+    s5 = scratch_PMBus_BASE;
+    s6 = s4;
+    do {
+      fetch(s5, &curTmp2);
+      store(s6, curTmp2);
+      s5++;
+      s6--;
+    } while (s5 != curTmp);
+    I2C_start();
+    I2C_user_tx_process();
+    I2C_stop();
+    s4 = 0;
+    // capture NAK (carry flag)
+    psm("sla %1", s4);
+    // and finish. We only write
+    // the first byte, we don't care
+    // about the others.
+    store(scratch_PMBus_BASE, s4);
+    fetch(scratch_PMBus_WPtr, &s4);
+    store(scratch_PMBus_RPtr, s4);
+    s4 = 0;
+    store(scratch_PMBus_WPtr, s4);
+    return;
+  }
  hskNextDevice:
   fetch(scratch_DEVICE, &curTmp);
   if (curTmp == 0) curTmp = 0x80;    
+  // this is now either 40/20/10/08/04/02/01 or 00
   curTmp >>= 1;
+  // these don't touch Z
   store(scratch_DEVICE, curTmp);
-  curTmp = state_IDLE_WAIT;
-  store(scratch_STATE, curTmp);
+  curTmp2 = state_IDLE_WAIT;
+  store(scratch_STATE, curTmp2);
+  // if this is Z we're in TURFIO
+  // mode, which means we've wrapped
+  // around. Otherwise return. 
+  if (!Z) return;
+  // flip the buffer
+  input(GC_PORT, &curTmp);
+  curTmp ^= 0x1;
+  output(GC_PORT, curTmp);
 }
 
 void hskCountDevice() {
@@ -602,53 +772,6 @@ void hskGetDeviceAddress() {
   fetch(curTmp2, &curTmp);
 }
 
-// magic crap
-// start with (s4->s7)
-// VVVV_VVVV
-// IIII_IIII
-// vvvv_iiii
-// 0000_0000
-// and do
-// 0VVV_VVVV
-// IIII_IIIi
-// Vvvv_viii
-// 0000_000I
-// repeat 3x more and get
-// 0000_VVVV
-// IIII_iiii
-// VVVV_vvvv
-// 0000_IIII
-
-// the magic recursion results in 4 total operations. it's
-// adm1176_shift  adm1176_shift2      adm1176_shift1
-// call 2
-//                call 1
-//                                    (do stuff)
-//                                    return
-//                (do stuff)
-//                return
-// call 1
-//                                    (do stuff)
-//                                    return
-// (do stuff)
-// return
-// The trick is that we actually have
-// void adm1176_shift() { adm1176_shift2(); adm1176_shift2(); }
-// and
-// void adm1176_shift2() { adm1176_shift1(); adm1176_shift1(); }
-// and we just combine the functions (as a form of tail
-// call optimization).
-void adm1176_shift() {
-  adm1176_shift2();
- adm1176_shift2:
-  adm1176_shift1();
- adm1176_shift1:
-  psm("sr0 %1", s4);
-  psm("sra %1", s6);
-  psm("sla %1", s5);
-  psm("sla %1", s7);
-}
-
 void handle_housekeeping() {
   if (!(curPacket & fifoStatus)) {
     // nothin' to do
@@ -665,6 +788,7 @@ void handle_housekeeping() {
   enable_interrupt();  
 }
 
+// this is so insane
 void parse_housekeeping() {
   // is it for us?
   input(PACKET_DST, &curTmp);
@@ -711,9 +835,12 @@ void parse_housekeeping() {
   if (curTmp == eIdentify) goto do_Identify;
   if (curTmp == eCurrents) goto do_Currents;
   if (curTmp == eStatistics) goto do_Statistics;
+  if (curTmp == eEnable) goto do_Enable;
+  if (curTmp == ePMBus) goto do_PMBus;
   if (curTmp != ePingPong) goto droppedPacket;
  do_PingPong:
   hsk_header();
+  // already have a checksum, we're done
   goto goodPacket;  
   
  do_Statistics:
@@ -733,6 +860,7 @@ void parse_housekeeping() {
   fetch(scratch_SKIPCOUNT, &curTmp);
   output(PACKET_DATA+4, curTmp);
   s9 += curTmp;
+  curPtr = (PACKET_DATA+Statistics_LENGTH);
   goto finishPacket;
   
  do_Temps:
@@ -746,7 +874,7 @@ void parse_housekeeping() {
   input(TURFIO_BASE+5, &curTmp);
   output(PACKET_DATA+1, curTmp);
   s9 += curTmp;
-  s4 = PACKET_DATA+2;
+  curPtr = PACKET_DATA+2;
   s5 = SURF_BASE_TEMP;
   do {
     hsk_copy2();
@@ -765,12 +893,133 @@ void parse_housekeeping() {
   output(PACKET_DATA+1, curTmp);
   s9 += curTmp;
   // now loop through SURF volts
-  s4 = PACKET_DATA+2;
+  curPtr = PACKET_DATA+2;
   s5 = SURF_BASE_VIN;
   do {
     hsk_copy4();
     s5 += SURF_VOLT_INC;
   } while (s5 != SURF_VIN_MAX);
+  goto finishPacket;
+
+ do_Currents:
+  hsk_header();
+  outputk(PACKET_LEN_K, Currents_LENGTH);
+  // add TURFIO current
+  input(TURFIO_BASE+2, &s9);
+  output(PACKET_DATA, s9);
+  input(TURFIO_BASE+3, &curTmp);
+  s9 += curTmp;
+  // now loop through SURFs
+  curPtr = PACKET_DATA+2;
+  s5 = SURF_BASE_IOUT;
+  do {
+    hsk_copy2();
+    s5 += SURF_CURR_INC;
+  } while (s5 != SURF_IOUT_MAX);
+  goto finishPacket;
+
+ do_Enable:
+  hsk_header();
+  input(PACKET_LEN, &curTmp);
+  if (curTmp != 0) {
+    input(PACKET_DATA, &curTmp);
+    input(GC_PORT, &curTmp2);
+    curTmp2 &= 0x7F;
+    if (curTmp != 0) {
+      curTmp2 |= 0x80;
+    }
+    output(GC_PORT, curTmp2);    
+  }
+  input(GC_PORT, &curTmp);
+  if (curTmp & 0x80) {
+    outputk(PACKET_DATA_K, 0x01);
+    outputk(PACKET_DATA_K+1, 0xFF);
+  } else {
+    outputk(PACKET_DATA_K, 0x00);
+    outputk(PACKET_DATA_K+1, 0x00);
+  }
+  outputk(PACKET_LEN_K, Enable_LENGTH);
+  // we already handled checksum, just jump past
+  goto goodPacket;
+
+ do_PMBus:
+  // THE PACKET INTERFACE SHOULD BE STRAIGHTFORWARD
+  // IF A WRITE, CHECK IF scratch_PMBus_WPtr is 0
+  //    IF YES: WRITE DATA TO BUFFER AND UPDATE WPtr/RPtr, RETURN # BYTES
+  //    IF NO: RETURN 0
+  // IF A READ, return scratch_PMBus_RPtr BYTES FROM
+  //    scratch_PMBus_BASE and zero scratch_PMBus_RPtr
+
+  // flippy flippy
+  hsk_header();
+  // check if it's a read or write
+  input(PACKET_LEN, &curTmp);
+  if (curTmp == 0) goto PMBus_Read;
+
+  // write attempt
+  // store length, it's always 1
+  outputk(PACKET_LEN_K, 1);
+  
+  // check if we're currently writing
+  fetch(scratch_PMBus_WPtr, &curTmp2);
+  if (curTmp2 == 0) goto PMBus_Write;
+
+  // we are currently writing, screw off  
+  outputk(PACKET_DATA_K, 0x00);
+  outputk(PACKET_DATA_K+1, 0x00);
+  // checksum's done, skip it
+  goto goodPacket;
+
+ PMBus_Write:
+  // no, we're not, so we're going to save data
+  // set WPtr and clear RPtr
+  store(scratch_PMBus_WPtr, curTmp);
+  // we know curTmp2 is 0 because of above
+  store(scratch_PMBus_RPtr, curTmp2);
+  
+  // build up the packet (just # of bytes)
+  output(PACKET_DATA, curTmp);
+  // we can calc our checksum easier, so do it here
+  curTmp2 -= curTmp;
+  output(PACKET_DATA+1, curTmp2);
+  // packet is complete at this point, just need to memcpy.
+  // note we use goodPacket not finishPacket
+  
+  // memcpy curTmp bytes from PACKET_DATA to scratch_PMBus_BASE
+  s4 = PACKET_DATA;
+  s5 = scratch_PMBus_BASE;
+  do {
+    input(s4, &curTmp2);
+    store(s5, curTmp2);
+    s4++;
+    s5++;
+    } while (--curTmp);
+  goto goodPacket;
+
+ PMBus_Read:
+  // read
+  // is there any data to read
+  fetch(scratch_PMBus_RPtr, &curTmp);
+  if (curTmp == 0) {
+    // no
+    outputk(PACKET_LEN_K, 0);
+    outputk(PACKET_DATA_K, 0);
+    // checksum's done, just jump past
+    goto goodPacket;      
+  }
+  // yes have data
+  output(PACKET_LEN, curTmp);
+  s4 = scratch_PMBus_BASE;
+  curPtr = PACKET_DATA;
+  s9 = 0;
+  // curPtr ends up at checksum here
+  do {
+    fetch(s4, &curTmp2);
+    s9 += curTmp2;
+    output(curPtr, curTmp2);
+    s4++;
+    curPtr++;
+  } while (--curTmp);
   goto finishPacket;
 
  do_Identify:
@@ -783,32 +1032,15 @@ void parse_housekeeping() {
   fetch(scratch_PRESENT, &curTmp);
   s9 += curTmp;
   output(PACKET_DATA+1, curTmp);
-  goto finishPacket;
-
- do_Currents:
-  hsk_header();
-  outputk(PACKET_LEN_K, Currents_LENGTH);
-  // add TURFIO current
-  input(TURFIO_BASE+2, &s9);
-  output(PACKET_DATA, s9);
-  input(TURFIO_BASE+3, &curTmp);
-  s9 += curTmp;
-  // now loop through SURFs
-  s4 = PACKET_DATA+2;
-  s5 = SURF_BASE_IOUT;
-  do {
-    hsk_copy2();
-    s5 += SURF_CURR_INC;
-  } while (s5 != SURF_IOUT_MAX);
-  // this needs to be uncommented when
-  // additional functions are added
-  //  goto finishPacket;
+  curPtr = PACKET_DATA+1;
+  // we don't need a finishPacket jump
+  // we're already there
   
  finishPacket:
   s9 ^= 0xFF;
   s9 += 1;
   output(curPtr, s9);
- goodPacket:  
+ goodPacket:
   cobsEncode();
   curTmp2 = scratch_RXCOUNT;
   fetchAndIncrement();
@@ -845,7 +1077,8 @@ void hsk_header() {
   output(PACKET_SRC, ourID);  
 }
 
-// copy bytes from s5/s5+1 to s4/s4+1
+// copy bytes from s5 to curPtr saving
+// checksum in s9
 // gotta love magic recursion
 void hsk_copy4() {
   hsk_copy2();
@@ -853,10 +1086,10 @@ void hsk_copy4() {
   hsk_copy1();
  hsk_copy1:
   input(s5, &curTmp);
-  output(s4, curTmp);
-  s9 += s5;
+  output(curPtr, curTmp);
+  s9 += curTmp;
   s5++;
-  s4++;
+  curPtr++;
 }
 
 /////////////////////////////
