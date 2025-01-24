@@ -9,15 +9,12 @@ module turfio_hski2c_tb;
     pullup(scl);
     wire I2C_RDY = 1'b1;
 
-    wire start;
-    wire stop;
     // this is SURF4
-    i2c_slave_model #(.I2C_ADR(7'h40),.BEHAVIOR("CONSTANT"),.TIMING("FALSE"))
-        u_surf4(.scl(scl),.sda(sda),
-                .start(start),
-                .stop(stop));
-    i2c_slave_model #(.I2C_ADR(7'h48),.BEHAVIOR("CONSTANT"),.TIMING("FALSE"))
+    adm1278_model #(.I2C_ADR(7'h40),.NAME("surf4"))
+        u_surf4(.scl(scl),.sda(sda));    
+    adm1176_model #(.I2C_ADR(7'h48),.NAME("turfio")) 
         u_turfio(.scl(scl),.sda(sda));
+        
 
     reg [7:0] uart_data = {8{1'b0}};
     reg       uart_write = 0;
@@ -54,7 +51,7 @@ module turfio_hski2c_tb;
                     .data_in(uart_data),
                     .serial_out(HSK_RX));
     
-    hski2c_top uut(.wb_clk_i(clk),
+    hski2c_top #(.SIM_FAST("TRUE")) uut(.wb_clk_i(clk),
                    .wb_rst_i(rst),
                    .wb_cyc_i(1'b0),
                    .wb_stb_i(1'b0),
@@ -87,6 +84,23 @@ module turfio_hski2c_tb;
         #1 uart_data = 8'h01; uart_write = 1; @(posedge clk);
         #1 uart_data = 8'h00; uart_write = 1; @(posedge clk);
         #1 uart_write = 0; @(posedge clk);
+        
+        // now we need to move to about 1.65 ms to ensure the
+        // first update has happened (n.b. the timing is slower
+        // in real hardware currently)
+        #650000;
+        @(posedge clk);
+        // eVolts from 00 to 40: 00 40 11 00 00
+        // COBS:              01 03 40 11 01 01 00
+        #1 uart_data = 8'h01; uart_write = 1; @(posedge clk);
+        #1 uart_data = 8'h03; uart_write = 1; @(posedge clk);
+        #1 uart_data = 8'h40; uart_write = 1; @(posedge clk);
+        #1 uart_data = 8'h11; uart_write = 1; @(posedge clk);
+        #1 uart_data = 8'h01; uart_write = 1; @(posedge clk);
+        #1 uart_data = 8'h01; uart_write = 1; @(posedge clk);
+        #1 uart_data = 8'h00; uart_write = 1; @(posedge clk);
+        #1 uart_write = 0; @(posedge clk);
+        
     end
                    
 endmodule
