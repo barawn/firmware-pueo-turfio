@@ -4,7 +4,7 @@
  *
  */
 
-#define PB_TURFIO_VERSION 2
+#define PB_TURFIO_VERSION 3
 
 // We use the stock UART/COBS decoder, but we don't
 // buffer except at the UART level.
@@ -87,9 +87,9 @@
 #define SURF_BASE_IOUT 0xC4
 #define SURF_BASE_TEMP 0xC6
 // loop constants
-#define SURF_VIN_MAX  0xE0
-#define SURF_IOUT_MAX 0xE4
-#define SURF_TEMP_MAX 0xE6
+#define SURF_VIN_MAX  0xF0
+#define SURF_IOUT_MAX 0xF4
+#define SURF_TEMP_MAX 0xF6
 #define SURF_VOLT_INC 4
 #define SURF_CURR_INC 6
 #define SURF_TEMP_INC 6
@@ -458,7 +458,7 @@ void init() {
 }
 
 void loop() {
-  handle_housekeeping();
+  handle_serial();
   update_housekeeping();
 }
 
@@ -772,24 +772,27 @@ void hskGetDeviceAddress() {
   fetch(curTmp2, &curTmp);
 }
 
-void handle_housekeeping() {
+void handle_serial() {
   if (!(curPacket & fifoStatus)) {
     // nothin' to do
     return;
   }
-  parse_housekeeping();
+  parse_serial();
   // this might seem a little dangerous
   // but we know that fifoStatus had curPacket set
   // above.
   fifoStatus ^= curPacket;
   curPacket ^= FIFO_TOGGLE;
+  // moron, this needs to actually update outside too
+  output(BUFFER_CTRL, curPacket);
+  
   // we always enable interrupts at the end,
   // in case the ISR panicked and shut itself off.
   enable_interrupt();  
 }
 
 // this is so insane
-void parse_housekeeping() {
+void parse_serial() {
   // is it for us?
   input(PACKET_DST, &curTmp);
   if (curTmp != ourID) goto skippedPacket;
