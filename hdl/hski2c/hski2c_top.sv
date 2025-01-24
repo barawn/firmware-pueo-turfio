@@ -7,7 +7,13 @@ module hski2c_top(
         input wb_clk_i,
         input wb_rst_i,
         `TARGET_NAMED_PORTS_WB_IF( wb_ , 12, 32),
-
+        // this isn't really a tristate.
+        // it allows either housekeeping or wishbone
+        // to control and read the enable lines
+        output hsk_enable_t,
+        output hsk_enable_o,
+        input hsk_enable_i,
+        
         input [1:0] CONF,
         input HSK_RX,
         output HSK_TX,        
@@ -15,8 +21,9 @@ module hski2c_top(
         inout F_SCL,
         input I2C_RDY        
     );
-    
+    parameter SIM_FAST = "FALSE";
     parameter DEBUG = `HSKI2C_DEBUG;
+
     reg hsk_reset = 1;
     // pop the rx through a UART. we can just use the boardman one
     `DEFINE_AXI4S_MIN_IF( uart_rx_, 8);
@@ -178,6 +185,7 @@ module hski2c_top(
     localparam [7:0] GENERAL_CONTROL_PORT = 8'h11;
     
     wire [7:0] general_control;
+    assign general_control = { hsk_enable_i, {6{1'b0}}, hsk_bram_addr };
     wire [7:0] our_id = {3'b010, CONF, 3'b000 };
     wire [7:0] general_control_and_ourid = (port_id[0]) ? general_control : our_id;
 
@@ -221,6 +229,10 @@ module hski2c_top(
     assign cobs_tx_tdata = out_port;
     assign cobs_tx_tlast = port_id[0];
     
+    wire gc_write = ((port_id & PB_MASK_OURID) == GENERAL_CONTROL_PORT) && write_strobe;
+    assign hsk_enable_t = !gc_write;
+    assign hsk_enable_o = out_port[7];
+        
     always @(posedge wb_clk_i) begin
         // temperature
         if (temp_read) temp_high <= temp_bus[11:8]; 
@@ -231,10 +243,8 @@ module hski2c_top(
         end
         
         // general control stuff
-        if (write_strobe) begin
-            if ((port_id & PB_MASK_OURID) == GENERAL_CONTROL_PORT) begin
-                hsk_bram_addr <= out_port[0];
-            end
+        if (gc_write) begin
+            hsk_bram_addr <= out_port[0];
         end
         
         processor_reset <= wb_rst_i;
@@ -255,7 +265,8 @@ module hski2c_top(
             end
         end        
     end
-    localparam [7:0] HWBUILD = 8'h00;
+    // this is the I2C upper byte timer
+    localparam [7:0] HWBUILD = (SIM_FAST == "TRUE") ? 8'h00 : 8'h03;
     // default
     localparam [7:0] SP_INIT_DF = {8{1'b0}};
     localparam [7:0] SP_INIT_34 = 8'h88;
@@ -302,7 +313,7 @@ module hski2c_top(
 
     kcpsm6 #(.HWBUILD(HWBUILD),
              .SCRATCH_PAD_INITIAL_VALUES(SP_INIT_VEC),
-             .INTERRUPT_VECTOR(12'h3BF)) u_picoblaze(.address(address),.instruction(instruction),.bram_enable(bram_enable),
+             .INTERRUPT_VECTOR(12'h37F)) u_picoblaze(.address(address),.instruction(instruction),.bram_enable(bram_enable),
                         .cur_bank(picoblaze_bank),
                         .in_port(in_port),.out_port(out_port),.port_id(port_id),
                         .write_strobe(write_strobe),.k_write_strobe(k_write_strobe),
