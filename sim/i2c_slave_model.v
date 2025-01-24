@@ -66,7 +66,7 @@
 //               Added headers.
 //
 
-module i2c_slave_model (scl, sda, gpio, start, stop);
+module i2c_slave_model (scl, sda, gpio, start, stop, read);
 
 	//
 	// parameters
@@ -77,8 +77,9 @@ module i2c_slave_model (scl, sda, gpio, start, stop);
 	// MEMORY is a 16-entry memory with an address register that increments after each read, and NACKs past the end
 	// GPIO is a typical I2C GPIO expander, with 4 registers (input, output, polarity, configuration) controlling GPIO
 	// SWITCH is an I2C addressable switch, which is just a single 8-bit register (exposed on GPIO)
-	// CONSTANT just accepts all writes and on reads outputs the value of GPIO. 
+	// CONSTANT just accepts all writes and on reads outputs the value of gpio (setting read high when it does)
     parameter BEHAVIOR = "MEMORY";
+    parameter CONSTANT_BITS = 8;
     parameter [7:0] DEFAULT = {8{1'b1}};
     parameter TIMING = "TRUE";
     parameter DEBUG = "FULL";
@@ -89,7 +90,8 @@ module i2c_slave_model (scl, sda, gpio, start, stop);
 	inout sda;
 
     inout [7:0] gpio;
-
+    // help with data stuff
+    output read;
     // help to frame transactions    
     output start;
     output stop;
@@ -102,11 +104,18 @@ module i2c_slave_model (scl, sda, gpio, start, stop);
     reg [7:0] mem [3:0]; // initiate memory
 	reg [7:0] mem_adr;   // memory address
 	reg [7:0] mem_do;    // memory data output
-
+    // sigh.
+    //reg constant_drive = 1;
     generate
         genvar i;
         if (BEHAVIOR == "MEMORY") begin : HIZ
             assign gpio = {8{1'bZ}};
+        end else if (BEHAVIOR == "CONSTANT") begin : WEAKADR
+            initial mem_adr = 8'h00;
+            // this allows detection of what address pointer
+            // we've received. useful for creating realistic reads
+            // without too much effort.
+            assign (pull1, pull0) gpio = mem_adr;
         end else if (BEHAVIOR == "GPIO") begin : GPZ
             for (i=0;i<8;i=i+1) begin : GP
                 assign gpio[i] = (mem[3][i]) ? 1'bZ : mem[1][i];
@@ -116,8 +125,9 @@ module i2c_slave_model (scl, sda, gpio, start, stop);
         end
     endgenerate
 
-
-
+    reg rd = 0;
+    assign read = rd;
+    
 	reg sta, d_sta;
 	reg sto, d_sto;
 
@@ -233,6 +243,7 @@ module i2c_slave_model (scl, sda, gpio, start, stop);
 
 	        sda_o <= #1 1'b1;
 	        ld    <= #1 1'b1;
+//	        constant_drive <= #1 1'b1;
 	    end
 	  else
 	    begin
@@ -247,6 +258,8 @@ module i2c_slave_model (scl, sda, gpio, start, stop);
                         begin
                             state <= #1 slave_ack;
                             rw <= #1 sr[0];
+//                            constant_drive = #0.1 ~sr[0];
+                            rd = #0.1 sr[0];
                             sda_o <= #1 1'b0; // generate i2c_ack
     
                             #2;
@@ -263,7 +276,7 @@ module i2c_slave_model (scl, sda, gpio, start, stop);
                                     if (mem_adr == 0) mem_do <= { gpio ^ mem[2] };
                                     else mem_do <= mem[mem_adr];
                                   end else mem_do <= #1 mem[mem_adr];
-                                                                                               
+                                  rd = 0;                                                             
                                   if(debug)
                                     begin
                                         if (BEHAVIOR == "SWITCH" || BEHAVIOR == "CONSTANT") #2 $display("DEBUG %s; read %x", NAME, mem_do);
@@ -328,6 +341,7 @@ module i2c_slave_model (scl, sda, gpio, start, stop);
 
 	                        if(rw)
 	                          begin
+	                              rd = 1;
 	                              if (BEHAVIOR == "CONSTANT")
 	                                   #3 mem_do <= gpio;
 	                              else if (BEHAVIOR == "MEMORY")
@@ -337,6 +351,7 @@ module i2c_slave_model (scl, sda, gpio, start, stop);
                                        if (mem_adr == 0) mem_do <= { gpio ^ mem[2] };
                                        else mem_do <= mem[mem_adr];
                                   end
+                                  rd = 0;
 	                              if(debug)
 	                                #5 $display("DEBUG %s; data block read %x from address %x (2)", NAME, mem_do, mem_adr);
 	                          end
