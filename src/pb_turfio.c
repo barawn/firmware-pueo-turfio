@@ -87,9 +87,9 @@
 #define SURF_BASE_IOUT 0xC4
 #define SURF_BASE_TEMP 0xC6
 // loop constants
-#define SURF_VIN_MAX  0xF0
-#define SURF_IOUT_MAX 0xF4
-#define SURF_TEMP_MAX 0xF6
+#define SURF_VIN_MAX  0xF8
+#define SURF_IOUT_MAX 0xFC
+#define SURF_TEMP_MAX 0xFE
 #define SURF_VOLT_INC 4
 #define SURF_CURR_INC 6
 #define SURF_TEMP_INC 6
