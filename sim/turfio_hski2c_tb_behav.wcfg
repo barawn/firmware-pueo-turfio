@@ -1,0 +1,504 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wave_config>
+   <wave_state>
+   </wave_state>
+   <db_ref_list>
+      <db_ref path="turfio_hski2c_tb_behav.wdb" id="1">
+         <top_modules>
+            <top_module name="glbl" />
+            <top_module name="turfio_hski2c_tb" />
+            <top_module name="vpkg" />
+         </top_modules>
+      </db_ref>
+   </db_ref_list>
+   <zoom_setting>
+      <ZoomStartTime time="1,526.000000 us"></ZoomStartTime>
+      <ZoomEndTime time="3,296.000001 us"></ZoomEndTime>
+      <Cursor1Time time="1,632.603750 us"></Cursor1Time>
+   </zoom_setting>
+   <column_width_setting>
+      <NameColumnWidth column_width="279"></NameColumnWidth>
+      <ValueColumnWidth column_width="188"></ValueColumnWidth>
+   </column_width_setting>
+   <WVObjectSize size="31" />
+   <wave_markers>
+      <marker time="768378850" label="" />
+      <marker time="26741250" label="" />
+      <marker time="1328253850" label="" />
+      <marker time="2553078850" label="" />
+   </wave_markers>
+   <wvobject fp_name="/turfio_hski2c_tb/clk" type="logic">
+      <obj_property name="ElementShortName">clk</obj_property>
+      <obj_property name="ObjectShortName">clk</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turfio_hski2c_tb/sda" type="logic">
+      <obj_property name="ElementShortName">sda</obj_property>
+      <obj_property name="ObjectShortName">sda</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turfio_hski2c_tb/scl" type="logic">
+      <obj_property name="ElementShortName">scl</obj_property>
+      <obj_property name="ObjectShortName">scl</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turfio_hski2c_tb/u_surf4/i2c_state" type="array">
+      <obj_property name="ElementShortName">i2c_state[31:0]</obj_property>
+      <obj_property name="ObjectShortName">i2c_state[31:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turfio_hski2c_tb/uut/hsk_bram_addr" type="logic">
+      <obj_property name="ElementShortName">hsk_bram_addr</obj_property>
+      <obj_property name="ObjectShortName">hsk_bram_addr</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turfio_hski2c_tb/HSK_TX" type="logic">
+      <obj_property name="ElementShortName">HSK_TX</obj_property>
+      <obj_property name="ObjectShortName">HSK_TX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turfio_hski2c_tb/tx_data_present" type="logic">
+      <obj_property name="ElementShortName">tx_data_present</obj_property>
+      <obj_property name="ObjectShortName">tx_data_present</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turfio_hski2c_tb/HSK_RX" type="logic">
+      <obj_property name="ElementShortName">HSK_RX</obj_property>
+      <obj_property name="ObjectShortName">HSK_RX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turfio_hski2c_tb/uut/interrupt" type="logic">
+      <obj_property name="ElementShortName">interrupt</obj_property>
+      <obj_property name="ObjectShortName">interrupt</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turfio_hski2c_tb/uut/interrupt_ack" type="logic">
+      <obj_property name="ElementShortName">interrupt_ack</obj_property>
+      <obj_property name="ObjectShortName">interrupt_ack</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turfio_hski2c_tb/I2C_RDY" type="logic">
+      <obj_property name="ElementShortName">I2C_RDY</obj_property>
+      <obj_property name="ObjectShortName">I2C_RDY</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/carry_flag" type="logic">
+      <obj_property name="ElementShortName">carry_flag</obj_property>
+      <obj_property name="ObjectShortName">carry_flag</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turfio_hski2c_tb/uut/cobs_rx_tdata" type="array">
+      <obj_property name="ElementShortName">cobs_rx_tdata[7:0]</obj_property>
+      <obj_property name="ObjectShortName">cobs_rx_tdata[7:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turfio_hski2c_tb/uut/cobs_rx_tvalid" type="logic">
+      <obj_property name="ElementShortName">cobs_rx_tvalid</obj_property>
+      <obj_property name="ObjectShortName">cobs_rx_tvalid</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turfio_hski2c_tb/uut/cobs_rx_tready" type="logic">
+      <obj_property name="ElementShortName">cobs_rx_tready</obj_property>
+      <obj_property name="ObjectShortName">cobs_rx_tready</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turfio_hski2c_tb/uut/cobs_rx_tuser" type="logic">
+      <obj_property name="ElementShortName">cobs_rx_tuser</obj_property>
+      <obj_property name="ObjectShortName">cobs_rx_tuser</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turfio_hski2c_tb/uut/cobs_rx_tlast" type="logic">
+      <obj_property name="ElementShortName">cobs_rx_tlast</obj_property>
+      <obj_property name="ObjectShortName">cobs_rx_tlast</obj_property>
+   </wvobject>
+   <wvobject fp_name="group243" type="group">
+      <obj_property name="label">WISHBONE</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <wvobject fp_name="/turfio_hski2c_tb/uart_data" type="array">
+         <obj_property name="ElementShortName">uart_data[7:0]</obj_property>
+         <obj_property name="ObjectShortName">uart_data[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uart_write" type="logic">
+         <obj_property name="ElementShortName">uart_write</obj_property>
+         <obj_property name="ObjectShortName">uart_write</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/processor_reset" type="logic">
+         <obj_property name="ElementShortName">processor_reset</obj_property>
+         <obj_property name="ObjectShortName">processor_reset</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/cyc" type="logic">
+         <obj_property name="ElementShortName">cyc</obj_property>
+         <obj_property name="ObjectShortName">cyc</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/we" type="logic">
+         <obj_property name="ElementShortName">we</obj_property>
+         <obj_property name="ObjectShortName">we</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/dat_i" type="array">
+         <obj_property name="ElementShortName">dat_i[31:0]</obj_property>
+         <obj_property name="ObjectShortName">dat_i[31:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/ack" type="logic">
+         <obj_property name="ElementShortName">ack</obj_property>
+         <obj_property name="ObjectShortName">ack</obj_property>
+      </wvobject>
+   </wvobject>
+   <wvobject fp_name="group371" type="group">
+      <obj_property name="label">Registers</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_s0" type="array">
+         <obj_property name="ElementShortName">sim_s0[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_s0[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_s1" type="array">
+         <obj_property name="ElementShortName">sim_s1[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_s1[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_s2" type="array">
+         <obj_property name="ElementShortName">sim_s2[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_s2[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_s3" type="array">
+         <obj_property name="ElementShortName">sim_s3[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_s3[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_s4" type="array">
+         <obj_property name="ElementShortName">sim_s4[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_s4[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_s5" type="array">
+         <obj_property name="ElementShortName">sim_s5[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_s5[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_s6" type="array">
+         <obj_property name="ElementShortName">sim_s6[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_s6[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_s7" type="array">
+         <obj_property name="ElementShortName">sim_s7[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_s7[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_s8" type="array">
+         <obj_property name="ElementShortName">sim_s8[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_s8[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_s9" type="array">
+         <obj_property name="ElementShortName">sim_s9[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_s9[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_sA" type="array">
+         <obj_property name="ElementShortName">sim_sA[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_sA[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_sB" type="array">
+         <obj_property name="ElementShortName">sim_sB[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_sB[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_sC" type="array">
+         <obj_property name="ElementShortName">sim_sC[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_sC[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_sD" type="array">
+         <obj_property name="ElementShortName">sim_sD[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_sD[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_sE" type="array">
+         <obj_property name="ElementShortName">sim_sE[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_sE[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_sF" type="array">
+         <obj_property name="ElementShortName">sim_sF[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_sF[7:0]</obj_property>
+      </wvobject>
+   </wvobject>
+   <wvobject fp_name="group436" type="group">
+      <obj_property name="label">RAM</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm00" type="array">
+         <obj_property name="ElementShortName">sim_spm00[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm00[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm01" type="array">
+         <obj_property name="ElementShortName">sim_spm01[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm01[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm02" type="array">
+         <obj_property name="ElementShortName">sim_spm02[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm02[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm03" type="array">
+         <obj_property name="ElementShortName">sim_spm03[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm03[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm04" type="array">
+         <obj_property name="ElementShortName">sim_spm04[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm04[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm05" type="array">
+         <obj_property name="ElementShortName">sim_spm05[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm05[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm06" type="array">
+         <obj_property name="ElementShortName">sim_spm06[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm06[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm07" type="array">
+         <obj_property name="ElementShortName">sim_spm07[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm07[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm08" type="array">
+         <obj_property name="ElementShortName">sim_spm08[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm08[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm09" type="array">
+         <obj_property name="ElementShortName">sim_spm09[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm09[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm0A" type="array">
+         <obj_property name="ElementShortName">sim_spm0A[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm0A[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm0B" type="array">
+         <obj_property name="ElementShortName">sim_spm0B[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm0B[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm0C" type="array">
+         <obj_property name="ElementShortName">sim_spm0C[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm0C[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm0D" type="array">
+         <obj_property name="ElementShortName">sim_spm0D[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm0D[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm0E" type="array">
+         <obj_property name="ElementShortName">sim_spm0E[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm0E[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm0F" type="array">
+         <obj_property name="ElementShortName">sim_spm0F[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm0F[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm10" type="array">
+         <obj_property name="ElementShortName">sim_spm10[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm10[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm11" type="array">
+         <obj_property name="ElementShortName">sim_spm11[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm11[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm12" type="array">
+         <obj_property name="ElementShortName">sim_spm12[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm12[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm13" type="array">
+         <obj_property name="ElementShortName">sim_spm13[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm13[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm14" type="array">
+         <obj_property name="ElementShortName">sim_spm14[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm14[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm15" type="array">
+         <obj_property name="ElementShortName">sim_spm15[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm15[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm16" type="array">
+         <obj_property name="ElementShortName">sim_spm16[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm16[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm17" type="array">
+         <obj_property name="ElementShortName">sim_spm17[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm17[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm18" type="array">
+         <obj_property name="ElementShortName">sim_spm18[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm18[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm19" type="array">
+         <obj_property name="ElementShortName">sim_spm19[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm19[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm1A" type="array">
+         <obj_property name="ElementShortName">sim_spm1A[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm1A[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm1B" type="array">
+         <obj_property name="ElementShortName">sim_spm1B[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm1B[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm1C" type="array">
+         <obj_property name="ElementShortName">sim_spm1C[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm1C[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm1D" type="array">
+         <obj_property name="ElementShortName">sim_spm1D[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm1D[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm1E" type="array">
+         <obj_property name="ElementShortName">sim_spm1E[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm1E[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm1F" type="array">
+         <obj_property name="ElementShortName">sim_spm1F[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm1F[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm20" type="array">
+         <obj_property name="ElementShortName">sim_spm20[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm20[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm21" type="array">
+         <obj_property name="ElementShortName">sim_spm21[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm21[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm22" type="array">
+         <obj_property name="ElementShortName">sim_spm22[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm22[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm23" type="array">
+         <obj_property name="ElementShortName">sim_spm23[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm23[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm24" type="array">
+         <obj_property name="ElementShortName">sim_spm24[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm24[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm25" type="array">
+         <obj_property name="ElementShortName">sim_spm25[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm25[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm26" type="array">
+         <obj_property name="ElementShortName">sim_spm26[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm26[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm27" type="array">
+         <obj_property name="ElementShortName">sim_spm27[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm27[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm28" type="array">
+         <obj_property name="ElementShortName">sim_spm28[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm28[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm29" type="array">
+         <obj_property name="ElementShortName">sim_spm29[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm29[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm2A" type="array">
+         <obj_property name="ElementShortName">sim_spm2A[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm2A[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm2B" type="array">
+         <obj_property name="ElementShortName">sim_spm2B[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm2B[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm2C" type="array">
+         <obj_property name="ElementShortName">sim_spm2C[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm2C[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm2D" type="array">
+         <obj_property name="ElementShortName">sim_spm2D[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm2D[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm2E" type="array">
+         <obj_property name="ElementShortName">sim_spm2E[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm2E[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm2F" type="array">
+         <obj_property name="ElementShortName">sim_spm2F[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm2F[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm30" type="array">
+         <obj_property name="ElementShortName">sim_spm30[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm30[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm31" type="array">
+         <obj_property name="ElementShortName">sim_spm31[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm31[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm32" type="array">
+         <obj_property name="ElementShortName">sim_spm32[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm32[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm33" type="array">
+         <obj_property name="ElementShortName">sim_spm33[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm33[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm34" type="array">
+         <obj_property name="ElementShortName">sim_spm34[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm34[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm35" type="array">
+         <obj_property name="ElementShortName">sim_spm35[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm35[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm36" type="array">
+         <obj_property name="ElementShortName">sim_spm36[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm36[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm37" type="array">
+         <obj_property name="ElementShortName">sim_spm37[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm37[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm38" type="array">
+         <obj_property name="ElementShortName">sim_spm38[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm38[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm39" type="array">
+         <obj_property name="ElementShortName">sim_spm39[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm39[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm3A" type="array">
+         <obj_property name="ElementShortName">sim_spm3A[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm3A[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm3B" type="array">
+         <obj_property name="ElementShortName">sim_spm3B[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm3B[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm3C" type="array">
+         <obj_property name="ElementShortName">sim_spm3C[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm3C[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm3D" type="array">
+         <obj_property name="ElementShortName">sim_spm3D[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm3D[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm3E" type="array">
+         <obj_property name="ElementShortName">sim_spm3E[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm3E[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/turfio_hski2c_tb/uut/u_picoblaze/sim_spm3F" type="array">
+         <obj_property name="ElementShortName">sim_spm3F[7:0]</obj_property>
+         <obj_property name="ObjectShortName">sim_spm3F[7:0]</obj_property>
+      </wvobject>
+   </wvobject>
+   <wvobject fp_name="/turfio_hski2c_tb/uut/address" type="array">
+      <obj_property name="ElementShortName">address[11:0]</obj_property>
+      <obj_property name="ObjectShortName">address[11:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turfio_hski2c_tb/uut/u_prom/dbg_instr" type="array">
+      <obj_property name="ElementShortName">dbg_instr[383:0]</obj_property>
+      <obj_property name="ObjectShortName">dbg_instr[383:0]</obj_property>
+      <obj_property name="Radix">ASCIIRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turfio_hski2c_tb/uut/in_port" type="array">
+      <obj_property name="ElementShortName">in_port[7:0]</obj_property>
+      <obj_property name="ObjectShortName">in_port[7:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turfio_hski2c_tb/uut/out_port" type="array">
+      <obj_property name="ElementShortName">out_port[7:0]</obj_property>
+      <obj_property name="ObjectShortName">out_port[7:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turfio_hski2c_tb/uut/port_id" type="array">
+      <obj_property name="ElementShortName">port_id[7:0]</obj_property>
+      <obj_property name="ObjectShortName">port_id[7:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turfio_hski2c_tb/uut/bram_data" type="array">
+      <obj_property name="ElementShortName">bram_data[7:0]</obj_property>
+      <obj_property name="ObjectShortName">bram_data[7:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turfio_hski2c_tb/uut/bram_addr" type="array">
+      <obj_property name="ElementShortName">bram_addr[10:0]</obj_property>
+      <obj_property name="ObjectShortName">bram_addr[10:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turfio_hski2c_tb/uut/write_strobe" type="logic">
+      <obj_property name="ElementShortName">write_strobe</obj_property>
+      <obj_property name="ObjectShortName">write_strobe</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turfio_hski2c_tb/uut/k_write_strobe" type="logic">
+      <obj_property name="ElementShortName">k_write_strobe</obj_property>
+      <obj_property name="ObjectShortName">k_write_strobe</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turfio_hski2c_tb/uut/read_strobe" type="logic">
+      <obj_property name="ElementShortName">read_strobe</obj_property>
+      <obj_property name="ObjectShortName">read_strobe</obj_property>
+   </wvobject>
+   <wvobject fp_name="/turfio_hski2c_tb/uut/interrupt" type="logic">
+      <obj_property name="ElementShortName">interrupt</obj_property>
+      <obj_property name="ObjectShortName">interrupt</obj_property>
+   </wvobject>
+</wave_config>

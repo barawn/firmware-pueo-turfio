@@ -68,3 +68,8 @@ hdl/surf/turfio_cmd_splice.sv
 firmware-pueo-common/include/rackbus.vh
 hdl/surfturf/surfturf_register_core.sv
 firmware-pueo-common/hdl/pueo_turfio_command_decoder.sv
+hdl/jtaguser4/jtaguser4.sv
+hdl/uart/uart_retime.sv
+hdl/surfturf/surf_live_detector.sv
+hdl/hski2c/kcpsm6.vhd
+src/pb_turfio.v

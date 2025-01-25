@@ -21,3 +21,6 @@ ip/clock/sys_clk_generator/sys_clk_generator.xci
 ip/debug/turf_cin_ila/turf_cin_ila.xci
 ip/debug/turfio_cmd_splice_ila/turfio_cmd_splice_ila.xci
 ip/debug/turfwb_ila/turfwb_ila.xci
+ip/uart/uart_distfifo/uart_distfifo.xci
+ip/debug/uart_ila/uart_ila.xci
+ip/hsk/xadc_temp/xadc_temp.xci
