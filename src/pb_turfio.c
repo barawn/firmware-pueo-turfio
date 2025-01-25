@@ -911,6 +911,7 @@ void parse_serial() {
   input(TURFIO_BASE+2, &s9);
   output(PACKET_DATA, s9);
   input(TURFIO_BASE+3, &curTmp);
+  output(PACKET_DATA+1, curTmp);
   s9 += curTmp;
   // now loop through SURFs
   curPtr = PACKET_DATA+2;
