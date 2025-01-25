@@ -6,6 +6,8 @@
 module hski2c_top(
         input wb_clk_i,
         input wb_rst_i,
+        // I DON'T KNOW IF I'LL ADD ANYTHING ELSE HERE
+        // WHO KNOWS
         `TARGET_NAMED_PORTS_WB_IF( wb_ , 12, 32),
         // this isn't really a tristate.
         // it allows either housekeeping or wishbone
@@ -16,9 +18,13 @@ module hski2c_top(
         
         input [1:0] CONF,
         input HSK_RX,
-        output HSK_TX,        
-        inout F_SDA,
-        inout F_SCL,
+        output HSK_TX,
+
+        input sda_i,
+        output sda_t,
+        input scl_i,
+        output scl_t,
+        
         input I2C_RDY        
     );
     parameter SIM_FAST = "FALSE";
@@ -125,14 +131,14 @@ module hski2c_top(
     // 1            X               1               |   hsk_bram_addr
     wire packet_bit6 = (picoblaze_bank) ? bankB_bram_addr : bankA_bram_addr;
     wire hsk_bit6 = write_strobe ^ (~hsk_bram_addr);
-    wire bram_bit6 = (port_id[6]) ? hsk_bit6 : packet_bit6;
+    wire bram_bit6 = (kport_id[6]) ? hsk_bit6 : packet_bit6;
      
     reg sda_tristate = 1;
-    reg scl_tristate = 1;
-    wire sda_in;
-    wire scl_in;
-    IOBUF u_sda(.IO(F_SDA),.I(1'b0),.O(sda_in),.T(sda_tristate));
-    IOBUF u_scl(.IO(F_SCL),.I(1'b0),.O(scl_in),.T(scl_tristate));
+    reg scl_tristate = 1;    
+    wire sda_in = sda_i;
+    wire scl_in = scl_i;    
+    assign sda_t = sda_tristate;
+    assign scl_t = scl_tristate;
 
     // this DOES NOT MATCH HELIX's TOF I2C because this version is FASTER
     // using carry hacks.
@@ -147,6 +153,7 @@ module hski2c_top(
     
     // holds PicoBlaze in reset
     reg processor_reset = 0;
+    reg ack = 0;
 
     localparam [7:0] UART_PORT =    8'h08; // matches 8 and 9 on write or 8 and A on read
     localparam [7:0] CTLSTAT_PORT = 8'h0B; // matches A and B on write or 9 and B on read
@@ -247,7 +254,12 @@ module hski2c_top(
             hsk_bram_addr <= out_port[0];
         end
         
-        processor_reset <= wb_rst_i;
+        // OK OK MAKE THIS A REGISTER NOW
+        if (wb_cyc_i && wb_stb_i && wb_we_i && ack && wb_sel_i[0])
+            processor_reset <= wb_dat_i[0];
+
+        ack <= wb_cyc_i && wb_stb_i;
+        
         // I2C init does this too, but this forces them into tristate if we hold things in reset
         if (processor_reset) begin
             sda_tristate <= 1;
@@ -332,8 +344,8 @@ module hski2c_top(
 //    assign cobs_valid = 0;
 //    assign cobs_in = 8'h00;
 //    assign our_id = 8'h40;
-    assign wb_dat_o = {32{1'b0}};
-    assign wb_ack_o = wb_cyc_i && wb_stb_i;
+    assign wb_dat_o = { {31{1'b0}}, processor_reset };
+    assign wb_ack_o = ack && wb_cyc_i;
     assign wb_err_o = 1'b0;
     assign wb_rty_o = 1'b0;
 endmodule
