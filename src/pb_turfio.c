@@ -1437,7 +1437,7 @@ void cobsEncode() {
   // start at the beginning
   bufPointer = PACKET_BASE;
   // calculate end pointer (1 after last byte - where the null terminator would go)
-  fetch(PACKET_LEN,&endPointer);
+  input(PACKET_LEN,&endPointer);
   endPointer += (PACKET_BASE+5);
   // find the position of the first zero
   cobsFindZero();
