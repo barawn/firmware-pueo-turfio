@@ -32,7 +32,9 @@ set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN D14} [get_ports DBG_LED]
 
 ## turf serial.
 set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN D15} [get_ports F_TTX]
-set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN B15} [get_ports TRX]
+# this is SDA anyway so the pull shouldn't matter? I hope?
+set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN B15 PULLTYPE PULLUP} [get_ports TRX]
+# this is pulled down on the board
 set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN D9} [get_ports TCTRL_B]
 
 ## SPI (cclk is internal)
@@ -147,7 +149,8 @@ set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN T17} [get_ports {DOUT_P[1]}]
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN U17} [get_ports {DOUT_N[1]}]
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN U14} [get_ports {COUT_N[0]}]
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN V14} [get_ports {COUT_P[0]}]
-set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN V12} [get_ports {DOUT_P[0]}]
+# just try this, who cares
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN V12 PULLTYPE PULLUP} [get_ports {DOUT_P[0]}]
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN V13} [get_ports {DOUT_N[0]}]
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN T12} [get_ports {COUT_P[2]}]
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN U12} [get_ports {COUT_N[2]}]
@@ -226,6 +229,8 @@ set_property CFGBVS VCCO [current_design]
 set_property CONFIG_VOLTAGE 2.5 [current_design]
 set_property BITSTREAM.CONFIG.SPI_32BIT_ADDR NO [current_design]
 set_property BITSTREAM.CONFIG.SPI_BUSWIDTH 2 [current_design]
+
+set_param iconstr.diffPairPulltype opposite
 
 # The debug_hub stuff needs to be in the tcl version so it can dodge
 # it if it doesn't exist.
