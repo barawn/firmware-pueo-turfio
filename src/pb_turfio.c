@@ -979,16 +979,12 @@ void parse_serial() {
   store(scratch_PMBus_WPtr, curTmp);
   // we know curTmp2 is 0 because of above
   store(scratch_PMBus_RPtr, curTmp2);
-  
-  // build up the packet (just # of bytes)
-  output(PACKET_DATA, curTmp);
-  // we can calc our checksum easier, so do it here
-  curTmp2 -= curTmp;
-  output(PACKET_DATA+1, curTmp2);
-  // packet is complete at this point, just need to memcpy.
-  // note we use goodPacket not finishPacket
-  
-  // memcpy curTmp bytes from PACKET_DATA to scratch_PMBus_BASE
+
+  // curTmp is the number of bytes
+  // save it to reuse later
+  s7 = curTmp;
+
+  // now memcpy
   s4 = PACKET_DATA;
   s5 = scratch_PMBus_BASE;
   do {
@@ -996,7 +992,15 @@ void parse_serial() {
     store(s5, curTmp2);
     s4++;
     s5++;
-    } while (--curTmp);
+  } while (--curTmp);
+  
+  // and build up the packet (just # of bytes)
+  // we know curTmp's zero now, so we can generate
+  // checksum by subtracting # of bytes
+  curTmp -= s7;  
+  output(PACKET_DATA, s7);
+  output(PACKET_DATA+1, curTmp);
+  // done, checksum's already calculated
   goto goodPacket;
 
  PMBus_Read:
