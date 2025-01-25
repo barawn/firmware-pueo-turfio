@@ -7,12 +7,13 @@
 // setup for interfacing with the flight computer. Serial port debug interface is based
 // on the RADIANT comms.
 //
+// Now with TURFy housekeeping!
 module pueo_turfio #( parameter NSURF=7, 
                       parameter SIMULATION="FALSE",
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
-                      parameter [3:0] VER_MINOR = 4'd0,
-                      parameter [7:0] VER_REV =   8'd54,
+                      parameter [3:0] VER_MINOR = 4'd1,
+                      parameter [7:0] VER_REV =   8'd0,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -64,6 +65,9 @@ module pueo_turfio #( parameter NSURF=7,
         // I2C
         inout F_SDA,
         inout F_SCL,
+        // I'm not going to worry about I2C_RDY for now because
+        // I'm just going to assume if the TURF is I2C-ing
+        // someone put the housekeeping processor in reset.
         input I2C_RDY,
         
         // LMK data output
@@ -192,30 +196,41 @@ module pueo_turfio #( parameter NSURF=7,
     //////////////////////////////////////////////
     // UART GOOFINESS                           //
     //////////////////////////////////////////////    
+
+    // user4_gpo[0]     tctrl_b     HSK path
+    // 0                0           TRX -> uart_to_crate , uart_from_crate -> F_TTX
+    // 1                X           DBG_RX -> uart_to_crate, uart_from_crate ->  DBG_TX
+    // 0                1           1 -> uart_to_crate, uart_from_crate -> open
+
+    // these combine the INTERNAL housekeeping with the SURF housekeeping
+    wire uart_from_crate;
+    wire uart_to_crate;
+
     wire uart_from_turf;
     wire uart_to_turf;
     
     wire uart_from_surf;
-    wire uart_to_surf;
+    wire uart_to_surf = uart_to_crate;
     
+    wire uart_to_hsk = uart_to_crate;
+    wire uart_from_hsk;
+    // open-drain
+    assign uart_from_crate = uart_from_surf && uart_from_hsk;
+        
     wire uart_from_boardman;
     wire uart_to_boardman;
         
     // DBG uart ->boardman uart only when user4_gpo[0] is low, otherwise it's crate
     assign uart_to_boardman = (user4_gpo[0]) ? 1'b0 : DBG_RX;
-    assign DBG_TX = (user4_gpo[0]) ? uart_from_surf: uart_from_boardman;
+    assign DBG_TX = (user4_gpo[0]) ? uart_from_crate : uart_from_boardman;
     // uart from turf <-> surf only when TCTRL_B is low and user4_gpo[0] is low
-    assign uart_from_turf = (!TCTRL_B) ? TRX : 1'b0;
-    assign uart_to_turf = (!user4_gpo[0]) ? uart_from_surf : 1'b0;
+    // uarts IDLE HIGH so set to 1 when not valid
+    assign uart_from_turf = (!TCTRL_B) ? TRX : 1'b1;
+    assign uart_to_turf = (!user4_gpo[0]) ? uart_from_crate : 1'b0;
     
-    assign uart_to_surf = (user4_gpo[0]) ? DBG_RX : uart_from_turf;
-    // retimed using an 0.5 Mbaud baud rate and a 1 us risetime.
-    uart_retime #(.SAMPLE_POINT(120),
-                  .BAUD_PERIOD(160)) u_retimer(.clk(init_clk),
-                                               .RX(SURF_TX),
-                                               .RX_RETIMED(uart_from_surf));
+    assign uart_to_crate = (user4_gpo[0]) ? DBG_RX : uart_from_turf;
                                                
-    assign SURF_RX = uart_to_surf;
+    assign SURF_RX = uart_to_crate;
     assign F_TTX = uart_to_turf;
 
     //////////////////////////////////////////////
@@ -250,7 +265,25 @@ module pueo_turfio #( parameter NSURF=7,
     clk200_wiz u_clk200(.clk_in1(init_clk_in),.reset(1'b0),.clk_out1(clk200),.clk_out2(init_clk),.locked(clk200_locked));
     IDELAYCTRL u_idelayctrl(.RST(!clk200_locked),.REFCLK(clk200));
 
-
+    //////////////////////////////////////////////////////////////////////////////////
+    //                              HOUSEKEEPING                                    //
+    //////////////////////////////////////////////////////////////////////////////////
+    
+    // housekeeping shares control of enable and I2C (horribly)
+    wire hsk_enable_t;
+    wire hsk_enable_i;
+    wire hsk_enable_o;
+    wire sda_i;
+    wire sda_t;
+    wire scl_i;
+    wire scl_t;
+    
+    // retimed using an 0.5 Mbaud baud rate and a 1 us risetime.
+    uart_retime #(.SAMPLE_POINT(120),
+                  .BAUD_PERIOD(160)) u_retimer(.clk(init_clk),
+                                               .RX(SURF_TX),
+                                               .RX_RETIMED(uart_from_surf));
+                                                                                             
     //////////////////////////////////////////////////////////////////////////////////
     //                               WISHBONE BUS                                   //
     //////////////////////////////////////////////////////////////////////////////////
@@ -338,6 +371,23 @@ module pueo_turfio #( parameter NSURF=7,
     `DEFINE_WB_IF( hski2c_ , 12, 32);
     `DEFINE_WB_IF( aurora_ , 12, 32);
     
+    // ADD HSKI2C HERE
+    hski2c_top u_hsk(.wb_clk_i(wb_clk),
+                     .wb_rst_i(1'b0),
+                     `CONNECT_WBS_IFM( wb_ , hski2c_ ),
+                     .hsk_enable_i(hsk_enable_i),
+                     .hsk_enable_o(hsk_enable_o),
+                     .hsk_enable_t(hsk_enable_t),
+                     .sda_i(sda_i),
+                     .sda_t(sda_t),
+                     .scl_i(scl_i),
+                     .scl_t(scl_t),
+                     .CONF(CONF),
+                     .HSK_RX(uart_to_hsk),
+                     .HSK_TX(uart_from_hsk),
+                     .I2C_RDY(I2C_RDY));
+                     
+    
     // Command path data
     wire [31:0] turf_command;
     // Command path data is valid
@@ -366,8 +416,8 @@ module pueo_turfio #( parameter NSURF=7,
     // Clock time
     wire [47:0] sysclk_count;
 
-    // Slave stubs    
-    wbs_dummy #(.ADDRESS_WIDTH(12),.DATA_WIDTH(32)) u_hski2c_stub( `CONNECT_WBS_IFM(wb_ , hski2c_) );
+    // WE HAVE NO MORE STUBS!!
+
     // Interconnect, now reduced.
     turfio_intercon #(.DEBUG("FALSE"))
         u_intercon( .clk_i(wb_clk),
