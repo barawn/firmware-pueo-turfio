@@ -1035,7 +1035,7 @@ void parse_serial() {
   fetch(scratch_PRESENT, &curTmp);
   s9 += curTmp;
   output(PACKET_DATA+1, curTmp);
-  curPtr = PACKET_DATA+1;
+  curPtr = PACKET_DATA+2;
   // we don't need a finishPacket jump
   // we're already there
   
