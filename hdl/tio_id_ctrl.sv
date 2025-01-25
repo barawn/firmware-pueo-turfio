@@ -40,6 +40,10 @@ module tio_id_ctrl(
         // Only needs to be done once.
         output       en_ext_sync_o,
         
+        output       hsk_enable_i,
+        input        hsk_enable_t,
+        input        hsk_enable_o,
+        
         output       enable_crate_o,
         output       enable_3v3_o,
         input [1:0]  crate_conf_i,
@@ -99,6 +103,8 @@ module tio_id_ctrl(
     reg [7:0] clock_offset = {8{1'b0}};
 
     reg enable_crate = 1;
+    assign hsk_enable_i = enable_crate;
+    
     reg enable_3v3 = 1;
 
     (* IOB = "TRUE" *)
@@ -184,9 +190,13 @@ module tio_id_ctrl(
         else dna_shift <= 0;
         if (sel_dna && wb_we_i && wb_ack_o && wb_sel_i[3]) dna_read <= wb_dat_i[31];
         else dna_read <= 0;
-        
+        // WISHBONE takes precedence over housekeeping
         if (sel_ctrlstat && wb_we_i && wb_ack_o && wb_sel_i[0]) begin
             enable_crate <= wb_dat_i[2];
+        end else if (!hsk_enable_t) begin
+            enable_crate <= hsk_enable_o;
+        end            
+        if (sel_ctrlstat && wb_we_i && wb_ack_o && wb_sel_i[0]) begin                    
             enable_3v3 <= wb_dat_i[3];
         end        
 
