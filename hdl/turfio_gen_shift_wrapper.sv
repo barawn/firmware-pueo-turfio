@@ -12,8 +12,12 @@ module turfio_gen_shift_wrapper(
         input TDO,
         output TCK,
         output TMS,
-        // TEMPORARY TEMPORARY TEMPORARY
-        // LET'S JUST HOOK UP THE I2C PORT VIA GPIOS
+        // I2C PORT ALSO IS CONTROLLABLE FROM HSK
+        // NEVER USE THESE UNLESS THE HSK IS IN RESET!!
+        output sda_in_o,
+        output scl_in_o,
+        input sda_t_i,
+        input scl_t_i,
         inout F_SDA,
         inout F_SCL,
         // LMK ports
@@ -64,9 +68,16 @@ module turfio_gen_shift_wrapper(
     assign gen_gpio_i[4:0] = {5{1'b0}};
 
     // TEMPORARY
-    IOBUF u_sda(.IO(F_SDA),.I(gen_gpio_o[5]),.O(gen_gpio_i[5]),.T(gen_gpio_t[5]));
-    IOBUF u_scl(.IO(F_SCL),.I(gen_gpio_o[6]),.O(gen_gpio_i[6]),.T(gen_gpio_t[6]));
-
+    // gen_gpio_t[6:5] START OFF high by default (see below)
+    // we combine the two tristate signals like a wire-or
+    // so if EITHER of the tristates is low the output is low
+    wire sda_tri = gen_gpio_t[5] && sda_t_i;
+    wire scl_tri = gen_gpio_t[6] && scl_t_i;
+    assign sda_i_o = gen_gpio_i[5];
+    assign scl_i_o = gen_gpio_i[6];
+    IOBUF u_sda(.IO(F_SDA),.I(gen_gpio_o[5]),.O(gen_gpio_i[5]),.T(sda_tri));
+    IOBUF u_scl(.IO(F_SCL),.I(gen_gpio_o[6]),.O(gen_gpio_i[6]),.T(scl_tri));
+    
     //localparam [NUM_GPIO-1:0] INVERT_GPIO = 5'b10010;
     localparam [NUM_GPIO-1:0] INVERT_GPIO = 7'b0010010;
 
