@@ -26,6 +26,7 @@ module surf_interface_v2 #(parameter RXCLK_INV = 1'b0,
         input DOUT_P,
         input DOUT_N,
 
+        output [7:0] dout_o,
                 
         output CIN_P,
         output CIN_N,
