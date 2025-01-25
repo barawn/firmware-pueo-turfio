@@ -804,17 +804,16 @@ void parse_serial() {
 
   // verify data checksum
   s5 = 0;
-  // set s4 to the checksum byte to start
-  s4 += PACKET_DATA;
-  // save it
+  // set curPtr to checksum byte by adding length + PACKET_DATA
   curPtr = s4;
+  curPtr += PACKET_DATA;
   // now add everything until we've hit PACKET_DATA
   // overflows naturally get dropped.
   do {
     input(curPtr, &s6);
     s5 += s6;
-    s4--;
-  } while (s4 != (PACKET_DATA-1));
+    curPtr--;
+  } while (curPtr != (PACKET_DATA-1));
 
   // NOPE NO NO NO - BAD CHECKSUM
   if (s5 != 0) goto errorPacket;
