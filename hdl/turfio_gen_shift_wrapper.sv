@@ -31,6 +31,8 @@ module turfio_gen_shift_wrapper(
         input SPI_MISO                        
     );
     
+    parameter DEBUG = "TRUE";
+    
     localparam DEV_JTAG = 0;
     localparam DEV_LMK = 1;
     localparam DEV_SPI = 2;
@@ -84,6 +86,10 @@ module turfio_gen_shift_wrapper(
     localparam [NUM_GPIO-1:0] GPIO_DEFAULT_TRI = (1 << 5) | (1 << 6) | (1 << GPIO_TCTRL_B);
     localparam [NUM_GPIO-1:0] GPIO_DEFAULT_OUT = (1 << GPIO_JTAG_OE);
     
+    
+    // DIN/DOUT IS FROM THE DEVICE POINT OF VIEW
+    // DIN = DEVICE INPUT (output from us)
+    // DOUT = DEVICE OUTPUT (input to us)
     gen_shift_if #(.DEBUG("FALSE"),
                    .NUM_DEVICES(3),
                    .USE_CLK(    8'b0000_0011),
@@ -137,10 +143,30 @@ module turfio_gen_shift_wrapper(
     assign LMKOE = gen_gpio_t[GPIO_LMKOE] ? 1'bZ : gen_gpio_o[GPIO_LMKOE];
     
     // SPI
-    assign SPI_MOSI = gen_din[DEV_SPI];
-    assign gen_dout[DEV_SPI] = SPI_MOSI;
-    assign SPI_CS_B = gen_gpio_t[GPIO_SPI_CS_B] ? 1'bZ : gen_gpio_o[GPIO_SPI_CS_B];    
+    assign SPI_MOSI = gen_din[DEV_SPI];     // OUTPUT IS THIS
+    assign gen_dout[DEV_SPI] = SPI_MISO;    // INPUT IS THIS
+    assign SPI_CS_B = gen_gpio_t[GPIO_SPI_CS_B] ? 1'bZ : gen_gpio_o[GPIO_SPI_CS_B];
+
+    wire csb_dbg = gen_gpio_t[GPIO_SPI_CS_B] || gen_gpio_o[GPIO_SPI_CS_B];
+    wire clk_dbg = gen_cclk[DEV_SPI];
+    tgs_ila u_ila(.clk(wb_clk_i),
+                  .probe0(SPI_MISO),
+                  .probe1(SPI_MOSI),
+                  .probe2(csb_dbg),
+                  .probe3(clk_dbg));
     
+    // sigh nothing ever works
+//    generate
+//        if (DEBUG == "TRUE") begin : ILA
+//            wire csb_dbg = gen_gpio_t[GPIO_SPI_CS_B] ? 1'b1 : gen_gpio_o[GPIO_SPI_CS_B];
+//            tgs_ila u_ila(.clk(wb_clk_i),
+//                          .probe0(SPI_MISO),
+//                          .probe1(SPI_MOSI),
+//                          .probe2(csb_dbg),
+//                          .probe3(gen_cclk[DEV_SPI]));
+//        end
+//    endgenerate
+
     assign wb_err_o = 1'b0;
     assign wb_rty_o = 1'b0;
     
