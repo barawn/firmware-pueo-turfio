@@ -81,7 +81,6 @@ module turfio_cmd_splice(
     reg       holding_mode1 = 0;
     reg       holding_fwu = 0;
     reg       holding_mark = 0;      // holding either of them. just used to ack
-    reg       tfio_fw_ack = 0;
     reg       tfio_fw_marked = 0;
     // so here what happens is:
     // -> if command_precapture: if (mode1_tvalid) mode1data_holding <= mode1_tdata;
