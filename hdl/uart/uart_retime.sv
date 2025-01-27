@@ -71,7 +71,7 @@
 // period.
 module uart_retime #(parameter SAMPLE_POINT=120,
                      parameter BAUD_PERIOD=160,
-                     parameter DEBUG = "TRUE")(
+                     parameter DEBUG = "FALSE")(
         input clk,
         input RX,
         output RX_RETIMED
