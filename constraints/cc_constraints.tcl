@@ -152,6 +152,9 @@ set_cc_paths $sysclk $initclk $clktypelist
 set_cc_paths $userclk $initclk $clktypelist
 set_cc_paths $initclk $userclk $clktypelist
 
+
+set_param iconstr.diffPairPulltype opposite
+
 set hub [get_debug_cores dbg_hub -quiet]
 if { [llength $hub] > 0 } {
     set_property C_CLK_INPUT_FREQ_HZ 300000000 [get_debug_cores dbg_hub]

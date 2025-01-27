@@ -230,7 +230,6 @@ set_property CONFIG_VOLTAGE 2.5 [current_design]
 set_property BITSTREAM.CONFIG.SPI_32BIT_ADDR NO [current_design]
 set_property BITSTREAM.CONFIG.SPI_BUSWIDTH 2 [current_design]
 
-set_param iconstr.diffPairPulltype opposite
 
 # The debug_hub stuff needs to be in the tcl version so it can dodge
 # it if it doesn't exist.
@@ -240,7 +239,4 @@ set_param iconstr.diffPairPulltype opposite
 #connect_debug_port dbg_hub/clk [get_nets u_clk200/inst/clk_out2_clk200_wiz]
 
 set_property BITSTREAM.CONFIG.USERID 32'h08232024 [current_design]
-set_property C_CLK_INPUT_FREQ_HZ 300000000 [get_debug_cores dbg_hub]
-set_property C_ENABLE_CLK_DIVIDER false [get_debug_cores dbg_hub]
-set_property C_USER_SCAN_CHAIN 1 [get_debug_cores dbg_hub]
-connect_debug_port dbg_hub/clk [get_nets dbg_hub_clk_out2_clk200_wiz]
+
