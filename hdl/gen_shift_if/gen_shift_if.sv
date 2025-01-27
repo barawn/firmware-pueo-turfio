@@ -120,26 +120,20 @@ module gen_shift_if
     // This is the DOUT vector that gets selected by the priority encoder.
     wire [NUM_DEVICES-1:0] dout_vec;
     wire selected_dout;
-    // Generating the selected dout is done in one of two ways.
-    // Either we just do the logical OR of all of them (since deselected ones
-    // are forced to zero) or we choose only the lowest enabled one.
-    // Doing the logical OR is less resources and makes the timing easier.
-    // But we allow for the user to use the lowest enabled one.
-    function [NUM_DEVICES-1:0] dout_onehot;
-        input [NUM_DEVICES-1:0] enabled_devices;
-        reg [NUM_DEVICES-1:0] lowest_enabled;
-        integer i;
-        begin
-            lowest_enabled = {NUM_DEVICES{1'b0}};
-            for (i=0;i<NUM_DEVICES;i=i+1) begin
-                if (enabled_devices[i] && (lowest_enabled != {NUM_DEVICES{1'b0}})) lowest_enabled[i] <= 1'b1;
+    generate
+        if (USE_SINGLE_DOUT == "FALSE") begin : PRI_ENC
+            reg dout_r;
+            always_comb begin
+                dout_r = 0;
+                for (int i=0;i<NUM_DEVICES;i=i+1) begin
+                    if (enable_interface[NUM_DEVICES-1-i] && dout_vec[NUM_DEVICES-1-i]) dout_r = 1;
+                end
             end
-            dout_onehot <= lowest_enabled;
+            assign selected_dout = dout_r;
+        end else begin : GOR
+            assign selected_dout = |dout_vec;
         end
-    endfunction
-    assign selected_dout = (USE_SINGLE_DOUT) ? |(dout_vec & dout_onehot(enable_interface)) :
-                                               |dout_vec;
-    
+    endgenerate    
     // These are the debugs. We only need one of each.
     // We don't have debug GPIOs, just assume those work (ha)
     // (this allows the ILA to be universal)
@@ -162,9 +156,13 @@ module gen_shift_if
           gpio_tri_exp,
           enable_if_exp };
     
+    wire [7:0] dout_to_output = (reverse_bitorder) ? 
+            {dout_reg[0],dout_reg[1],dout_reg[2],dout_reg[3],dout_reg[4],dout_reg[5],dout_reg[6],dout_reg[7]} :
+            dout_reg;
+    
     wire [31:0] data_register =
         { sequence_running, enable_sequence, reverse_bitorder, 2'b00, nbit_count_max,
-          dout_reg, aux_out_reg, din_reg };
+          dout_to_output, aux_out_reg, din_reg };
 
     wire [31:0] register_mux[3:0];
     assign register_mux[0] = module_config_register;
@@ -252,7 +250,11 @@ module gen_shift_if
             if (clk_ce && CLK_STATE_IS_DONE) nbit_count <= nbit_count + 1;
         end else nbit_count <= {3{1'b0}};        
 
-        // Dout capture.
+        // dout capture
+        // this is always captured LSB first and presented reversed if reverse_bitorder is set.
+        // this means that for nbits OTHER than 8 reverse bitorder will end up looking UPSHIFTED
+        // since e.g. for 3 you'll get D2 / D1 / D0 => D0/D1/D2 followed by 5 zeros
+        // c'est la vie. not a huge deal since you bit-select out anyway.
         if (clk_ce && CLK_STATE_IS_DONE) dout_reg[nbit_count] <= selected_dout;        
 
         // Debug logic. Same as below.
