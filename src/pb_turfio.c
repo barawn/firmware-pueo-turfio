@@ -4,7 +4,7 @@
  *
  */
 
-#define PB_TURFIO_VERSION 3
+#define PB_TURFIO_VERSION 4
 
 // We use the stock UART/COBS decoder, but we don't
 // buffer except at the UART level.
@@ -282,6 +282,7 @@
 #define eCurrents 0x13
 #define eEnable 0xC0
 #define ePMBus 0xC1
+#define eReloadFirmware 0xC2
 
 // always 5 bytes
 #define Statistics_LENGTH 5
@@ -839,6 +840,7 @@ void parse_serial() {
   if (curTmp == eStatistics) goto do_Statistics;
   if (curTmp == eEnable) goto do_Enable;
   if (curTmp == ePMBus) goto do_PMBus;
+  if (curTmp == eReloadFirmware) goto do_ReloadFirmware;
   if (curTmp != ePingPong) goto droppedPacket;
  do_PingPong:
   hsk_header();
@@ -921,6 +923,16 @@ void parse_serial() {
   } while (s5 != SURF_IOUT_MAX);
   goto finishPacket;
 
+ do_ReloadFirmware:
+  // maybe check stuff and error at
+  // some point, for now just effing do it
+  input(PACKET_DATA, &s4);
+  input(PACKET_DATA+1, &s5);
+  input(PACKET_DATA+2, &s6);
+  input(PACKET_DATA+3, &s7);
+  icap_reboot();
+  return;
+  
  do_Enable:
   hsk_header();
   input(PACKET_LEN, &curTmp);
@@ -1469,3 +1481,58 @@ void cobsEncode() {
 #undef bufPointer
 #undef endPointer
 #undef nextZero
+
+/////////////////////////////////////////
+//             ICAPPY STUFF            //
+/////////////////////////////////////////
+// eRestart gets sent to TURFIO with   //
+// addr bytes                          //
+/////////////////////////////////////////
+
+// we double-use the packet buffer ports?
+// since we ain't gonna need it, now are
+// we?
+#define ICAP_PORT 0x00
+
+// 28 total instructions, should be fine
+void icap_reboot() {
+  // actually enable the ICAP port
+  curTmp = 0x80;
+  output( GC_PORT, curTmp );
+  // flush
+  outputk( ICAP_PORT, 0xFF );
+  outputk( ICAP_PORT, 0xFF );
+  outputk( ICAP_PORT, 0xFF );
+  outputk( ICAP_PORT, 0xFF );
+  // sync
+  outputk( ICAP_PORT, 0xAA );
+  outputk( ICAP_PORT, 0x99 );
+  outputk( ICAP_PORT, 0x55 );
+  outputk( ICAP_PORT, 0x66 );
+  // noop
+  icap_noop();
+  // wbstar
+  outputk( ICAP_PORT, 0x30);
+  outputk( ICAP_PORT, 0x02);
+  outputk( ICAP_PORT, 0x00);
+  outputk( ICAP_PORT, 0x01);
+  // addr
+  output( ICAP_PORT, s4);
+  output( ICAP_PORT, s5);
+  output( ICAP_PORT, s6);
+  output( ICAP_PORT, s7);
+  // cmd
+  outputk( ICAP_PORT, 0x30);
+  outputk( ICAP_PORT, 0x00);
+  outputk( ICAP_PORT, 0x08);
+  outputk( ICAP_PORT, 0x01);
+  // iprog
+  icap_3zero();
+  outputk( ICAP_PORT, 0x0F);
+ icap_noop:
+  outputk( ICAP_PORT, 0x20 );
+ icap_3zero:
+  outputk( ICAP_PORT, 0x00 );
+  outputk( ICAP_PORT, 0x00 );
+  outputk( ICAP_PORT, 0x00 );
+}

@@ -113,7 +113,27 @@ module hski2c_top(
     // which is why we move !port_id[3] up top. (not really sure if this makes
     // sense but WE'LL SEE)    
     wire [7:0] kport_id = (k_write_strobe) ? {!port_id[3], 3'b000, port_id[3:0] } : port_id;
-        
+    
+    // ICAP handling.
+    // We ultra-sleaze ICAP stuff because we can.
+    // When we get an eRestart command we're going to go away so we don't
+    // need the BRAM anymore, period. So we just flat steal the kport ids for the
+    // BRAM.
+    // ICAP's kinda ouchy because it's a lot of commands.
+    // We use it in 8-bit mode so we don't need any extra registers
+    // Note that we have to do the swizzle-swizzle
+    function [7:0] reverse_byte( input [7:0] inb );
+        integer i;
+        begin
+            for (i=0;i<8;i=i+1) begin : reverse
+                reverse_byte[7-i] = inb[i];
+            end
+        end
+    endfunction
+    
+    reg enable_icap = 0;
+    wire icap_write;
+            
     // bram handling. Bit 6 in the BRAM address comes from our tracked values
     // when we're accessing the packet buffer.
     reg bankA_bram_addr = 0;
@@ -252,6 +272,7 @@ module hski2c_top(
         // general control stuff
         if (gc_write) begin
             hsk_bram_addr <= out_port[0];
+            enable_icap <= out_port[7];
         end
         
         // OK OK MAKE THIS A REGISTER NOW
