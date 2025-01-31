@@ -132,7 +132,15 @@ module hski2c_top(
     endfunction
     
     reg enable_icap = 0;
-    wire icap_write;
+    // Once we enable ICAP there's no going back. The ports no longer matter.
+    wire icap_write = (k_write_strobe || write_strobe);
+    wire [7:0] icap_data = reverse_byte(out_port);
+
+    ICAPE2 #(.ICAP_WIDTH("X8"))
+           u_icap(.CLK(wb_clk_i),
+                  .CSIB( !enable_icap ),
+                  .RDWRB( !icap_write ),
+                  .I(icap_data));
             
     // bram handling. Bit 6 in the BRAM address comes from our tracked values
     // when we're accessing the packet buffer.
