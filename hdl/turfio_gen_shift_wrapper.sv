@@ -75,8 +75,8 @@ module turfio_gen_shift_wrapper(
     // so if EITHER of the tristates is low the output is low
     wire sda_tri = gen_gpio_t[5] && sda_t_i;
     wire scl_tri = gen_gpio_t[6] && scl_t_i;
-    assign sda_i_o = gen_gpio_i[5];
-    assign scl_i_o = gen_gpio_i[6];
+    assign sda_in_o = gen_gpio_i[5];
+    assign scl_in_o = gen_gpio_i[6];
     IOBUF u_sda(.IO(F_SDA),.I(gen_gpio_o[5]),.O(gen_gpio_i[5]),.T(sda_tri));
     IOBUF u_scl(.IO(F_SCL),.I(gen_gpio_o[6]),.O(gen_gpio_i[6]),.T(scl_tri));
     
@@ -150,10 +150,10 @@ module turfio_gen_shift_wrapper(
     wire csb_dbg = gen_gpio_t[GPIO_SPI_CS_B] || gen_gpio_o[GPIO_SPI_CS_B];
     wire clk_dbg = gen_cclk[DEV_SPI];
     tgs_ila u_ila(.clk(wb_clk_i),
-                  .probe0(SPI_MISO),
-                  .probe1(SPI_MOSI),
-                  .probe2(csb_dbg),
-                  .probe3(clk_dbg));
+                  .probe0(sda_in_o),
+                  .probe1(scl_in_o),
+                  .probe2(sda_tri),
+                  .probe3(scl_tri));
     
     // sigh nothing ever works
 //    generate
