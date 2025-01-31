@@ -65,7 +65,7 @@ module surfturf_wrapper_v2 #(
         output [6:0] RXCLK_N                
     );
     
-    localparam [6:0] SURF_DEBUG = 7'b0000011;
+    localparam [6:0] SURF_DEBUG = 7'b0000000;
     
     // our address space is 12 bits
     // we give each module a 6-bit space (64 bytes = 16 32-bit registers).
