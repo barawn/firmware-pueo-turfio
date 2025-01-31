@@ -4,7 +4,7 @@
  *
  */
 
-#define PB_TURFIO_VERSION 4
+#define PB_TURFIO_VERSION 5
 
 // We use the stock UART/COBS decoder, but we don't
 // buffer except at the UART level.
@@ -193,37 +193,20 @@
 #define scratch_DEVICE      0x12
 #define scratch_TIMER_LOW   0x13
 #define scratch_TIMER_HIGH  0x14
-// PMBus buffer.
-// here's how PMBus works for an I2C WRITE
-// housekeeping sends: 0x80 0xD9 (power cycle addr 0x40)
-// parse_housekeeping first checks if *0x17 is zero - returns 0 if not
-// then stores
-// *(0x18) = 0x80 *(0x19) = 0xD9 *(0x17) = 2 *(0x16) = 0
-// and returns 2 (bytes stored in buffer)
-// update_housekeeping in WAIT_IDLE sees non-zero *(0x17)
-// reads *(0x18) - sees zero bit 0
-// writes 0x80, sees ack, writes 0x00 to *0x18 (if NACK stores 0x1)
-// writes 0xD9, sees ack, writes 0x00 to *0x19 (if NACK stores 0x1)
-// writes 2 to *(0x16) and 0 to *(0x17)
-//
-// housekeeping then receives another PMBus command that is EMPTY DATA (rd)
-// it checks *0x16, sees 2
-// reads *(0x18) 0x00, *(0x19) 0x00, sends those two bytes
-// writes *0x16 = 0x00
-// if *0x16 is empty it returns empty
-//
-// a read works similar except the housekeeping command sends e.g.
-// 0x81 0x00 0x00
-// parse_housekeeping writes *(0x18) = 0x81 *(0x19) = 0x0, *(0x1A) = 0x0
-// *0x17 = 3, *0x16 = 0
-// update_housekeeping in WAIT_IDLE sees non-zero *0x17
-// reads *0x18, sees nonzero bit 0
-// writes 0x80, sees ack, writes 0x00 to *0x18
-// reads 8 bits, writes value to *0x19
-// reads 8 bits, writes value to *0x1A
-// writes 3 to *0x16 and 0 to *0x17
-//
-// SO COMPLICATED
+
+// We had to redo how the PMBus command works. Again.
+// A PMBus HSK command consists of
+// <# of following read bytes> <addr> <write bytes>
+// There are 3 nbyte values:
+// number of pending write bytes (including addr)
+// number of pending read bytes (not including addr)
+// number of pending return bytes
+// the serial parser does:
+// read # of read bytes, store in RPtr
+// take size of packet, subtract 1, store in WPtr
+// copy addr+write bytes to scratchpad
+
+#define scratch_PMBus_RetPtr 0x15
 #define scratch_PMBus_RPtr  0x16
 #define scratch_PMBus_WPtr  0x17
 #define scratch_PMBus_BASE  0x18
@@ -265,6 +248,8 @@
 #define I2C_ADDR_SP_START   (scratch_SURF1)
 #define I2C_ADDR_SP_STOP    (scratch_TURFIO)
 #define I2C_SP_BUFFERSTOP   (scratch_I2CBUFFER-1)
+// you ADD this to the above to get back to zero
+#define I2C_SP_CLRVAL       (256 - (I2C_SP_BUFFERSTOP))
 // just constant
 #define I2C_ADDR_TURFIO     (0x48 << 1)
 
@@ -377,6 +362,11 @@ bool_t isr_serial(void)
 void init() {
   outputk( BUFFER_CTRL, HSK_RESET );
   I2C_init();
+  // both lines are now hi-Z
+  // issue a stop just in case someone was an ass
+  // stops are data low, clock low, clock high, data high
+  I2C_stop();
+
   // first, probe-y probe-y. no one's sending us stuff straight
   // at reset anyway.
   // we can use curPacket/curPtr at start
@@ -480,8 +470,9 @@ void update_housekeeping() {
   // default is IDLE_WAIT. PMBus isn't a real state
   // just a goto
  IDLE_WAIT:
-  fetch(scratch_PMBus_WPtr, &curTmp);
-  if (curTmp != 0) goto PMBUS;
+  // check WPtr, store it where it will be used
+  fetch(scratch_PMBus_WPtr, &s7);
+  if (s7 != 0) goto PMBUS;
   // next decrement timer
   fetch(scratch_TIMER_LOW, &curTmp);
   fetch(scratch_TIMER_HIGH, &curTmp2);
@@ -534,8 +525,16 @@ void update_housekeeping() {
   I2C_start();
   s4 = scratch_I2CBUFFER1;
   I2C_user_tx_process();
-  I2C_stop();
 
+  // I *don't think* that I can actually
+  // do a stop/start here.
+  // So we need to consider what state
+  // we're actually at here.
+  // Right now clock is low, data is hi-Z
+  // We can just raise the clock, and then
+  // next time through we do I2C_start
+  // and we're OK.
+  I2C_clk_Z();
   // move to read state and exit
   curTmp = state_SURF_READ_REG;
   store(scratch_STATE, curTmp);  
@@ -657,86 +656,96 @@ void update_housekeeping() {
   // if we're in here we can't be in here
   // realistically longer than a packet.
 
-  // start with the address
+  // ok: our NEW method has 3 pointers
+  // scratch_PMBus_WPtr : number of write bytes in the buffer
+  // scratch_PMBus_RPtr : number of bytes to read
+  // scratch_PMBus_RetPtr : number of bytes in the readout buffer
+  // we always write at least 1 byte (the address)
+
+  // don't need to do this, was already done before we jumped here
+  //fetch(scratch_PMBus_WPtr, &s7);
+  fetch(scratch_PMBus_RPtr, &s8);
+
+#define WPtr s7
+#define RPtr s8
+  
+  // if WPtr is 1, it's either just a check (no read bytes, no data)
+  // or it's read only. if it's read only, just jump forward.
+  if (WPtr != 1) goto WRITE_PMBUS;
+  if (RPtr != 0) goto READ_PMBUS;
+ WRITE_PMBUS:
+  // now copy all the data from scratch_PMBus_BASE to
+  // I2CBUFFER, in reverse (start at I2CBUFFER+WPtr and go backwards)
+  WPtr += scratch_I2CBUFFER-1;
+  curTmp = scratch_PMBus_BASE;
+  do {
+    fetch(curTmp, &curTmp2);
+    store(WPtr, curTmp2);
+    curTmp++;
+    WPtr--;
+  } while (WPtr != (I2C_SP_BUFFERSTOP));
+  // buffer copied for the write bytes
+
+  // get back to our end pointer
+  fetch(scratch_PMBus_WPtr, &s4);
+  s4 += scratch_I2CBUFFER-1;
+  I2C_start();
+  I2C_user_tx_process();
+  // OK - this is AMAZING bullshit
+  // I2C_user_tx_process ends with s4 at
+  // I2C_SP_BUFFERSTOP
+  // you add I2C_SP_CLRVAL to get it to zero
+  // but if C, this becomes 1
+  psm("addcy %1, 225", s4)
+
+  // return the first result : but first store device addr
   fetch(scratch_PMBus_BASE, &curTmp2);
-  if (curTmp2 & 0x1) {
-    // this is a read
-    // I2C_read() wants address stored in scratch_I2CBUFFER1 and
-    // pointer in s6
-    store(scratch_I2CBUFFER1, curTmp2);
-    // curTmp is number of bytes but it includes header
-    s6 = curTmp;
-    // s6 is supposed to be the start pointer, moving backwards
-    s6 += (scratch_I2CBUFFER-1);
-    I2C_read();
-    // check C to store the ack
-    curTmp = 0;
+  // return the first result
+  store(scratch_PMBus_BASE, s4);
+  s4 = 1;
+  store(scratch_PMBus_RetPtr, s4);
+  // do we have any data to write?
 
-    // fetch the number of bytes we wrote
-    fetch(scratch_PMBus_WPtr, &s4);
-    // and null it. we do this here b/c
-    // we've got a zero register (curTmp)
-    store(scratch_PMBus_WPtr, curTmp);
-    // now save the NAK/ACK
-    psm("sla %1", curTmp);
-    store(scratch_PMBus_BASE, curTmp);    
-    // and update the RPtr
-    store(scratch_PMBus_RPtr, s4);
+  // sigh, this is effed up in the compiler somehow
+  // I should be able to do if (RPtr != 0) and bracket
+  // the whole thing, but it doesn't work.
+  if (RPtr == 0) goto FINISH_PMBUS;
+ READ_PMBUS:
+  // store the device address in I2CBUFFER1
+  store(scratch_I2CBUFFER1, curTmp2);
+  // and build up s6
+  s6 = RPtr;
+  s6 += scratch_I2CBUFFER-1;
+  s9 = s6;
+  // now call I2C_read()
+  I2C_read();
+  // I2C_read finishes with s6 at I2C_SP_BUFFERSTOP
+  // so pull the same trick
+  psm("addcy %1, 225", s6);
+  // store the result
+  store(scratch_PMBus_BASE, s6);
+  // store ALL the results
+  curTmp = scratch_PMBus_BASE+1;
+  do {
+    fetch(s9, &curTmp2);
+    store(curTmp, curTmp2);
+    s9--;
+    curTmp++;
+  } while (s9 != I2C_SP_BUFFERSTOP);
+  // we always have 1 more byte than we read (overall value)
+  RPtr++;
+  store(scratch_PMBus_RetPtr, RPtr);
+ FINISH_PMBUS:
+  I2C_stop();
+  curTmp = 0;
+  // clear WPtr/RPtr
+  store(scratch_PMBus_WPtr, curTmp);
+  store(scratch_PMBus_RPtr, curTmp);
 
-    // ok, the only thing left is to memcpy.
-    // WPtr is 0 and RPtr contains # of bytes.
-
-    // from nbytes+scratch_I2CBUFFER-2 downto scratch_I2CBUFFER
-    // to scratch_PMBus_BASE+1
-    // but there's a chance we might already be done
-    s4 += (scratch_I2CBUFFER-2);
-    // s4 is the start pointer
-    s5 = scratch_PMBus_BASE+1;
-    // if *scratch_PMBus_WPtr is 1, this will be skipped
-    while (!(s4 < scratch_I2CBUFFER)) {
-      fetch(s4, &curTmp);
-      store(s5, curTmp);
-      s4--;
-      s5++;
-    }
-    return;
-  } else {
-    // this is a write
-    //
-    // curTmp contains # of bytes to write including
-    // address. e.g. for just the address it's just 0x01
-    // we want to copy from
-    // scratch_PMBus_BASE[0:(curTmp-1)]
-    // to
-    // scratch_I2CBUFFER+(curTmp-1) downto scratch_I2CBUFFER
-    s4 = curTmp;  // e.g. it might be 1
-    s4 += scratch_I2CBUFFER-1; // if it's 1, this is just scratch_I2CBUFFER
-    // this now points one past the end
-    curTmp += scratch_PMBus_BASE;
-    s5 = scratch_PMBus_BASE;
-    s6 = s4;
-    do {
-      fetch(s5, &curTmp2);
-      store(s6, curTmp2);
-      s5++;
-      s6--;
-    } while (s5 != curTmp);
-    I2C_start();
-    I2C_user_tx_process();
-    I2C_stop();
-    s4 = 0;
-    // capture NAK (carry flag)
-    psm("sla %1", s4);
-    // and finish. We only write
-    // the first byte, we don't care
-    // about the others.
-    store(scratch_PMBus_BASE, s4);
-    fetch(scratch_PMBus_WPtr, &s4);
-    store(scratch_PMBus_RPtr, s4);
-    s4 = 0;
-    store(scratch_PMBus_WPtr, s4);
-    return;
-  }
+#undef WPtr
+#undef RPtr
+  
+  return;
  hskNextDevice:
   fetch(scratch_DEVICE, &curTmp);
   if (curTmp == 0) curTmp = 0x80;    
@@ -958,22 +967,15 @@ void parse_serial() {
   goto goodPacket;
 
  do_PMBus:
-  // THE PACKET INTERFACE SHOULD BE STRAIGHTFORWARD
-  // IF A WRITE, CHECK IF scratch_PMBus_WPtr is 0
-  //    IF YES: WRITE DATA TO BUFFER AND UPDATE WPtr/RPtr, RETURN # BYTES
-  //    IF NO: RETURN 0
-  // IF A READ, return scratch_PMBus_RPtr BYTES FROM
-  //    scratch_PMBus_BASE and zero scratch_PMBus_RPtr
-
+  // REWORKED A THIRD TIME!!!
   // flippy flippy
   hsk_header();
   // check if it's a read or write
   input(PACKET_LEN, &curTmp);
+  // STORE THE OUTBOUND PACKET LENGTH HERE
+  outputk( PACKET_LEN_K, 1);
   if (curTmp == 0) goto PMBus_Read;
-
-  // write attempt
-  // store length, it's always 1
-  outputk(PACKET_LEN_K, 1);
+  // curTmp IS NOW NUMBER OF BYTES IN PACKET
   
   // check if we're currently writing
   fetch(scratch_PMBus_WPtr, &curTmp2);
@@ -986,31 +988,36 @@ void parse_serial() {
   goto goodPacket;
 
  PMBus_Write:
-  // no, we're not, so we're going to save data
-  // set WPtr and clear RPtr
-  store(scratch_PMBus_WPtr, curTmp);
+  // INCOMING TRANSACTION!!!
+  
+  // clear RetPtr
   // we know curTmp2 is 0 because of above
-  store(scratch_PMBus_RPtr, curTmp2);
+  store(scratch_PMBus_RetPtr, curTmp2);
 
-  // curTmp is the number of bytes
-  // save it to reuse later
-  s7 = curTmp;
-
-  // now memcpy
-  s4 = PACKET_DATA;
-  s5 = scratch_PMBus_BASE;
+  // Fetch NUMBER OF READ BYTES
+  input(PACKET_DATA, &s7);
+  // Store IN RPtr
+  store(scratch_PMBus_RPtr, s7);
+  // Compute WPtr by subtracting 1 (the # of read bytes byte)
+  curTmp -= 1;
+  store(scratch_PMBus_WPtr, curTmp);
+  // Copy curTmp bytes from packet data + 1 to scratch_PMBus_BASE
+  s4 = scratch_PMBus_BASE;
+  s5 = PACKET_DATA+1;
   do {
-    input(s4, &curTmp2);
-    store(s5, curTmp2);
+    input(s5, &curTmp2);
+    store(s4, curTmp2);
     s4++;
     s5++;
   } while (--curTmp);
+  // DONEZIES
+  // we need to return some non-zero value
+  // so we just return the final scratch pointer
   
-  // and build up the packet (just # of bytes)
   // we know curTmp's zero now, so we can generate
-  // checksum by subtracting # of bytes
-  curTmp -= s7;  
-  output(PACKET_DATA, s7);
+  // checksum by subtracting it
+  curTmp -= s4;
+  output(PACKET_DATA, s4);
   output(PACKET_DATA+1, curTmp);
   // done, checksum's already calculated
   goto goodPacket;
@@ -1018,7 +1025,7 @@ void parse_serial() {
  PMBus_Read:
   // read
   // is there any data to read
-  fetch(scratch_PMBus_RPtr, &curTmp);
+  fetch(scratch_PMBus_RetPtr, &curTmp);
   if (curTmp == 0) {
     // no
     outputk(PACKET_LEN_K, 0);
@@ -1111,6 +1118,11 @@ void hsk_copy4() {
   curPtr++;
 }
 
+////////////////////////////////////////
+// ALL I2C FUNCTIONS USE AT MOST      //
+// s4, s5, s6, sA, sB, curTmp/curTmp2 //
+////////////////////////////////////////
+
 /////////////////////////////
 // I2C OPERATION FUNCTIONS //
 /////////////////////////////
@@ -1179,6 +1191,7 @@ void I2C_Rx_bit() {
   I2C_data_Z();
   I2C_delay_hclk();
   I2C_clk_Z();
+  I2C_delay_short();
   I2C_delay_hclk();
   input(I2C_input_port, curTmp);
   // test will set C here bc I2C_data is a single bit
@@ -1261,6 +1274,8 @@ void I2C_Tx_byte_and_Rx_ACK() {
     output( I2C_output_data, sB);
     I2C_delay_hclk();
     I2C_clk_Z();
+    // we need to up this delay just a touch
+    I2C_delay_short();
     I2C_delay_hclk();
     I2C_clk_Low();
   } while (!C);
@@ -1374,6 +1389,8 @@ void I2C_read_register() {
   // this is a write
   sA |= 0x1;
   I2C_Tx_byte_and_Rx_ACK();
+  // return on NAK
+  if (C) return;
   // now we need to read bytes
   do {
     // read byte
@@ -1400,6 +1417,8 @@ void I2C_read_register() {
     // decrement pointer
     s6--;
   } while (s6 != I2C_SP_BUFFERSTOP);
+  // C will not be set because we'll end on Z
+  
   // make pretty
   I2C_delay_hclk();
   // and stop
