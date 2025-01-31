@@ -15,8 +15,8 @@ module turfio_hski2c_tb;
 
     wire I2C_RDY = 1'b1;
 
-    // this is SURF4
-    adm1278_model #(.I2C_ADR(7'h40),.NAME("surf4"))
+    // this is SURF1
+    adm1278_model #(.I2C_ADR(7'h10),.NAME("surf1"))
         u_surf4(.scl(scl),.sda(sda));    
     adm1176_model #(.I2C_ADR(7'h48),.NAME("turfio")) 
         u_turfio(.scl(scl),.sda(sda));
@@ -205,17 +205,18 @@ module turfio_hski2c_tb;
         #1 uart_write = 0; @(posedge clk);
         #1000000;
     
-        // ePMBus from 00 to 40 sending 0x80 0xD9
-        //    00 40 C1 02 80 D9 A7
-        // 01 07 40 C1 02 80 D9 A7 00
+        // ePMBus from 00 to 40, 0 read bytes, addr 0x20, data 0xD9
+        //    00 40 C1 03 00 20 D9 07
+        // 01 04 40 C1 03 04 20 D9 07 00
         #1 uart_data = 8'h01; uart_write = 1; @(posedge clk);
-        #1 uart_data = 8'h07; uart_write = 1; @(posedge clk);
+        #1 uart_data = 8'h04; uart_write = 1; @(posedge clk);
         #1 uart_data = 8'h40; uart_write = 1; @(posedge clk);
         #1 uart_data = 8'hC1; uart_write = 1; @(posedge clk);
-        #1 uart_data = 8'h02; uart_write = 1; @(posedge clk);
-        #1 uart_data = 8'h80; uart_write = 1; @(posedge clk);
+        #1 uart_data = 8'h03; uart_write = 1; @(posedge clk);
+        #1 uart_data = 8'h04; uart_write = 1; @(posedge clk);
+        #1 uart_data = 8'h20; uart_write = 1; @(posedge clk);
         #1 uart_data = 8'hD9; uart_write = 1; @(posedge clk);
-        #1 uart_data = 8'hA7; uart_write = 1; @(posedge clk);
+        #1 uart_data = 8'h07; uart_write = 1; @(posedge clk);
         #1 uart_data = 8'h00; uart_write = 1; @(posedge clk);
         #1 uart_write = 0; @(posedge clk);
     end
