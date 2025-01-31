@@ -13,7 +13,7 @@ module pueo_turfio #( parameter NSURF=7,
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd1,
-                      parameter [7:0] VER_REV =   8'd4,
+                      parameter [7:0] VER_REV =   8'd10,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -444,6 +444,7 @@ module pueo_turfio #( parameter NSURF=7,
                    .hsk_enable_i(hsk_enable_i),
                    .hsk_enable_o(hsk_enable_o),
                    .hsk_enable_t(hsk_enable_t),
+                                      
                    .enable_crate_o(ENABLE),
                    .enable_3v3_o(EN_3V3),
                    .crate_conf_i(CONF),
@@ -467,6 +468,14 @@ module pueo_turfio #( parameter NSURF=7,
         u_genshift( .wb_clk_i(wb_clk),
                     .wb_rst_i(1'b0),
                     `CONNECT_WBS_IFM( wb_ , genshift_ ),
+                    // the I2C bus is shared between the GPIOs
+                    // in the genshift wrapper and the hski2c
+                    // in order to use it you should STOP the
+                    // hsk processor in the TURFIO before mucking with it
+                    .sda_in_o(sda_i),
+                    .sda_t_i(sda_t),
+                    .scl_in_o(scl_i),
+                    .scl_t_i(scl_t),
                     // DEBUG ONLY
                     .F_SDA(F_SDA),
                     .F_SCL(F_SCL),
