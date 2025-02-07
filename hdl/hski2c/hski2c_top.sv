@@ -16,6 +16,9 @@ module hski2c_top(
         output hsk_enable_o,
         input hsk_enable_i,
         
+        output cratebridge_en_o,
+        input cratebridge_en_i,
+        
         input [1:0] CONF,
         input HSK_RX,
         output HSK_TX,
@@ -131,6 +134,11 @@ module hski2c_top(
         end
     endfunction
     
+    // cratebridge enable bit
+    reg cratebridge_enable = 0;
+    // actual cratebridge state
+    reg cratebridge_enable_actual = 0;
+        
     reg enable_icap = 0;
     // Once we enable ICAP there's no going back. The ports no longer matter.
     wire icap_write = (k_write_strobe || write_strobe);
@@ -220,7 +228,7 @@ module hski2c_top(
     localparam [7:0] GENERAL_CONTROL_PORT = 8'h11;
     
     wire [7:0] general_control;
-    assign general_control = { hsk_enable_i, {6{1'b0}}, hsk_bram_addr };
+    assign general_control = { hsk_enable_i, cratebridge_enable_actual, {5{1'b0}}, hsk_bram_addr };
     wire [7:0] our_id = {3'b010, CONF, 3'b000 };
     wire [7:0] general_control_and_ourid = (port_id[0]) ? general_control : our_id;
 
@@ -280,8 +288,11 @@ module hski2c_top(
         // general control stuff
         if (gc_write) begin
             hsk_bram_addr <= out_port[0];
+            cratebridge_enable <= out_port[6];
             enable_icap <= out_port[7];
         end
+        // the actual is the real state which is combined
+        cratebridge_enable_actual <= cratebridge_en_i;
         
         // OK OK MAKE THIS A REGISTER NOW
         if (wb_cyc_i && wb_stb_i && wb_we_i && ack && wb_sel_i[0])
@@ -308,18 +319,20 @@ module hski2c_top(
     end
     // this is the I2C upper byte timer
     localparam [7:0] HWBUILD = (SIM_FAST == "TRUE") ? 8'h00 : 8'h03;
-    // default
+
+    // Prior to 0.1.11 most of these were WRONG!
+    // these are correct!!
     localparam [7:0] SP_INIT_DF = {8{1'b0}};
     localparam [7:0] SP_INIT_34 = 8'h88;
     localparam [7:0] SP_INIT_35 = 8'h8B;
     localparam [7:0] SP_INIT_36 = 8'h8C;
     localparam [7:0] SP_INIT_37 = 8'h8D;
     localparam [7:0] SP_INIT_38 = {7'h10,1'b0};    // SURF1
-    localparam [7:0] SP_INIT_39 = {7'h11,1'b0};    // SURF2
-    localparam [7:0] SP_INIT_3A = {7'h12,1'b0};    // SURF3
-    localparam [7:0] SP_INIT_3B = {7'h40,1'b0};    // SURF4
+    localparam [7:0] SP_INIT_39 = {7'h40,1'b0};    // SURF2
+    localparam [7:0] SP_INIT_3A = {7'h44,1'b0};    // SURF3
+    localparam [7:0] SP_INIT_3B = {7'h11,1'b0};    // SURF4
     localparam [7:0] SP_INIT_3C = {7'h41,1'b0};    // SURF5
-    localparam [7:0] SP_INIT_3D = {7'h42,1'b0};    // SURF6
+    localparam [7:0] SP_INIT_3D = {7'h45,1'b0};    // SURF6
     localparam [7:0] SP_INIT_3E = {7'h46,1'b0};    // SURF7    
     localparam [7:0] SP_INIT_3F = {7'h48,1'b0};    // TURFIO
     // this was made big enough for the largest scratchpad
@@ -377,4 +390,6 @@ module hski2c_top(
     assign wb_ack_o = ack && wb_cyc_i;
     assign wb_err_o = 1'b0;
     assign wb_rty_o = 1'b0;
+
+    assign cratebridge_en_o = cratebridge_enable;
 endmodule

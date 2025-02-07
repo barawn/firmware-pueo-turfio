@@ -13,7 +13,7 @@ module pueo_turfio #( parameter NSURF=7,
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd1,
-                      parameter [7:0] VER_REV =   8'd10,
+                      parameter [7:0] VER_REV =   8'd11,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -188,7 +188,12 @@ module pueo_turfio #( parameter NSURF=7,
     // Baud rate
     //    localparam BOARDMAN_BAUD = 115200;
     // Up the baudrate, 115,200 is stupidly slow. 80 MHz can generate a 16x oversampled clock fine.
-    localparam BOARDMAN_BAUD = 1000000;
+    // goddamnit eff this, just max it out, baby
+    // this still works with our BRG: it adds 512 each time
+    // higher MIGHT work but then the en_16x_baud isn't a flag
+    // anymore and not sure if that's ok
+    // this is obviously perfect    
+    localparam BOARDMAN_BAUD = 2500000;
 
     // debugging!!
     wire [7:0] user4_gpo;
@@ -202,6 +207,14 @@ module pueo_turfio #( parameter NSURF=7,
     // 1                X           DBG_RX -> uart_to_crate, uart_from_crate ->  DBG_TX
     // 0                1           1 -> uart_to_crate, uart_from_crate -> open
 
+    // if cratebridge_enable is 0, we DO NOT send data
+    // to SURFs OR receive data
+    // EITHER user4 OR hsk can enable crate HSKbus
+    wire cratebridge_enable_hsk;
+    wire cratebridge_enable_user4 = user4_gpo[1];
+    wire cratebridge_enable = cratebridge_enable_hsk || cratebridge_enable_user4;
+    wire hskbus_enable_local = user4_gpo[0];
+    
     // these combine the INTERNAL housekeeping with the SURF housekeeping
     wire uart_from_crate;
     wire uart_to_crate;
@@ -210,19 +223,20 @@ module pueo_turfio #( parameter NSURF=7,
     wire uart_to_turf;
     
     wire uart_from_surf;
-    wire uart_to_surf = uart_to_crate;
+    // gate off uart if cratebridge is disabled
+    wire uart_to_surf = uart_to_crate || !cratebridge_enable;
     
     wire uart_to_hsk = uart_to_crate;
     wire uart_from_hsk;
-    // open-drain
-    assign uart_from_crate = uart_from_surf && uart_from_hsk;
+    // open-drain, so if NOT cratebridge_enable just forcibly set to 1
+    assign uart_from_crate = (uart_from_surf || !cratebridge_enable) && uart_from_hsk;
         
     wire uart_from_boardman;
     wire uart_to_boardman;
         
     // DBG uart ->boardman uart only when user4_gpo[0] is low, otherwise it's crate
-    assign uart_to_boardman = (user4_gpo[0]) ? 1'b0 : DBG_RX;
-    assign DBG_TX = (user4_gpo[0]) ? uart_from_crate : uart_from_boardman;
+    assign uart_to_boardman = (hskbus_enable_local) ? 1'b0 : DBG_RX;
+    assign DBG_TX = (hskbus_enable_local) ? uart_from_crate : uart_from_boardman;
     // uart from turf <-> surf only when TCTRL_B is low and user4_gpo[0] is low
     // uarts IDLE HIGH so set to 1 when not valid
     assign uart_from_turf = (!TCTRL_B) ? TRX : 1'b1;
@@ -378,6 +392,8 @@ module pueo_turfio #( parameter NSURF=7,
                      .hsk_enable_i(hsk_enable_i),
                      .hsk_enable_o(hsk_enable_o),
                      .hsk_enable_t(hsk_enable_t),
+                     .cratebridge_en_o(cratebridge_enable_hsk),
+                     .cratebridge_en_i(cratebridge_enable),
                      .sda_i(sda_i),
                      .sda_t(sda_t),
                      .scl_i(scl_i),

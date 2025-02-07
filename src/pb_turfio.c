@@ -4,7 +4,10 @@
  *
  */
 
-#define PB_TURFIO_VERSION 5
+// VERSION 6 CHANGES:
+// MOVE ePMBus/eEnable/eReloadFirmware TO NOT CLASH WITH SURF
+// ADD eCrateBridge COMMAND
+#define PB_TURFIO_VERSION 6
 
 // We use the stock UART/COBS decoder, but we don't
 // buffer except at the UART level.
@@ -119,6 +122,7 @@
 #define GC_PORT 0x11
 // bitmask
 #define HSK_BUF_BIT 0x1
+#define CB_EN_BIT 0x40
 
 // I2C bit defines
 // this is swapped from turfio-y stuff
@@ -265,9 +269,10 @@
 #define eVolts 0x11
 #define eIdentify 0x12
 #define eCurrents 0x13
-#define eEnable 0xC0
-#define ePMBus 0xC1
-#define eReloadFirmware 0xC2
+// V6+ NOW ALL OUR COMMANDS ARE UNIQUE
+#define eEnable 0xC8
+#define ePMBus 0xC9
+#define eReloadFirmware 0xCA
 
 // always 5 bytes
 #define Statistics_LENGTH 5
@@ -943,29 +948,29 @@ void parse_serial() {
   return;
   
  do_Enable:
+  // do_Enable now takes 2 bytes:
+  // first is a bitfield indicating which bits to change
+  // second indicates what to change them to
   hsk_header();
   input(PACKET_LEN, &curTmp);
   if (curTmp != 0) {
     input(PACKET_DATA, &curTmp);
     input(GC_PORT, &curTmp2);
-    curTmp2 &= 0x7F;
-    if (curTmp != 0) {
-      curTmp2 |= 0x80;
-    }
+    curTmp ^= 0xFF;
+    curTmp2 &= curTmp;
+    input(PACKET_DATA+1, &s4);
+    s4 &= curTmp;
+    curTmp2 |= s4;
     output(GC_PORT, curTmp2);    
   }
   input(GC_PORT, &curTmp);
-  if (curTmp & 0x80) {
-    outputk(PACKET_DATA_K, 0x01);
-    outputk(PACKET_DATA_K+1, 0xFF);
-  } else {
-    outputk(PACKET_DATA_K, 0x00);
-    outputk(PACKET_DATA_K+1, 0x00);
-  }
+  curTmp2 = 0;
+  curTmp2 -= curTmp;
+  output(PACKET_DATA, curTmp);
+  output(PACKET_DATA+1, curTmp2);
   outputk(PACKET_LEN_K, Enable_LENGTH);
   // we already handled checksum, just jump past
   goto goodPacket;
-
  do_PMBus:
   // REWORKED A THIRD TIME!!!
   // flippy flippy
@@ -1060,8 +1065,7 @@ void parse_serial() {
   output(PACKET_DATA+1, curTmp);
   curPtr = PACKET_DATA+2;
   // we don't need a finishPacket jump
-  // we're already there
-  
+  // we're already there  
  finishPacket:
   s9 ^= 0xFF;
   s9 += 1;
