@@ -13,7 +13,7 @@ module pueo_turfio #( parameter NSURF=7,
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd1,
-                      parameter [7:0] VER_REV =   8'd11,
+                      parameter [7:0] VER_REV =   8'd16,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -214,38 +214,55 @@ module pueo_turfio #( parameter NSURF=7,
     wire cratebridge_enable_user4 = user4_gpo[1];
     wire cratebridge_enable = cratebridge_enable_hsk || cratebridge_enable_user4;
     wire hskbus_enable_local = user4_gpo[0];
-    
-    // these combine the INTERNAL housekeeping with the SURF housekeeping
+
+    // we moved a lot of the uart merge stuff into a module
+
+    // merged uarts
     wire uart_from_crate;
     wire uart_to_crate;
 
+    // to/from surf
+    wire uart_from_surf;
+    wire uart_to_surf;
+    assign SURF_RX = uart_to_surf;
+    
+    // to/from hsk
+    wire uart_to_hsk;
+    wire uart_from_hsk;
+    
+    // to/from TURF. this is still external
     wire uart_from_turf;
     wire uart_to_turf;
     
-    wire uart_from_surf;
-    // gate off uart if cratebridge is disabled
-    wire uart_to_surf = uart_to_crate || !cratebridge_enable;
-    
-    wire uart_to_hsk = uart_to_crate;
-    wire uart_from_hsk;
-    // open-drain, so if NOT cratebridge_enable just forcibly set to 1
-    assign uart_from_crate = (uart_from_surf || !cratebridge_enable) && uart_from_hsk;
-        
+    // to/from boardman.
     wire uart_from_boardman;
     wire uart_to_boardman;
-        
+
+    /***********************************************/
+    /* UART ROUTING                                */
+    /* if hskbus_enable_local:                     */
+    /* - Detach TURF UART. Detach boardman UART.   */
+    /* - Attach uart_to_crate to DBG_RX.           */
+    /* - Attach DBG_TX to uart_from_crate.         */
+    /* if not hskbus_enable_local:                 */
+    /* - Attach uart_to_boardman to DBG_RX.        */
+    /* - Attach DBG_TX to uart_from_boardman.      */
+    /* - Attach uart_to_crate to TURF RX.          */
+    /* - Attach TURF_TX to uart_from_crate.        */
+    /***********************************************/
+
     // DBG uart ->boardman uart only when user4_gpo[0] is low, otherwise it's crate
-    assign uart_to_boardman = (hskbus_enable_local) ? 1'b0 : DBG_RX;
+    assign uart_to_boardman = (hskbus_enable_local) ? 1'b1 : DBG_RX;
     assign DBG_TX = (hskbus_enable_local) ? uart_from_crate : uart_from_boardman;
+
     // uart from turf <-> surf only when TCTRL_B is low and user4_gpo[0] is low
     // uarts IDLE HIGH so set to 1 when not valid
     assign uart_from_turf = (!TCTRL_B) ? TRX : 1'b1;
-    assign uart_to_turf = (!user4_gpo[0]) ? uart_from_crate : 1'b0;
-    
-    assign uart_to_crate = (user4_gpo[0]) ? DBG_RX : uart_from_turf;
-                                               
-    assign SURF_RX = uart_to_crate;
-    assign F_TTX = uart_to_turf;
+    assign uart_to_turf = (!hskbus_enable_local) ? uart_from_crate : 1'b0;
+
+    assign uart_to_crate = (hskbus_enable_local) ? DBG_RX : uart_from_turf;
+
+    /***********************************************/
 
     //////////////////////////////////////////////
     // CLOCKS                                   //
@@ -282,6 +299,23 @@ module pueo_turfio #( parameter NSURF=7,
     //////////////////////////////////////////////////////////////////////////////////
     //                              HOUSEKEEPING                                    //
     //////////////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////////////
+    //                             UART MERGING                                     //
+    //////////////////////////////////////////////////////////////////////////////////
+    
+    uart_hskbus_merge #(.DEBUG("FALSE"))
+                      u_hskbus_merge(.clk_i(init_clk),                                     
+                                     .hskbus_tx_i(uart_to_crate),
+                                     .hskbus_rx_o(uart_from_crate),
+                                     
+                                     .surf_rx_i(uart_from_surf),
+                                     .surf_tx_o(uart_to_surf),
+                                     
+                                     .hski2c_rx_i(uart_from_hsk),
+                                     .hski2c_tx_o(uart_to_hsk),
+                                     
+                                     .crate_enable_i(cratebridge_enable));
     
     // housekeeping shares control of enable and I2C (horribly)
     wire hsk_enable_t;
@@ -294,7 +328,9 @@ module pueo_turfio #( parameter NSURF=7,
     
     // retimed using an 0.5 Mbaud baud rate and a 1 us risetime.
     uart_retime #(.SAMPLE_POINT(120),
-                  .BAUD_PERIOD(160)) u_retimer(.clk(init_clk),
+                  .BAUD_PERIOD(160),
+                  .DEBUG("FALSE")) u_retimer(.clk(init_clk),
+                                               .crate_enabled_i(cratebridge_enable),
                                                .RX(SURF_TX),
                                                .RX_RETIMED(uart_from_surf));
                                                                                              
