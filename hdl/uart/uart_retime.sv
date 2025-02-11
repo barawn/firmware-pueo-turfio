@@ -71,8 +71,9 @@
 // period.
 module uart_retime #(parameter SAMPLE_POINT=120,
                      parameter BAUD_PERIOD=160,
-                     parameter DEBUG = "FALSE")(
+                     parameter DEBUG = "TRUE")(
         input clk,
+        input crate_enabled_i,
         input RX,
         output RX_RETIMED
     );
@@ -117,6 +118,11 @@ module uart_retime #(parameter SAMPLE_POINT=120,
     // at bit counter 14 -> 15 we output D0
     // at bit counter 15 -> 0(16) we output STOP and running ends.
     //
+    // NOTE! One issue here is that once we exit running, we're just going to HOLD
+    // that value! Which means that we can't "trust" STOP from the SURFs - we have
+    // to FORCIBLY force 1. The rx_start_flag REQUIRES a falling edge so if
+    // the STOP isn't there for some reason, *we* will still output a valid bit.
+    //
     // note that we can run for consecutive bits because we end running
     // right after STOP: this is midway through the STOP bit's period,
     // which means another stop bit could come immediately afterwards
@@ -132,14 +138,17 @@ module uart_retime #(parameter SAMPLE_POINT=120,
         if (!running) bit_count <= OFFSET_BIT_COUNT;
         else if (counter[8]) bit_count <= bit_count[3:0] + 1;
 
-        if (bit_count[4]) running <= 0;
+        // if we're not enabled, forcibly enter not running.
+        if (!crate_enabled_i || bit_count[4]) running <= 0;
         else if (rx_start_bit) running <= 1;
         
         if (!running) counter <= 9'h000;
         else counter <= counter[7:0] + ADD_VALUE;
 
         // and now we just resample at our shifted point
-        if (counter[8]) rx_out <= rx_in;
+        // if we're not running, forcibly hold ourselves at 1.
+        if (!running) rx_out <= 1'b1;
+        else if (counter[8]) rx_out <= rx_in;
     end
     generate
         if (DEBUG == "TRUE") begin : ILA
