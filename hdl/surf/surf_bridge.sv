@@ -75,7 +75,8 @@ module surf_bridge #(parameter [6:0] RACKCTL_INV=7'h00,
             assign scmd_tready = 1'b1;
             
             rackctl_wb_bridge #(.INV(RACKCTL_INV[i]),
-                                .DEBUG((i==0 || i==1) ? "PHY" : "FALSE"),
+                                .DEBUG("FALSE"),
+//                                .DEBUG((i==0 || i==1) ? "PHY" : "FALSE"),
                                 .WB_CLK_TYPE(WB_CLK_TYPE))
                 u_bridge(.wb_clk_i(wb_clk_i),
                          .wb_rst_i(wb_rst_i),

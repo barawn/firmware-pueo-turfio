@@ -149,11 +149,11 @@ module turfio_gen_shift_wrapper(
 
     wire csb_dbg = gen_gpio_t[GPIO_SPI_CS_B] || gen_gpio_o[GPIO_SPI_CS_B];
     wire clk_dbg = gen_cclk[DEV_SPI];
-    tgs_ila u_ila(.clk(wb_clk_i),
-                  .probe0(sda_in_o),
-                  .probe1(scl_in_o),
-                  .probe2(sda_tri),
-                  .probe3(scl_tri));
+//    tgs_ila u_ila(.clk(wb_clk_i),
+//                  .probe0(sda_in_o),
+//                  .probe1(scl_in_o),
+//                  .probe2(sda_tri),
+//                  .probe3(scl_tri));
     
     // sigh nothing ever works
 //    generate
