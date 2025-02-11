@@ -73,3 +73,4 @@ hdl/uart/uart_retime.sv
 hdl/surfturf/surf_live_detector.sv
 hdl/hski2c/kcpsm6.vhd
 src/pb_turfio.v
+hdl/uart/uart_hskbus_merge.sv

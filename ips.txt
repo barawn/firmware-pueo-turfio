@@ -11,6 +11,8 @@ ip/aurora/cmd_switch/cmd_switch.xci
 ip/debug/cobs_ila/cobs_ila.xci
 ip/rackbus/fwupdate_fifo/fwupdate_fifo.xci
 ip/debug/gen_shift_ila/gen_shift_ila.xci
+ip/debug/hsk_pb_ila/hsk_pb_ila.xci
+ip/debug/hskbus_uart_ila/hskbus_uart_ila.xci
 ip/debug/intercon_ila/intercon_ila.xci
 ip/debug/rackctl_ila/rackctl_ila.xci
 ip/debug/rackctl_vio/rackctl_vio.xci
@@ -18,6 +20,7 @@ ip/debug/surf_cout_phy_ila/surf_cout_phy_ila.xci
 ip/debug/surfbridge_ila/surfbridge_ila.xci
 ip/debug/sync_ila/sync_ila.xci
 ip/clock/sys_clk_generator/sys_clk_generator.xci
+ip/debug/tgs_ila/tgs_ila.xci
 ip/debug/turf_cin_ila/turf_cin_ila.xci
 ip/debug/turfio_cmd_splice_ila/turfio_cmd_splice_ila.xci
 ip/debug/turfwb_ila/turfwb_ila.xci

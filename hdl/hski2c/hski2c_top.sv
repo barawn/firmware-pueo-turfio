@@ -31,8 +31,10 @@ module hski2c_top(
         input I2C_RDY        
     );
     parameter SIM_FAST = "FALSE";
-    parameter DEBUG = `HSKI2C_DEBUG;
-
+    // eff it
+//    parameter DEBUG = `HSKI2C_DEBUG;
+    parameter DEBUG = "TRUE";
+    
     reg hsk_reset = 1;
     // pop the rx through a UART. we can just use the boardman one
     `DEFINE_AXI4S_MIN_IF( uart_rx_, 8);
@@ -380,13 +382,44 @@ module hski2c_top(
                .bram_dat_o(bram_data),
                .bram_we_i(bram_write),
                .bram_en_i(kport_id[7]));
-    
+
+    generate
+        if (DEBUG == "TRUE") begin : ILA
+            // pb debug is:
+            // 10-bit address
+            // 8-bit port id
+            // 8-bit port io
+            // 1 bit write/k_write
+            // 1 bit read
+            // 1 bit interrupt
+            // 1 bit cratebridge_en_i
+            // 1 bit hsk_bram_addr
+            // 1 bit bankA_bram_addr
+            // 1 bit bankB_bram_addr
+            // compress ports and write
+            wire [7:0] pb_port = kport_id;
+            wire [7:0] pb_io = (read_strobe) ? in_port : out_port;
+            wire pb_write = k_write_strobe || write_strobe;
+            
+            hsk_pb_ila u_ila(.clk(wb_clk_i),
+                             .probe0(address[9:0]),
+                             .probe1(pb_port),
+                             .probe2(pb_io),
+                             .probe3(read_strobe),
+                             .probe4(pb_write),
+                             .probe5(interrupt),
+                             .probe6(cratebridge_enable_actual),
+                             .probe7(hsk_bram_addr),
+                             .probe8(bankA_bram_addr),
+                             .probe9(bankB_bram_addr));
+        end
+    endgenerate    
     // just for testing
 // dumbass
 //    assign cobs_valid = 0;
 //    assign cobs_in = 8'h00;
 //    assign our_id = 8'h40;
-    assign wb_dat_o = { {31{1'b0}}, processor_reset };
+    assign wb_dat_o = { {30{1'b0}}, cratebridge_enable_actual, processor_reset };
     assign wb_ack_o = ack && wb_cyc_i;
     assign wb_err_o = 1'b0;
     assign wb_rty_o = 1'b0;
