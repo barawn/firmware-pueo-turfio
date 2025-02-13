@@ -1,5 +1,7 @@
-proc hskbus_enable { } {
-    jtag targets -set -filter {name =~ "xc7a35t"}
+proc hskbus_enable { args  } {
+    array set data [list -sn "*" {*}$args]
+    set sn $data(-sn)
+    jtag targets -set -filter {name =~ "xc7a35t" && jtag_cable_serial =~ $sn }
     set jseq [jtag sequence]
     # shift 6-bit IR code of 0x23 in (USER4)
     $jseq irshift -state IDLE -hex 6 23
@@ -9,8 +11,10 @@ proc hskbus_enable { } {
     $jseq clear
 }
 
-proc hskbus_enable_full { } {
-    jtag targets -set -filter {name =~ "xc7a35t"}
+proc hskbus_enable_full { args } {
+    array set data [list -sn "*" {*}$args]
+    set sn $data(-sn)
+    jtag targets -set -filter {name =~ "xc7a35t" && jtag_cable_serial =~ $sn }
     set jseq [jtag sequence]
     # shift 6-bit IR code of 0x23 in (USER4)
     $jseq irshift -state IDLE -hex 6 23
@@ -20,8 +24,10 @@ proc hskbus_enable_full { } {
     $jseq clear
 }
 
-proc hskbus_disable { } {
-    jtag targets -set -filter {name =~ "xc7a35t"}
+proc hskbus_disable { args } {
+    array set data [list -sn "*" {*}$args]
+    set sn $data(-sn)
+    jtag targets -set -filter {name =~ "xc7a35t" && jtag_cable_serial =~ $sn }
     set jseq [jtag sequence]
     # shift 6-bit IR code of 0x23 in (USER4)
     $jseq irshift -state IDLE -hex 6 23
