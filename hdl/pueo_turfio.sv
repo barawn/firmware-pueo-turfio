@@ -13,7 +13,7 @@ module pueo_turfio #( parameter NSURF=7,
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd1,
-                      parameter [7:0] VER_REV =   8'd16,
+                      parameter [7:0] VER_REV =   8'd17,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -258,7 +258,8 @@ module pueo_turfio #( parameter NSURF=7,
     // uart from turf <-> surf only when TCTRL_B is low and user4_gpo[0] is low
     // uarts IDLE HIGH so set to 1 when not valid
     assign uart_from_turf = (!TCTRL_B) ? TRX : 1'b1;
-    assign uart_to_turf = (!hskbus_enable_local) ? uart_from_crate : 1'b0;
+    assign uart_to_turf = (!hskbus_enable_local) ? uart_from_crate : 1'b1;
+    assign F_TTX = uart_to_turf;
 
     assign uart_to_crate = (hskbus_enable_local) ? DBG_RX : uart_from_turf;
 
