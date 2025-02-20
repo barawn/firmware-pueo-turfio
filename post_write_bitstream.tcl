@@ -23,6 +23,7 @@ set origltx [format "%s.ltx" $topname]
 set origll [format "%s.ll" $topname]
 set fullbitname [format "%s_%s.bit" $topname $verstring]
 set fullltxname [format "%s_%s.ltx" $topname $verstring]
+set fullmcsname [format "%s_%s.mcs" $topname $verstring]
 
 set build_dir [file join $projdir build]
 set bitfn [file join $build_dir $fullbitname]
@@ -31,4 +32,5 @@ set mcsfn [file join $build_dir $fullmcsname]
 
 file copy -force $origbit $bitfn
 write_debug_probes -force $ltxfn
-write_cfgmem -format mcs -size 4 -interface SPIx2 -loadbit {up 0x00000000 $bitfn} -file $mcsfn -force
+set bitlist [list up 0x00000000 $bitfn]
+write_cfgmem -format mcs -size 4 -interface SPIx2 -loadbit $bitlist -file $mcsfn -force
