@@ -213,6 +213,7 @@ module tio_id_ctrl(
         i2c_rdy <= i2c_rdy_i;
     end    
 
+    (* CUSTOM_DNA_VER = VERSION *)
     DNA_PORT u_dina(.DIN(1'b0),.READ(dna_read),.SHIFT(dna_shift),.CLK(wb_clk_i),.DOUT(dna_data));
 
     // Clock running monitors
