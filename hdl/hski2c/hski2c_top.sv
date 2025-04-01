@@ -27,7 +27,9 @@ module hski2c_top(
         output sda_t,
         input scl_i,
         output scl_t,
-        
+        // effing stupidity
+        input VP,
+        input VN,
         input I2C_RDY        
     );
     parameter SIM_FAST = "FALSE";
@@ -82,7 +84,7 @@ module hski2c_top(
     reg [3:0] temp_high = {4{1'b0}};
     wire [11:0] temp_bus;
     wire temp_read;                             
-    xadc_temp u_temp(.m_axis_aclk(wb_clk_i),.s_axis_aclk(wb_clk_i),
+    xadc_temp u_temp(.vp_in(VP),.vn_in(VN),.m_axis_aclk(wb_clk_i),.s_axis_aclk(wb_clk_i),
                      .m_axis_resetn(!hsk_reset),
                      .m_axis_tready(1'b1),
                      .temp_out(temp_bus));
@@ -411,7 +413,8 @@ module hski2c_top(
                              .probe6(cratebridge_enable_actual),
                              .probe7(hsk_bram_addr),
                              .probe8(bankA_bram_addr),
-                             .probe9(bankB_bram_addr));
+                             .probe9(bankB_bram_addr),
+                             .probe10(HSK_RX));
         end
     endgenerate    
     // just for testing
