@@ -13,7 +13,7 @@ module pueo_turfio #( parameter NSURF=7,
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd1,
-                      parameter [7:0] VER_REV =   8'd17,
+                      parameter [7:0] VER_REV =   8'd21,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -156,7 +156,10 @@ module pueo_turfio #( parameter NSURF=7,
         input CLKDIV2_P,
         input CLKDIV2_N,
         output CLK_SYNC,
-        output DBG_LED
+        output DBG_LED,
+        // 100% unused
+        input VP,
+        input VN
     );
     
     localparam [15:0] FIRMWARE_VERSION = {VER_MAJOR, VER_MINOR, VER_REV};
@@ -304,9 +307,19 @@ module pueo_turfio #( parameter NSURF=7,
     //////////////////////////////////////////////////////////////////////////////////
     //                             UART MERGING                                     //
     //////////////////////////////////////////////////////////////////////////////////
+
+    hsk_vio u_hskvio(.clk(init_clk),
+                     .probe_in0(TCTRL_B),
+                     .probe_in1(hskbus_enable_local),
+                     .probe_in2(TRX),
+                     .probe_in3(DBG_RX),
+                     .probe_in4(SURF_RX));
+    
+    wire [7:0] hskbus_rx_bytes;    
     
     uart_hskbus_merge #(.DEBUG("FALSE"))
-                      u_hskbus_merge(.clk_i(init_clk),                                     
+                      u_hskbus_merge(.clk_i(init_clk),
+                                     .hskbus_rx_bytes_o(hskbus_rx_bytes),
                                      .hskbus_tx_i(uart_to_crate),
                                      .hskbus_rx_o(uart_from_crate),
                                      
@@ -438,6 +451,8 @@ module pueo_turfio #( parameter NSURF=7,
                      .CONF(CONF),
                      .HSK_RX(uart_to_hsk),
                      .HSK_TX(uart_from_hsk),
+                     .VP(VP),
+                     .VN(VN),
                      .I2C_RDY(I2C_RDY));
                      
     
@@ -498,6 +513,10 @@ module pueo_turfio #( parameter NSURF=7,
                    .hsk_enable_o(hsk_enable_o),
                    .hsk_enable_t(hsk_enable_t),
                                       
+                   .hsk_local_i(hskbus_enable_local),
+                   .hskbus_crate_i(cratebridge_enable),
+                   .hskbus_rx_bytes_i(hskbus_rx_bytes),
+                                                         
                    .enable_crate_o(ENABLE),
                    .enable_3v3_o(EN_3V3),
                    .crate_conf_i(CONF),

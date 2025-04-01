@@ -6,6 +6,8 @@ module uart_hskbus_merge(
 
         input hskbus_tx_i,
         output hskbus_rx_o,
+        
+        output [7:0] hskbus_rx_bytes_o,
 
         input surf_rx_i,
         output surf_tx_o,
@@ -18,7 +20,30 @@ module uart_hskbus_merge(
     
     
     parameter DEBUG = "TRUE";
+
+    // screw you so much, let's just figure this out...
+    reg [1:0] rx_falling = {2{1'b0}};
+    reg [7:0] rx_bytes = {8{1'b0}};
+    (* USE_DSP48 = "TRUE" *)
+    reg [10:0] rx_holdoff_counter = {11{1'b0}};
+    wire rx_holdoff_reached = (rx_holdoff_counter == {11{1'b0}});
+    always @(posedge clk_i) begin
+        rx_falling <= { rx_falling[0], hskbus_tx_i };
+        
+        if (rx_falling == 2'b10 && rx_holdoff_reached)
+            rx_bytes <= rx_bytes + 1;
+
+        if (rx_falling == 2'b10) 
+            rx_holdoff_counter <= 11'd1550;
+        else if (!rx_holdoff_reached)
+            rx_holdoff_counter <= rx_holdoff_counter - 1;
+    end
     
+    assign hskbus_rx_bytes_o = rx_bytes;
+    // a 500 kbps clock is 160 clock counts
+    // after a start bit the next one can't come until 10 bits later
+    // which is 1600
+    // jump forward 1550
     generate
         if (DEBUG == "TRUE") begin : ILA        
             // initclk is 80 MHz. we run at 500 kbps,

@@ -43,7 +43,11 @@ module tio_id_ctrl(
         output       hsk_enable_i,
         input        hsk_enable_t,
         input        hsk_enable_o,
-        
+
+        input        hsk_local_i,
+        input        hskbus_crate_i,
+        input [7:0]  hskbus_rx_bytes_i,
+                
         output       enable_crate_o,
         output       enable_3v3_o,
         input [1:0]  crate_conf_i,
@@ -119,11 +123,14 @@ module tio_id_ctrl(
     assign ctrlstat_reg[1] = rx_clk_ok_o;
     assign ctrlstat_reg[2] = enable_crate;
     assign ctrlstat_reg[3] = enable_3v3;
-    assign ctrlstat_reg[4] = i2c_rdy;            
-    assign ctrlstat_reg[7:5] = {3{1'b0}};
+    assign ctrlstat_reg[4] = i2c_rdy;  
+    assign ctrlstat_reg[5] = hsk_local_i;
+    assign ctrlstat_reg[6] = hskbus_crate_i;
+    assign ctrlstat_reg[7] = 1'b0;
     assign ctrlstat_reg[9:8] = crate_conf;
     assign ctrlstat_reg[15:10] = {6{1'b0}};
-    assign ctrlstat_reg[31:16] = {16{1'b0}};
+    assign ctrlstat_reg[16 +: 8]= hskbus_rx_bytes_i;
+    assign ctrlstat_reg[31:24] = {8{1'b0}};
     
     // Main internal register stuff. We have basically 64 groups of 16 registers.
     wire        sel_internal = (wb_adr_i[6 +: 6] == 0);
