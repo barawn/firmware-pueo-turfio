@@ -139,7 +139,8 @@ set rxsys_xfr_src_regs [get_cells -hier -filter {CUSTOM_SYSCLK_SOURCE=="TRUE"}]
 set rxsys_xfr_tgt_regs [get_cells -hier -filter {CUSTOM_SYSCLK_TARGET=="TRUE"}]
 if { [llength $rxsys_xfr_src_regs] != 0 } {
     if { [llength $rxsys_xfr_tgt_regs] != 0 } {
-        set_min_delay -from $rxsys_xfr_src_regs -to $rxsys_xfr_tgt_regs 0.0
+        # quiet is necessary here to shut up errors pre-implementation
+        set_min_delay -quiet -from $rxsys_xfr_src_regs -to $rxsys_xfr_tgt_regs 0.0
     }
 }
 # These guys are properly tagged.
