@@ -12,6 +12,7 @@ ip/debug/cobs_ila/cobs_ila.xci
 ip/rackbus/fwupdate_fifo/fwupdate_fifo.xci
 ip/debug/gen_shift_ila/gen_shift_ila.xci
 ip/debug/hsk_pb_ila/hsk_pb_ila.xci
+ip/debug/hsk_vio/hsk_vio.xci
 ip/debug/hskbus_uart_ila/hskbus_uart_ila.xci
 ip/debug/intercon_ila/intercon_ila.xci
 ip/debug/rackctl_ila/rackctl_ila.xci
