@@ -13,7 +13,7 @@ module pueo_turfio #( parameter NSURF=7,
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd1,
-                      parameter [7:0] VER_REV =   8'd21,
+                      parameter [7:0] VER_REV =   8'd22,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -394,7 +394,7 @@ module pueo_turfio #( parameter NSURF=7,
     `DEFINE_AXI4S_MIN_IF( cmd_addr_ , 32 );
     `DEFINE_AXI4S_MIN_IF( cmd_data_ , 32 );
     `DEFINE_AXI4S_MIN_IF( cmd_resp_ , 32 );
-    aurora_wb_master #(.ADDR_BITS(25),.DEBUG("FALSE"))
+    aurora_wb_master #(.ADDR_BITS(25),.DEBUG("TRUE"))
                      u_wbgtp( .aclk(wb_clk),
                               .aresetn(1'b1),
                               `CONNECT_AXI4S_MIN_IF( s_addr_ , cmd_addr_ ),
@@ -633,7 +633,7 @@ module pueo_turfio #( parameter NSURF=7,
 
     surf_bridge #(.RACKCTL_INV( TXCLK_INV ),
                   .WB_CLK_TYPE(WB_CLK_TYPE),
-                  .DEBUG("TRUE"))
+                  .DEBUG("FALSE"))
         u_bridge( .wb_clk_i(wb_clk),
                   .wb_rst_i(1'b0),
                   `CONNECT_WBS_IFM( gtp_ , gtp_surf_ ),
