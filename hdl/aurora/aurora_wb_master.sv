@@ -5,7 +5,7 @@
 `include "interfaces.vh"
 // ADDR_BITS here can only be up to 31
 module aurora_wb_master #(parameter ADDR_BITS=25,
-                          parameter DEBUG = "FALSE")(
+                          parameter DEBUG = "TRUE")(
         // NOTE: aclk = wbclk
         input aclk,
         input aresetn,
