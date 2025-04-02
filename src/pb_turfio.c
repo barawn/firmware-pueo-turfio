@@ -954,13 +954,21 @@ void parse_serial() {
   hsk_header();
   input(PACKET_LEN, &curTmp);
   if (curTmp != 0) {
+    // get the bitmask of bits to change
     input(PACKET_DATA, &curTmp);
+    // get the current value of the port
     input(GC_PORT, &curTmp2);
-    curTmp ^= 0xFF;
-    curTmp2 &= curTmp;
+    // get the value of what to change those bits to
     input(PACKET_DATA+1, &s4);
+    // make sure we're ONLY changing the bits we're told to change
     s4 &= curTmp;
+    // invert the bitmask of bits to change => now it's bits TO KEEP
+    curTmp ^= 0xFF;
+    // make sure we keep the bits we said to keep
+    curTmp2 &= curTmp;
+    // and combine that with the new set of bits
     curTmp2 |= s4;
+    // done
     output(GC_PORT, curTmp2);    
   }
   input(GC_PORT, &curTmp);
