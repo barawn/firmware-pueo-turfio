@@ -13,7 +13,7 @@ module pueo_turfio #( parameter NSURF=7,
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd1,
-                      parameter [7:0] VER_REV =   8'd22,
+                      parameter [7:0] VER_REV =   8'd23,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -38,6 +38,9 @@ module pueo_turfio #( parameter NSURF=7,
         input TRX,      // B15
         // control input : selects between serial path and remote I2C control
         input TCTRL_B,  // D9
+        // This USED to be TGPIO1. It is now system reset from TURF. Makes sure comms will work.
+        input SYS_RESET_B, // B17. This is pulled up internally and can be used to tell if a TURFIO
+                           // is present and programmed at the TURF.
         
         // Enable local system clock
         output EN_MYCLK_B,
@@ -299,7 +302,16 @@ module pueo_turfio #( parameter NSURF=7,
     // init_clk is now *** 80 *** MHz
     clk200_wiz u_clk200(.clk_in1(init_clk_in),.reset(1'b0),.clk_out1(clk200),.clk_out2(init_clk),.locked(clk200_locked));
     IDELAYCTRL u_idelayctrl(.RST(!clk200_locked),.REFCLK(clk200));
-
+    //////////////////////////////////////////////////////////////////////////////////
+    //                          TURF SYSTEM RESET                                   //
+    //////////////////////////////////////////////////////////////////////////////////
+    
+    (* IOB = "TRUE" *)
+    reg  sys_reset_b_reg = 1'b1;
+    wire sys_reset_b = sys_reset_b_reg;
+    wire sys_reset = !sys_reset_b_reg;
+    always @(posedge init_clk) sys_reset_b_reg <= SYS_RESET_B;
+    
     //////////////////////////////////////////////////////////////////////////////////
     //                              HOUSEKEEPING                                    //
     //////////////////////////////////////////////////////////////////////////////////
@@ -319,6 +331,7 @@ module pueo_turfio #( parameter NSURF=7,
     
     uart_hskbus_merge #(.DEBUG("FALSE"))
                       u_hskbus_merge(.clk_i(init_clk),
+                                     .rst_i(sys_reset),
                                      .hskbus_rx_bytes_o(hskbus_rx_bytes),
                                      .hskbus_tx_i(uart_to_crate),
                                      .hskbus_rx_o(uart_from_crate),
@@ -396,7 +409,7 @@ module pueo_turfio #( parameter NSURF=7,
     `DEFINE_AXI4S_MIN_IF( cmd_resp_ , 32 );
     aurora_wb_master #(.ADDR_BITS(25),.DEBUG("TRUE"))
                      u_wbgtp( .aclk(wb_clk),
-                              .aresetn(1'b1),
+                              .aresetn(sys_reset_b),
                               `CONNECT_AXI4S_MIN_IF( s_addr_ , cmd_addr_ ),
                               `CONNECT_AXI4S_MIN_IF( s_data_ , cmd_data_ ),
                               `CONNECT_AXI4S_MIN_IF( m_resp_ , cmd_resp_ ),
@@ -438,6 +451,7 @@ module pueo_turfio #( parameter NSURF=7,
     // ADD HSKI2C HERE
     hski2c_top u_hsk(.wb_clk_i(wb_clk),
                      .wb_rst_i(1'b0),
+                     .sys_rst_i(sys_reset),
                      `CONNECT_WBS_IFM( wb_ , hski2c_ ),
                      .hsk_enable_i(hsk_enable_i),
                      .hsk_enable_o(hsk_enable_o),

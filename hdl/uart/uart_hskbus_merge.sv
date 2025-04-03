@@ -3,7 +3,8 @@
 // this crap used to be in the pueo_turfio top-level
 module uart_hskbus_merge(
         input clk_i,
-
+        input rst_i,
+        
         input hskbus_tx_i,
         output hskbus_rx_o,
         
@@ -30,7 +31,9 @@ module uart_hskbus_merge(
     always @(posedge clk_i) begin
         rx_falling <= { rx_falling[0], hskbus_tx_i };
         
-        if (rx_falling == 2'b10 && rx_holdoff_reached)
+        if (rst_i)
+            rx_bytes <= {8{1'b0}};
+        else if (rx_falling == 2'b10 && rx_holdoff_reached)
             rx_bytes <= rx_bytes + 1;
 
         if (rx_falling == 2'b10) 

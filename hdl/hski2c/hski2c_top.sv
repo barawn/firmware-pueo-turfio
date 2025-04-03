@@ -6,6 +6,8 @@
 module hski2c_top(
         input wb_clk_i,
         input wb_rst_i,
+        // turf system reset
+        input sys_rst_i,         
         // I DON'T KNOW IF I'LL ADD ANYTHING ELSE HERE
         // WHO KNOWS
         `TARGET_NAMED_PORTS_WB_IF( wb_ , 12, 32),
@@ -36,7 +38,39 @@ module hski2c_top(
     // eff it
 //    parameter DEBUG = `HSKI2C_DEBUG;
     parameter DEBUG = "TRUE";
+
+    /////////////////////////////////////////////////////////////////////
+    //                   RESET STUFF                                   //
+    /////////////////////////////////////////////////////////////////////
+    // This is complicated.                                            //
+    //                                                                 //
+    // AFTER PROCESSOR RESET:                                          //
+    // - PicoBlaze issues hsk_reset (which ends up being a flag)       //
+    // - PicoBlaze calls I2C_init (tristates I2C)                      //
+    // - PicoBlaze issues an I2C stop (to forcibly end any transaction)//
+    // - PicoBlaze probes I2C devices                                  //
+    // - PicoBlaze initializes both TURFIO and SURF I2C devices        //
+    // - PicoBlaze initializes the housekeeping buffer to 0 but NOT    //
+    //   ANYTHING ELSE in the GC port (cratebridge/icap access ignored)//
+    // - PicoBlaze initializes internal stuff (buffers, states, timers)//
+    // - PicoBlaze grabs TURFIO active ID (ourID) and starts up.       //
+    /////////////////////////////////////////////////////////////////////
+    // IF WE GET A SYSTEM RESET (from TURF) all we need to do is reset //
+    // PicoBlaze AND clear cratebridge/ICAP access.                    //
+    // Everything else comes from the PicoBlaze reset.                 //
+    /////////////////////////////////////////////////////////////////////
+    // IF SOMEONE ISSUES A PROCESSOR RESET FROM REGISTER ACCESS        //
+    // We do NOT reset cratebridge/ICAP access. Those are left static. //
+    /////////////////////////////////////////////////////////////////////
+        
+    // All sys_reset needs to do is reset the PicoBlaze
+    // AND clear the cratebridge enable. That brings us back to baseline.
+    reg [1:0] sys_reset_rereg = {2{1'b0}};
+    wire sys_reset_flag = sys_reset_rereg == 2'b01;    
     
+    // hsk_reset is controlled by the PicoBlaze.
+    // It will clear the FIFO, clear the COBS decoder,
+    // clear the outbound FIFO.
     reg hsk_reset = 1;
     // pop the rx through a UART. we can just use the boardman one
     `DEFINE_AXI4S_MIN_IF( uart_rx_, 8);
@@ -281,6 +315,9 @@ module hski2c_top(
     assign hsk_enable_o = out_port[7];
         
     always @(posedge wb_clk_i) begin
+        // system reset
+        sys_reset_rereg <= { sys_reset_rereg[0], sys_rst_i };
+                
         // temperature
         if (temp_read) temp_high <= temp_bus[11:8]; 
         // cobsy cobsy
@@ -290,7 +327,11 @@ module hski2c_top(
         end
         
         // general control stuff
-        if (gc_write) begin
+        if (sys_reset_flag) begin
+            cratebridge_enable <= 1'b0;
+            enable_icap <= 1'b0;
+        end
+        else if (gc_write) begin
             hsk_bram_addr <= out_port[0];
             cratebridge_enable <= out_port[6];
             enable_icap <= out_port[7];
@@ -299,7 +340,12 @@ module hski2c_top(
         cratebridge_enable_actual <= cratebridge_en_i;
         
         // OK OK MAKE THIS A REGISTER NOW
-        if (wb_cyc_i && wb_stb_i && wb_we_i && ack && wb_sel_i[0])
+        // This makes it so that the processor goes into reset at the
+        // rising edge and then goes OUT of reset immediately after.
+        // Requires sys_reset_i to be longer than a flag, but it is.
+        if (sys_reset_rereg[0])
+            processor_reset <= sys_reset_flag;
+        else if (wb_cyc_i && wb_stb_i && wb_we_i && ack && wb_sel_i[0])
             processor_reset <= wb_dat_i[0];
 
         ack <= wb_cyc_i && wb_stb_i;

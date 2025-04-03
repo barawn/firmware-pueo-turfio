@@ -222,6 +222,8 @@ set_property -dict {PACKAGE_PIN A3} [get_ports MGTRX_N]
 set_property -dict {PACKAGE_PIN F2} [get_ports MGTTX_P]
 set_property -dict {PACKAGE_PIN F1} [get_ports MGTTX_N]
 
+set_property -dict {PACKAGE_PIN B17 IOSTANDARD LVCMOS25 PULLUP true} [get_ports SYS_RESET_B]
+
 set_property BITSTREAM.GENERAL.COMPRESS TRUE [current_design]
 
 set_property CONFIG_MODE SPIx2 [current_design]
