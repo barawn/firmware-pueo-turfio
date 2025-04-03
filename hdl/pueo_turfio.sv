@@ -13,7 +13,7 @@ module pueo_turfio #( parameter NSURF=7,
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd1,
-                      parameter [7:0] VER_REV =   8'd23,
+                      parameter [7:0] VER_REV =   8'd25,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -307,10 +307,10 @@ module pueo_turfio #( parameter NSURF=7,
     //////////////////////////////////////////////////////////////////////////////////
     
     (* IOB = "TRUE" *)
-    reg  sys_reset_b_reg = 1'b1;
-    wire sys_reset_b = sys_reset_b_reg;
-    wire sys_reset = !sys_reset_b_reg;
-    always @(posedge init_clk) sys_reset_b_reg <= SYS_RESET_B;
+    reg  sys_rst_b_reg = 1'b1;
+    wire sys_rst_b = sys_rst_b_reg;
+    wire sys_rst = !sys_rst_b;
+    always @(posedge init_clk) sys_rst_b_reg <= SYS_RESET_B;
     
     //////////////////////////////////////////////////////////////////////////////////
     //                              HOUSEKEEPING                                    //
@@ -325,13 +325,14 @@ module pueo_turfio #( parameter NSURF=7,
                      .probe_in1(hskbus_enable_local),
                      .probe_in2(TRX),
                      .probe_in3(DBG_RX),
-                     .probe_in4(SURF_RX));
+                     .probe_in4(SURF_RX),
+                     .probe_in5(sys_rst_b_reg));
     
     wire [7:0] hskbus_rx_bytes;    
     
     uart_hskbus_merge #(.DEBUG("FALSE"))
                       u_hskbus_merge(.clk_i(init_clk),
-                                     .rst_i(sys_reset),
+                                     .rst_i(sys_rst),
                                      .hskbus_rx_bytes_o(hskbus_rx_bytes),
                                      .hskbus_tx_i(uart_to_crate),
                                      .hskbus_rx_o(uart_from_crate),
@@ -409,7 +410,7 @@ module pueo_turfio #( parameter NSURF=7,
     `DEFINE_AXI4S_MIN_IF( cmd_resp_ , 32 );
     aurora_wb_master #(.ADDR_BITS(25),.DEBUG("TRUE"))
                      u_wbgtp( .aclk(wb_clk),
-                              .aresetn(sys_reset_b),
+                              .aresetn(sys_rst_b),
                               `CONNECT_AXI4S_MIN_IF( s_addr_ , cmd_addr_ ),
                               `CONNECT_AXI4S_MIN_IF( s_data_ , cmd_data_ ),
                               `CONNECT_AXI4S_MIN_IF( m_resp_ , cmd_resp_ ),
@@ -451,7 +452,7 @@ module pueo_turfio #( parameter NSURF=7,
     // ADD HSKI2C HERE
     hski2c_top u_hsk(.wb_clk_i(wb_clk),
                      .wb_rst_i(1'b0),
-                     .sys_rst_i(sys_reset),
+                     .sys_rst_i(sys_rst),
                      `CONNECT_WBS_IFM( wb_ , hski2c_ ),
                      .hsk_enable_i(hsk_enable_i),
                      .hsk_enable_o(hsk_enable_o),
