@@ -36,7 +36,7 @@ module uart_hskbus_merge(
         else if (rx_falling == 2'b10 && rx_holdoff_reached)
             rx_bytes <= rx_bytes + 1;
 
-        if (rx_falling == 2'b10) 
+        if (rx_falling == 2'b10 && rx_holdoff_reached) 
             rx_holdoff_counter <= 11'd1550;
         else if (!rx_holdoff_reached)
             rx_holdoff_counter <= rx_holdoff_counter - 1;
