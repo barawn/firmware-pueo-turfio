@@ -372,6 +372,10 @@ void init() {
   // stops are data low, clock low, clock high, data high
   I2C_stop();
 
+  // Kick the UART. I2C_stop() above should be long
+  // enough to ensure everything has reset.
+  outputk(UART_TX, 0x00);  
+  
   // first, probe-y probe-y. no one's sending us stuff straight
   // at reset anyway.
   // we can use curPacket/curPtr at start
