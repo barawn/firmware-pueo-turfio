@@ -14,7 +14,7 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
         // we likely won't need anywhere NEAR that
         `TARGET_NAMED_PORTS_WB_IF(wb_ , 10, 32),
         input sysclk_i,
-        output disable_rxclk_o,
+        output [7:0] disable_rxclk_o,
         // FW update output port stuff
         `HOST_NAMED_PORTS_AXI4S_MIN_IF( fw_ , 8),
         output [1:0] fw_mark_o,
@@ -32,10 +32,15 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
     localparam [3:0] RUNCMD_ADDR = 4'h8;
     localparam [3:0] TRIG_ADDR = 4'hC;
 
+    reg update_disable_rxclk = 1'b0;
+    wire do_update_disable_rxclk = wb_cyc_i && wb_stb_i && wb_we_i && wb_adr_i[3:0] == CONTROL_ADDR && wb_sel_i[3] && wb_ack_o;
+    wire update_disable_rxclk_sysclk;
+    flag_sync u_update_disable_flag(.in_clkA(update_disable_rxclk),.out_clkB(update_disable_rxclk_sysclk),
+                                    .clkA(wb_clk_i),.clkB(sysclk_i));
     (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
-    reg disable_rxclk = 1;
+    reg [7:0] disable_rxclk = {8{1'b1}};
     (* CUSTOM_CC_DST = "SYSCLK", ASYNC_REG = "TRUE" *)
-    reg [1:0] disable_rxclk_sysclk = {2{1'b1}};
+    reg [7:0] disable_rxclk_sysclk = {8{1'b1}};
     
     // capture in wb clk and hold it: it's flag-synced over to
     // sysclk, so we can just make a datapath only delay to the hold register
@@ -149,8 +154,10 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
         if (wb_cyc_i && wb_stb_i && wb_we_i && wb_adr_i[3:0] == CONTROL_ADDR && wb_sel_i[0])
             fwupdate_fifo_reset <= wb_dat_i[0];
 
-        if (wb_cyc_i && wb_stb_i && wb_we_i && wb_adr_i[3:0] == CONTROL_ADDR && wb_sel_i[3])
-            disable_rxclk <= wb_dat_i[31];
+        // silly pet tricks for J2B
+        if (do_update_disable_rxclk)
+            disable_rxclk <= wb_dat_i[24 +: 8];
+        update_disable_rxclk <= do_update_disable_rxclk;
 
         // this is probably batshit stupid: it won't stay set that long so checking if it's zero
         // will probably just get you zero right away        
