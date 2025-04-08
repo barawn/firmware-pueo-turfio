@@ -97,7 +97,7 @@ module surfturf_wrapper_v2 #(
     wire [1:0] tfio_fw_mark;
     wire tfio_fw_marked;
     
-    wire disable_rxclk;
+    wire [7:0] disable_rxclk;
     
     surfturf_register_core #(.WB_CLK_TYPE(WB_CLK_TYPE))
             u_st_core(.wb_clk_i(wb_clk_i),
@@ -184,7 +184,7 @@ module surfturf_wrapper_v2 #(
                             .sysclk_ok_i(sysclk_ok_i),
                             .sysclk_x2_i(sysclk_x2_i),
 
-                            .disable_rxclk_i(disable_rxclk),
+                            .disable_rxclk_i(disable_rxclk[i]),
                             
                             .sync_i(sync_i),
                             // sigh I have no idea if I'm going to do it
