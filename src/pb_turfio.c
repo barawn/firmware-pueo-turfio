@@ -1191,11 +1191,11 @@ void I2C_delay_hclk() {
 // 14 sra curTmp2
 // 15 ret
 // EVERYTHING IS AWESOME
-#define SHORT_INIT 0x08
+#define SHORT_INIT 0x04
 void I2C_delay_short() {
   // I SHOULD MAKE THIS INTRINSICS
   psm("sla %1", curTmp2);
-  curTmp = 0x08;
+  curTmp = SHORT_INIT;
   do {
     psm("sla %1", curTmp);
   } while (!C);
