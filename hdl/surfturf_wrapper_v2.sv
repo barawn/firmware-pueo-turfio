@@ -42,6 +42,22 @@ module surfturf_wrapper_v2 #(
         // response inputs, I don't know if I'll ever use this
         input [31:0]    response_i,
         
+        // datapaths. still in sysclk!!
+        `HOST_NAMED_PORTS_AXI4S_MIN_IF( m_s0_ , 8 ),
+        output m_s0_tlast,
+        `HOST_NAMED_PORTS_AXI4S_MIN_IF( m_s1_ , 8 ),
+        output m_s1_tlast,
+        `HOST_NAMED_PORTS_AXI4S_MIN_IF( m_s2_ , 8 ),
+        output m_s2_tlast,
+        `HOST_NAMED_PORTS_AXI4S_MIN_IF( m_s3_ , 8 ),
+        output m_s3_tlast,
+        `HOST_NAMED_PORTS_AXI4S_MIN_IF( m_s4_ , 8 ),
+        output m_s4_tlast,
+        `HOST_NAMED_PORTS_AXI4S_MIN_IF( m_s5_ , 8 ),
+        output m_s5_tlast,
+        `HOST_NAMED_PORTS_AXI4S_MIN_IF( m_s6_ , 8 ),
+        output m_s6_tlast,
+                
         // turf-side
         input T_RXCLK_P,
         input T_RXCLK_N,
@@ -66,6 +82,24 @@ module surfturf_wrapper_v2 #(
     );
     
     localparam [6:0] SURF_DEBUG = 7'b0000000;
+
+    // output datapath vector.
+    `DEFINE_AXI4S_MIN_IFV( dout_ , 8, [6:0] );
+    wire [6:0] dout_tlast;
+    `define HOOK_SURF( to, from, fromsuffix )   \
+        assign to``tdata = from``tdata``fromsuffix; \
+        assign to``tvalid = from``tvalid``fromsuffix;   \
+        assign to``tlast = from``tlast``fromsuffix; \
+        assign from``tready``fromsuffix = to``tready
+    
+    `HOOK_SURF( m_s0_ , dout_ , [0] );
+    `HOOK_SURF( m_s1_ , dout_ , [1] );
+    `HOOK_SURF( m_s2_ , dout_ , [2] );
+    `HOOK_SURF( m_s3_ , dout_ , [3] );
+    `HOOK_SURF( m_s4_ , dout_ , [4] );
+    `HOOK_SURF( m_s5_ , dout_ , [5] );
+    `HOOK_SURF( m_s6_ , dout_ , [6] );
+
     
     // our address space is 12 bits
     // we give each module a 6-bit space (64 bytes = 16 32-bit registers).
@@ -98,6 +132,9 @@ module surfturf_wrapper_v2 #(
     wire tfio_fw_marked;
     
     wire [7:0] disable_rxclk;
+    
+    // just... pull this from some'n for now
+    wire trig = tfio_trig_tready && tfio_trig_tvalid;
     
     surfturf_register_core #(.WB_CLK_TYPE(WB_CLK_TYPE))
             u_st_core(.wb_clk_i(wb_clk_i),
@@ -187,6 +224,10 @@ module surfturf_wrapper_v2 #(
                             .disable_rxclk_i(disable_rxclk[i]),
                             
                             .sync_i(sync_i),
+                            .trig_i(trig),
+                            `CONNECT_AXI4S_MIN_IFV( m_dout_ , dout_ , [i-1]),
+                            .m_dout_tlast(dout_tlast[i-1]),
+                            
                             // sigh I have no idea if I'm going to do it
                             // this way or not BUT FOR NOW!
                             .command_i(surf_command),

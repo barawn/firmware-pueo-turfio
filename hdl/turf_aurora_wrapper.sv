@@ -22,6 +22,7 @@ module turf_aurora_wrapper(
         input sys_clk_i,
                 
         // regular input data path.
+        output aurora_clk,
         `TARGET_NAMED_PORTS_AXI4S_MIN_IF( s_axis_ , 32 ),
         input [3:0] s_axis_tkeep,
         input s_axis_tlast,
@@ -529,5 +530,5 @@ module turf_aurora_wrapper(
     assign wb_rty_o = 1'b0;
     assign wb_dat_o = wb_dat_reg;
     
-                              
+    assign aurora_clk = user_clk;                              
 endmodule

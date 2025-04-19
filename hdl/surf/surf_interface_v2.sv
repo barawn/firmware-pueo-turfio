@@ -20,13 +20,18 @@ module surf_interface_v2 #(parameter RXCLK_INV = 1'b0,
         
         input [31:0] command_i,
         input sync_i,
-
+        // masked SURF trigger input
+        input trig_i,
+        // global event stream reset
+        input event_reset_i,
+        
         input COUT_P,
         input COUT_N,
         input DOUT_P,
         input DOUT_N,
 
-        output [7:0] dout_o,
+        `HOST_NAMED_PORTS_AXI4S_MIN_IF( m_dout_ , 8 ),
+        output m_dout_tlast,
                 
         output CIN_P,
         output CIN_N,
@@ -53,6 +58,25 @@ module surf_interface_v2 #(parameter RXCLK_INV = 1'b0,
     // DOUT data path. It only needs an enable.
     wire [7:0]  dout_data;
     wire        dout_valid;
+    // fake it into a stream
+    `DEFINE_AXI4S_MIN_IF( surf_ , 8);
+    assign surf_tdata = dout_data;
+    assign surf_tvalid = dout_valid;
+    
+    
+    wire        surf_mask;
+    masked_dout_splice u_splice( .aclk(sysclk_i),
+                                 .aresetn( !event_reset_i ),
+                                 .trig_i(trig_i),
+                                 .mask_i(surf_mask),
+                                 `CONNECT_AXI4S_MIN_IF( s_dout_ , surf_ ),
+                                 `CONNECT_AXI4S_MIN_IF( m_dout_ , m_dout_ ),
+                                 .m_dout_tlast(m_dout_tlast));
+//    assign m_dout_tdata = dout_data;
+//    assign m_dout_tvalid = dout_valid;
+    
+    
+    
     wire        dout_capture;
     wire        dout_biterr;
     wire        dout_enable;
@@ -135,6 +159,8 @@ module surf_interface_v2 #(parameter RXCLK_INV = 1'b0,
                 .dout_biterr_i(dout_biterr),
                 .dout_capture_o(dout_capture),
                 .dout_enable_o(dout_enable),
+                
+                .mask_o(surf_mask),
 
                 .cin_train_o(cin_train));
 

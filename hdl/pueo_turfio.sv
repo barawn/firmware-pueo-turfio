@@ -12,8 +12,8 @@ module pueo_turfio #( parameter NSURF=7,
                       parameter SIMULATION="FALSE",
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
-                      parameter [3:0] VER_MINOR = 4'd1,
-                      parameter [7:0] VER_REV =   8'd28,
+                      parameter [3:0] VER_MINOR = 4'd2,
+                      parameter [7:0] VER_REV =   8'd0,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -601,6 +601,22 @@ module pueo_turfio #( parameter NSURF=7,
     `DEFINE_AXI4S_MIN_IF( tfio_runcmd_ , 2);
     `DEFINE_AXI4S_MIN_IF( tfio_trig_ , 15);
     
+    // MASSIVE DATAPATH
+    `DEFINE_AXI4S_MIN_IF( s0_ , 8 );
+    wire s0_tlast;
+    `DEFINE_AXI4S_MIN_IF( s1_ , 8 );
+    wire s1_tlast;
+    `DEFINE_AXI4S_MIN_IF( s2_ , 8 );
+    wire s2_tlast;
+    `DEFINE_AXI4S_MIN_IF( s3_ , 8 );
+    wire s3_tlast;
+    `DEFINE_AXI4S_MIN_IF( s4_ , 8 );
+    wire s4_tlast;
+    `DEFINE_AXI4S_MIN_IF( s5_ , 8 );
+    wire s5_tlast;
+    `DEFINE_AXI4S_MIN_IF( s6_ , 8 );
+    wire s6_tlast;
+    
     surfturf_wrapper_v2 #(.T_RXCLK_INV(T_RXCLK_INV),
                        .T_TXCLK_INV(T_TXCLK_INV),
                        .T_COUT_INV(T_COUT_INV),
@@ -618,6 +634,21 @@ module pueo_turfio #( parameter NSURF=7,
                 .sync_i(sync),
                 .command_o(turf_command),
                 .command_valid_o(turf_command_valid),
+                
+                `CONNECT_AXI4S_MIN_IF( m_s0_ , s0_ ),
+                .m_s0_tlast(s0_tlast),
+                `CONNECT_AXI4S_MIN_IF( m_s1_ , s1_ ),
+                .m_s1_tlast(s1_tlast),
+                `CONNECT_AXI4S_MIN_IF( m_s2_ , s2_ ),
+                .m_s2_tlast(s2_tlast),
+                `CONNECT_AXI4S_MIN_IF( m_s3_ , s3_ ),
+                .m_s3_tlast(s3_tlast),
+                `CONNECT_AXI4S_MIN_IF( m_s4_ , s4_ ),
+                .m_s4_tlast(s4_tlast),
+                `CONNECT_AXI4S_MIN_IF( m_s5_ , s5_ ),
+                .m_s5_tlast(s5_tlast),
+                `CONNECT_AXI4S_MIN_IF( m_s6_ , s6_ ),
+                .m_s6_tlast(s6_tlast),
                 
                .rxclk_o(rxclk),
                .rxclk_ok_i(rxclk_ok),
@@ -715,13 +746,37 @@ module pueo_turfio #( parameter NSURF=7,
     BUFG u_gtpclk_bufg(.I(gtp_inclk),.O(gtp_clk));
     // Now we hook up Aurora. Really need to figure out the whole aresetn thing
         
-    // Main path ifs. Just killed for now.
     `DEFINE_AXI4S_MIN_IF( aurora_in_ , 32 );
+    wire aurora_in_tlast;
     `DEFINE_AXI4S_MIN_IF( aurora_out_ , 32 );
-    // kill 'em
+    // kill the outbound.
     assign aurora_out_tready = 1'b1;
-    assign aurora_in_tvalid = 1'b0;
-    assign aurora_in_tdata = {32{1'b0}};
+    // the inbounds come from the event merger!!
+
+    // MERGER GOES HERE!!!!!!
+    surf_merger u_merger( .aclk( sysclk ),
+                          // uhhhhhh figure this out
+                          .aresetn( 1'b1 ),
+                          `CONNECT_AXI4S_MIN_IF( s_s0_ , s0_ ),
+                          .s_s0_tlast( s0_tlast ),
+                          `CONNECT_AXI4S_MIN_IF( s_s1_ , s1_ ),
+                          .s_s1_tlast( s1_tlast ),
+                          `CONNECT_AXI4S_MIN_IF( s_s2_ , s2_ ),
+                          .s_s2_tlast( s2_tlast ),
+                          `CONNECT_AXI4S_MIN_IF( s_s3_ , s3_ ),
+                          .s_s3_tlast( s3_tlast ),
+                          `CONNECT_AXI4S_MIN_IF( s_s4_ , s4_ ),
+                          .s_s4_tlast( s4_tlast ),
+                          `CONNECT_AXI4S_MIN_IF( s_s5_ , s5_ ),
+                          .s_s5_tlast( s5_tlast ),
+                          `CONNECT_AXI4S_MIN_IF( s_s6_ , s6_ ),
+                          .s_s6_tlast( s6_tlast ),
+                          
+                          `CONNECT_AXI4S_MIN_IF( m_ev_ , aurora_in_ ),
+                          .m_ev_tlast( aurora_in_tlast ));
+                          
+                          
+
     // ok here we go
     turf_aurora_wrapper u_aurora( .wb_clk_i(wb_clk),
                                   .wb_rst_i(1'b0),
@@ -731,6 +786,8 @@ module pueo_turfio #( parameter NSURF=7,
                                   `CONNECT_AXI4S_MIN_IF( s_cmd_data_ , cmd_resp_ ),
                                   .sys_clk_i(sysclk),
                                   `CONNECT_AXI4S_MIN_IF( s_axis_ , aurora_in_ ),
+                                  .s_axis_tlast(aurora_in_tlast),
+                                  .s_axis_tkeep( {4{1'b1}} ),
                                   `CONNECT_AXI4S_MIN_IF( m_axis_ , aurora_out_ ),
                                   
                                   .gtp_inclk_i(gtp_inclk),

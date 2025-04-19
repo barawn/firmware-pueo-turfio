@@ -55,7 +55,9 @@ module surfctl_register_core_v2(
         output dout_capture_o,
                 
         // train enable
-        output cin_train_o
+        output cin_train_o,
+        // event mask
+        output mask_o
     );
 
     // COUT HSAlign
@@ -191,6 +193,12 @@ module surfctl_register_core_v2(
     reg cout_enable = 0;
     (* CUSTOM_CC_DST = "SYSCLK", ASYNC_REG = "TRUE" *)
     reg [1:0] cout_enable_sysclk = {2{1'b0}};
+
+    // mask off incoming SURF event data
+    (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
+    reg mask_dout = 1;
+    (* CUSTOM_CC_DST = "SYSCLK", ASYNC_REG = "TRUE" *)
+    reg [1:0] mask_dout_sysclk = {2{1'b0}};
                     
     // this is the common register (and a little silly)            
     wire [31:0] control_register;
@@ -209,7 +217,8 @@ module surfctl_register_core_v2(
     assign control_register[8] = 1'b0;              // not common (enable or lock enable)
     assign control_register[9] = 1'b0;              // not common (lock status or copy of bit 8)
     assign control_register[10] = cin_train_enable; // train enable (common)
-    assign control_register[15:11] = {5{1'b0}};     // reserved
+    assign control_register[14:11] = {4{1'b0}};     // reserved
+    assign control_register[15] = mask_dout;        // mask off this SURF
     assign control_register[31:16] = {16{1'b0}};    // RXCLK phase adjust
     // Duplicate this so it acts the same as the lock req/status.
     assign cout_control_register[7:0] = control_register[7:0];
@@ -240,6 +249,7 @@ module surfctl_register_core_v2(
         // DOUT HSALIGN ONLY
         if (state == ACK && we_in_static && adr_in_static == DOUT_CONTROL_REG) begin
             if (sel_in_static[1]) dout_enable <= dat_in_static[8];
+            if (sel_in_static[1]) mask_dout <= dat_in_static[15];
         end            
         // CAPTURE INPUTS AND HOLD STATIC
         if (wb_cyc_i && wb_stb_i) begin
@@ -290,6 +300,7 @@ module surfctl_register_core_v2(
         cin_train_enable_sysclk <= { cin_train_enable_sysclk[0], cin_train_enable };
         dout_enable_sysclk <= { dout_enable_sysclk[0], dout_enable };
         cout_enable_sysclk <= { cout_enable_sysclk[0], cout_enable };        
+        mask_dout_sysclk <= { mask_dout_sysclk[0], mask_dout };
     end
     
     assign wb_dat_o = dat_reg;
@@ -303,6 +314,7 @@ module surfctl_register_core_v2(
     // enable outputs
     assign dout_enable_o = dout_enable_sysclk[1];
     assign cout_enable_o = cout_enable_sysclk[1];
+    assign mask_o = mask_dout_sysclk[1];
     // idelay outputs    
     assign idelay_value_o = dat_in_static[5:0];
     assign idelay_cout_load_o = sysclk_waiting_flag_sysclk &&

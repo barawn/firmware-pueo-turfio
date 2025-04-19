@@ -1,4 +1,7 @@
 vivado_project/
 example_designs/
+build/
+.Xil/
+*~
 *.mcs
 *.prm
