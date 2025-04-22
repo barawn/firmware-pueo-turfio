@@ -11,6 +11,7 @@ module turf_aurora_wrapper(
         `TARGET_NAMED_PORTS_WB_IF( wb_ , 12, 32 ),
         
         // These are all in the wb_clk domain
+        input cmd_rstb_i,
         // Command address + type
         `HOST_NAMED_PORTS_AXI4S_MIN_IF( m_cmd_addr_ , 32),
         // Command data (for writes only)
@@ -206,6 +207,9 @@ module turf_aurora_wrapper(
     wire gt_rxpmaresetdone;
     wire gt_rxrealign;
     wire gt_rxresetdone;    
+    // more more
+    wire [3:0] gt0_rx_disp_err_out;
+    wire [3:0] gt0_rx_not_in_table_out;
                         
     // hook up the link status
     assign link_status_userclk[0] = lane_up;            //userclk
@@ -225,8 +229,10 @@ module turf_aurora_wrapper(
     assign link_status_userclk[12] = gt_rxcommadet;      // userclk
     assign link_status_userclk[13] = gt_rxpmaresetdone;  // async
     assign link_status_userclk[14] = gt_rxrealign;       // userclk
-    assign link_status_userclk[15] = gt_rxresetdone;     // GT rxresetdone
-    assign link_status_userclk[31:16] = {16{1'b0}};
+    assign link_status_userclk[15] = gt_rxresetdone;     // GT rxresetdone    
+    assign link_status_userclk[16] = rx_overflow_occurred;
+    assign link_status_userclk[17] = ufc_rx_overflow_occurred; 
+    assign link_status_userclk[31:18] = {14{1'b0}};
 
     assign link_status[2:0] = link_status_userclk_reg[2:0];
     assign link_status[3] = tx_lock;
@@ -254,11 +260,25 @@ module turf_aurora_wrapper(
     // and the link dmonitor
     assign link_dmonitor = { {16{1'b0}}, dmonitor };
 
+    // ffs
+    aurora_direct_ila u_ila(.clk(user_clk),
+                            .probe0( lane_up ),
+                            .probe1( channel_up ),
+                            .probe2( hard_err ),
+                            .probe3( soft_err ),
+                            .probe4( frame_err ),
+                            .probe5( link_reset_out ),
+                            .probe6( gt0_rx_disp_err_out ),
+                            .probe7( gt0_rx_not_in_table_out ));
+                            
+    
 // goddamn it we need to do this in Tcl to grab the IP core shit
 //    aurora_ctrlstat_ila u_ila( .clk(init_clk),
 //                               .probe0( link_status_dbg[15:0] ),
 //                               .probe1( reset_in ),
 //                               .probe2( tenth_sec_timer ));
+
+    
     
     // PLL stuff. There are all from exdes.
     wire quad1_common_lock_i;
@@ -355,7 +375,18 @@ module turf_aurora_wrapper(
             if (ufc_rx_overflow) ufc_rx_overflow_occurred <= 1'b1;
         end
         // just capture it here to allow easy clock cross
-        link_status_userclk_reg <= link_status_userclk;
+        // unfortunately they're not all identical, we want to sticky the
+        // link errs.
+        // that's 8/9/10.
+        link_status_userclk_reg[7:0] <= link_status_userclk[7:0];
+        link_status_userclk_reg[31:11] <= link_status_userclk[31:11];
+        if (linkerr_reset_userclk) begin
+            link_status_userclk_reg[10:8] <= {3{1'b0}};
+        end else begin
+            if (link_status_userclk[8]) link_status_userclk_reg[8] <= 1;
+            if (link_status_userclk[9]) link_status_userclk_reg[9] <= 1;
+            if (link_status_userclk[10]) link_status_userclk_reg[10] <= 1;
+        end            
     end
                         
     // OK, cross over gt_powerdown...
@@ -422,19 +453,21 @@ module turf_aurora_wrapper(
                                .rd_en( m_axis_tvalid && m_axis_tready),
                                .overflow( rx_overflow ));
     // And the UFC path RX. Same as above.
+    // except here we also reset on cmdreset.
     aurora_cc_rdfifo u_ufc_rxfifo( .din( { ufc_rx_userclk_tlast, ufc_rx_userclk_tkeep, ufc_rx_userclk_tdata } ),
                                    .dout( {ufc_rx_tlast, ufc_rx_tkeep, ufc_rx_tdata } ),
                                    .wr_clk( user_clk ),
                                    .rd_clk( wb_clk_i ),
-                                   .rst(1'b0),
+                                   .rst(!cmd_rstb_i),
                                    .wr_en( ufc_rx_userclk_tvalid ),
                                    .valid( ufc_rx_tvalid ),
                                    .rd_en( ufc_rx_tvalid && ufc_rx_tready),
                                    .overflow( ufc_rx_overflow ));
     // ok, now we need to *parse* the inbound RX path.
+    // This needs to get reset at sysrst!!
     aurora_cmdgen #(.DEBUG("FALSE"))
                   u_cmdgen( .aclk(wb_clk_i),
-                            .aresetn(1'b1),
+                            .aresetn(cmd_rstb_i),
                             `CONNECT_AXI4S_MIN_IF( s_axis_ , ufc_rx_ ),
                             .s_axis_tkeep( ufc_rx_tkeep ),
                             .s_axis_tlast( ufc_rx_tlast ),
@@ -519,6 +552,10 @@ module turf_aurora_wrapper(
                           .gt0_txprecursor_in( gt_txprecursor ),
                           .gt0_txpostcursor_in( gt_txpostcursor ),                          
                           .gt0_dmonitorout_out(dmonitor),
+                          
+                          .gt0_rx_disp_err_out( gt0_rx_disp_err_out ),
+                          .gt0_rx_not_in_table_out( gt0_rx_not_in_table_out ),
+                          
                           `UNUSED_GTP_DEBUG_AURORA_PORTS,
                           .rxp(MGTRX_P),
                           .rxn(MGTRX_N),
