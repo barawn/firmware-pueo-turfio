@@ -22,6 +22,8 @@ module surf_merger(
         output m_ev_tlast
     );
     
+    parameter DEBUG = "TRUE";
+    
     `DEFINE_AXI4S_MIN_IF( ev64_ , 64 );
     wire ev64_tlast;
 
@@ -61,5 +63,13 @@ module surf_merger(
                             `CONNECT_AXI4S_MIN_IF( m_axis_ , m_ev_ ),
                             .m_axis_tlast( m_ev_tlast ));
     // and that's it! that should be all we need to do
-        
+    generate
+        if (DEBUG == "TRUE") begin : DBG
+            event_ila u_ila(.clk(aclk),
+                            .probe0( m_ev_tdata ),
+                            .probe1( m_ev_tvalid ),
+                            .probe2( m_ev_tready ),
+                            .probe3( m_ev_tlast ));
+        end
+    endgenerate        
 endmodule
