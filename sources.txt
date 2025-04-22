@@ -74,3 +74,5 @@ hdl/surfturf/surf_live_detector.sv
 hdl/hski2c/kcpsm6.vhd
 src/pb_turfio.v
 hdl/uart/uart_hskbus_merge.sv
+hdl/surf/masked_dout_splice.sv
+hdl/surf_merger.sv
