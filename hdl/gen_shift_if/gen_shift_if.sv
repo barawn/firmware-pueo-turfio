@@ -32,6 +32,7 @@
 // This interface can adapt to:
 // SPI: use a GPIO as chip select, DIN = MOSI, DOUT = MISO
 // JTAG: use AUX_OUT as TMS
+//
 module gen_shift_if 
       #(parameter DEBUG = "FALSE",
         parameter NUM_DEVICES=1,            // number of devices to implement
@@ -141,9 +142,13 @@ module gen_shift_if
     reg dbg_din = 0;
     reg dbg_aux_out = 0;    
     wire dbg_dout = selected_dout;
+
+    // ok let's try adding a holdoff.
+    reg holdoff = 0;
+    reg holdoff_enable = 0;
     
     wire [31:0] module_config_register =
-        { {16{1'b0}}, disable_tristate, clk_prescale };
+        { {15{1'b0}}, holdoff_enable, disable_tristate, clk_prescale };
     
     wire [7:0] gpio_out_exp = gpio_output_reg;
     wire [7:0] gpio_in_exp = gpio_input;
@@ -172,10 +177,20 @@ module gen_shift_if
     reg [31:0] dat_out_ff = {32{1'b0}};
     reg ack_ff = 0;
 
+    // we start the sequence on ANY byte write if enable sequence is set, otherwise only if it is set.
+    wire start_sequence = en_i && ack_o && wr_i && ((!wstrb_i[3] && enable_sequence) || (wstrb_i[3] && dat_i[30]));
+    
     // Common stuff!
     always @(posedge clk) begin : LOGIC
-        // we always ack immediately after an enable
-        ack_ff <= en_i;
+        // IF the holdoff is enabled: we wait until sequence_running is zero before clearing
+        // the holdoff.
+        if (!holdoff_enable || rst) holdoff <= 0;
+        else if (start_sequence) holdoff <= 1;
+        else holdoff <= sequence_running;
+    
+        // ack when not held off.
+        ack_ff <= en_i && !holdoff;
+
         if (en_i && !wr_i) dat_out_ff <= register_mux[address_i];
         if (en_i && ack_o && wr_i && (address_i == 0)) begin
             if (wstrb_i[0]) clk_prescale <= dat_i[7:0];
@@ -194,7 +209,7 @@ module gen_shift_if
         if (sequence_running) begin
             if (clk_ce) clk_state_count <= clk_state_count[1:0] + 1;
         end else clk_state_count <= {3{1'b0}};     
-    
+
         if (rst) begin
             reverse_bitorder <= 1'b0;
             enable_sequence <= 1'b0;
@@ -234,7 +249,7 @@ module gen_shift_if
         
         if (nbit_count_reached && clk_ce && CLK_STATE_IS_DONE) 
             sequence_running <= 0;
-        else if (en_i && ack_o && wr_i && ((!wstrb_i[3] && enable_sequence) || (wstrb_i[3] && dat_i[30])))
+        else if (start_sequence)
             sequence_running <= 1;
 
         // Prescaler
