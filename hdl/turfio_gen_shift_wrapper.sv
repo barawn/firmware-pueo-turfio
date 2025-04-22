@@ -90,7 +90,7 @@ module turfio_gen_shift_wrapper(
     // DIN/DOUT IS FROM THE DEVICE POINT OF VIEW
     // DIN = DEVICE INPUT (output from us)
     // DOUT = DEVICE OUTPUT (input to us)
-    gen_shift_if #(.DEBUG("FALSE"),
+    gen_shift_if #(.DEBUG(DEBUG),
                    .NUM_DEVICES(3),
                    .USE_CLK(    8'b0000_0011),
                    .USE_DIN(    8'b0000_0111),
