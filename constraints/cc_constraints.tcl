@@ -75,7 +75,8 @@ set clktypes($sysclk) SYSCLK
 set initclk [get_clocks -of_objects [get_nets -hier -filter { NAME =~ "init_clk"}]]
 set clktypes($initclk) INITCLK
 
-set userclk [get_clocks -of_objects [get_nets -hier -filter { NAME =~ "u_aurora/aurora_clk"}]]
+# grab the buffer, that'll always be safe
+set userclk [get_clocks -of_objects [get_pins -hier -filter { NAME =~ "u_aurora/u_clocks/u_userclk_bufg/O" }]]
 set clktypes($userclk) USERCLK
 
 # create clktypelist variable to save
