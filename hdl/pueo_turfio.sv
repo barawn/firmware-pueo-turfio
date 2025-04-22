@@ -13,7 +13,7 @@ module pueo_turfio #( parameter NSURF=7,
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd2,
-                      parameter [7:0] VER_REV =   8'd0,
+                      parameter [7:0] VER_REV =   8'd2,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -450,7 +450,8 @@ module pueo_turfio #( parameter NSURF=7,
     `DEFINE_WB_IF( aurora_ , 12, 32);
     
     // ADD HSKI2C HERE
-    hski2c_top u_hsk(.wb_clk_i(wb_clk),
+    hski2c_top #(.DEBUG("FALSE")) 
+               u_hsk(.wb_clk_i(wb_clk),
                      .wb_rst_i(1'b0),
                      .sys_rst_i(sys_rst),
                      `CONNECT_WBS_IFM( wb_ , hski2c_ ),
@@ -785,6 +786,7 @@ module pueo_turfio #( parameter NSURF=7,
                                   `CONNECT_AXI4S_MIN_IF( m_cmd_data_ , cmd_data_ ),
                                   `CONNECT_AXI4S_MIN_IF( s_cmd_data_ , cmd_resp_ ),
                                   .sys_clk_i(sysclk),
+                                  .cmd_rstb_i(sys_rst_b),
                                   `CONNECT_AXI4S_MIN_IF( s_axis_ , aurora_in_ ),
                                   .s_axis_tlast(aurora_in_tlast),
                                   .s_axis_tkeep( {4{1'b1}} ),
