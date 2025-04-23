@@ -194,7 +194,10 @@ module turfio_cmd_splice(
             
             holding_runcmd <= tfio_runcmd_tvalid;
         end
-
+        // ack when we actually send the trigger. we're only allowed to splice
+        // if there's no TURF trigger. (which of course is BULLSHIT because
+        // it will screw EVERYTHING but this is just testing only!!)
+        tfio_trig_ack <= (command_capture && tfio_trig_tvalid && !turf_trig_valid);
         tfio_fw_ack <= (command_capture && holding_fwu && turf_mode1_invalid);
         tfio_fw_marked <= (command_capture && holding_mark && turf_mode1_invalid);
         mode1_ack <= (command_capture && holding_mode1 && turf_mode1_invalid);
