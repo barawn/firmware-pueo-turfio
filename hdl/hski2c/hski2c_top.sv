@@ -180,11 +180,15 @@ module hski2c_top(
     reg enable_icap = 0;
     // Once we enable ICAP there's no going back. The ports no longer matter.
     wire icap_write = (k_write_strobe || write_strobe);
+    wire icap_read = read_strobe;
     wire [7:0] icap_data = reverse_byte(out_port);
 
+    // wtf dude CSIB can't just be straight low
+    // when ICAP access is enabled, ANY port is the ICAP port
+    wire icap_access = enable_icap && (icap_read || icap_write);
     ICAPE2 #(.ICAP_WIDTH("X8"))
            u_icap(.CLK(wb_clk_i),
-                  .CSIB( !enable_icap ),
+                  .CSIB( !icap_access ),
                   .RDWRB( !icap_write ),
                   .I(icap_data));
             
@@ -265,8 +269,16 @@ module hski2c_top(
     // 0101_1000 CONF = 11
     localparam [7:0] GENERAL_CONTROL_PORT = 8'h11;
     
+    // what... the effing hell was I doing???
+    // Let's ACTUALLY define this shit
+    // Bit 7: ENABLE output
+    // Bit 6: Cratebridge
+    // Bit 5: Reserved
+    // Bit 4: ICAP enable
+    // Bit 3:1 reserved
+    // Bit 0: HSK BRAM addr
     wire [7:0] general_control;
-    assign general_control = { hsk_enable_i, cratebridge_enable_actual, {5{1'b0}}, hsk_bram_addr };
+    assign general_control = { hsk_enable_i, cratebridge_enable_actual, 1'b0, enable_icap, {3{1'b0}}, hsk_bram_addr };
     wire [7:0] our_id = {3'b010, CONF, 3'b000 };
     wire [7:0] general_control_and_ourid = (port_id[0]) ? general_control : our_id;
 
@@ -334,7 +346,7 @@ module hski2c_top(
         else if (gc_write) begin
             hsk_bram_addr <= out_port[0];
             cratebridge_enable <= out_port[6];
-            enable_icap <= out_port[7];
+            enable_icap <= out_port[4];
         end
         // the actual is the real state which is combined
         cratebridge_enable_actual <= cratebridge_en_i;

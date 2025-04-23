@@ -4,10 +4,12 @@
  *
  */
 
+// VERSION 7 CHANGES:
+// fix eReloadFirmware so it works (issue w/icap reboot)
 // VERSION 6 CHANGES:
 // MOVE ePMBus/eEnable/eReloadFirmware TO NOT CLASH WITH SURF
 // ADD eCrateBridge COMMAND
-#define PB_TURFIO_VERSION 6
+#define PB_TURFIO_VERSION 7
 
 // We use the stock UART/COBS decoder, but we don't
 // buffer except at the UART level.
@@ -1529,10 +1531,19 @@ void cobsEncode() {
 // we?
 #define ICAP_PORT 0x00
 
+// In the HELIX SPI bootloader stuff,
+// we use a 32-bit port for ICAP because
+// we use the arg0/arg1 registers.
+// Here we're trying to use the 8-bit port.
+// The bit reversal gets done in hardware,
+// and compared to the config guide all of
+// the instructions are MSB first.
+// 
+
 // 28 total instructions, should be fine
 void icap_reboot() {
   // actually enable the ICAP port
-  curTmp = 0x80;
+  curTmp = 0x10;
   output( GC_PORT, curTmp );
   // flush
   outputk( ICAP_PORT, 0xFF );
@@ -1559,7 +1570,7 @@ void icap_reboot() {
   // cmd
   outputk( ICAP_PORT, 0x30);
   outputk( ICAP_PORT, 0x00);
-  outputk( ICAP_PORT, 0x08);
+  outputk( ICAP_PORT, 0x80);
   outputk( ICAP_PORT, 0x01);
   // iprog
   icap_3zero();
