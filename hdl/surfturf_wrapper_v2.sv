@@ -81,7 +81,7 @@ module surfturf_wrapper_v2 #(
         output [6:0] RXCLK_N                
     );
     
-    localparam [6:0] SURF_DEBUG = 7'b0000000;
+    localparam [6:0] SURF_DEBUG = 7'b0000001;
 
     // output datapath vector.
     `DEFINE_AXI4S_MIN_IFV( dout_ , 8, [6:0] );
@@ -136,11 +136,14 @@ module surfturf_wrapper_v2 #(
     // just... pull this from some'n for now
     wire trig = tfio_trig_tready && tfio_trig_tvalid;
     
+    wire event_reset;
+    
     surfturf_register_core #(.WB_CLK_TYPE(WB_CLK_TYPE))
             u_st_core(.wb_clk_i(wb_clk_i),
                       .wb_rst_i(wb_rst_i),
                       `CONNECT_WBS_IFM( wb_ , surfturf_ ),
                       .sysclk_i(sysclk_i),
+                      .event_reset_o(event_reset),
                       .disable_rxclk_o(disable_rxclk),
                       `CONNECT_AXI4S_MIN_IF( fw_ , tfio_fw_ ),
                       .fw_mark_o(tfio_fw_mark),
@@ -213,7 +216,7 @@ module surfturf_wrapper_v2 #(
                                  .DOUT_INV(  DOUT_INV[i-1] ),
                                  .TRAIN_SEQUENCE(TRAIN_SEQUENCE),
                                  .WB_CLK_TYPE(WB_CLK_TYPE),
-                                 .DEBUG( SURF_DEBUG[i-1] == 1'b1 ? "PHY" : "FALSE" ))
+                                 .DEBUG( SURF_DEBUG[i-1] == 1'b1 ? "MASK" : "FALSE" ))
                     u_surf( .wb_clk_i(wb_clk_i),
                             .wb_rst_i(wb_rst_i),
                             `CONNECT_WBS_IFMV(wb_ , wbvec_, [i] ),
@@ -225,6 +228,7 @@ module surfturf_wrapper_v2 #(
                             
                             .sync_i(sync_i),
                             .trig_i(trig),
+                            .event_reset_i(event_reset),
                             `CONNECT_AXI4S_MIN_IFV( m_dout_ , dout_ , [i-1]),
                             .m_dout_tlast(dout_tlast[i-1]),
                             

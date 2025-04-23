@@ -10,6 +10,7 @@
 module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
         input wb_clk_i,
         input wb_rst_i,
+        output event_reset_o,
         // 10 bit interface, taking 0x400-0x7FF.
         // we likely won't need anywhere NEAR that
         `TARGET_NAMED_PORTS_WB_IF(wb_ , 10, 32),
@@ -99,6 +100,12 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
 
     reg ack = 0;
     reg fwupdate_fifo_reset = 0;
+    (* CUSTOM_CC_SRC = WB_CLK_TYPE *)   
+    reg event_reset = 0;
+    (* CUSTOM_CC_DST = "SYSCLK", ASYNC_REG = "TRUE" *)
+    reg [1:0] event_reset_sysclk = {2{1'b0}};
+    
+    assign event_reset_o = event_reset_sysclk[1];
     
     assign wb_ack_o = ack && wb_cyc_i;
     // I don't hook up full here because we know how much to write:
@@ -138,6 +145,8 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
         else if (fw_marked_i) fw_mark1_sysclk <= 0;
 
         disable_rxclk_sysclk <= {disable_rxclk_sysclk[0], disable_rxclk};
+        
+        event_reset_sysclk <= {event_reset_sysclk[0], event_reset};
     end
     
     always @(posedge wb_clk_i) begin        
@@ -151,9 +160,12 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
 
         ack <= wb_cyc_i && wb_stb_i;
         
-        if (wb_cyc_i && wb_stb_i && wb_we_i && wb_adr_i[3:0] == CONTROL_ADDR && wb_sel_i[0])
-            fwupdate_fifo_reset <= wb_dat_i[0];
-
+        if (wb_cyc_i && wb_stb_i && wb_we_i && wb_adr_i[3:0] == CONTROL_ADDR) begin
+            if (wb_sel_i[0])
+                fwupdate_fifo_reset <= wb_dat_i[0];
+            if (wb_sel_i[2])
+                event_reset <= wb_dat_i[16];
+        end
         // silly pet tricks for J2B
         if (do_update_disable_rxclk)
             disable_rxclk <= wb_dat_i[24 +: 8];
@@ -182,6 +194,10 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
     
     assign wb_err_o = 1'b0;
     assign wb_rty_o = 1'b0;
-    assign wb_dat_o = { disable_rxclk, {21{1'b0}}, fw_mark1_wbclk, fw_mark0_wbclk, {4{1'b0}}, !trig_holding_valid_wbclk[1], !runcmd_holding_valid_wbclk[1], fw_empty_wbclk[1], fwupdate_fifo_reset };
+    // this is just the control register, we'll break it down to bytes
+    assign wb_dat_o = { disable_rxclk, {7{1'b0}},
+                        {7{1'b0}}, event_reset, 
+                        {6{1'b0}}, fw_mark1_wbclk, fw_mark0_wbclk, 
+                        {4{1'b0}}, !trig_holding_valid_wbclk[1], !runcmd_holding_valid_wbclk[1], fw_empty_wbclk[1], fwupdate_fifo_reset };
     
 endmodule

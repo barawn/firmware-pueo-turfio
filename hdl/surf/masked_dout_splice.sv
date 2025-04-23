@@ -15,6 +15,8 @@ module masked_dout_splice(
         output m_dout_tlast
     );
     
+    parameter DEBUG = "FALSE";
+    
     // 8 ch, 1536 bytes per ch, plus 4 bytes for headers
     localparam NUM_BYTES = 8*1536 + 4;
     // this means we can represent up to NUM_BYTES with a BYTE_COUNTER_WIDTH counter
@@ -75,10 +77,8 @@ module masked_dout_splice(
         if (!aresetn) latched_overflow <= 1'b0;
         else if (fifo_overflow) latched_overflow <= 1'b1;
     
-        if (!mask_i)
-            fake_event_needed <= 1'b0;
-        else if (trig_counter != {TRIG_COUNTER_WIDTH{1'b0}})
-            fake_event_needed <= 1'b1;
+        if (!mask_i) fake_event_needed <= 1'b0;
+        else fake_event_needed <= (trig_counter != {TRIG_COUNTER_WIDTH{1'b0}});
 
         // increment if we get trig_i, decrement if we enter state == START,
         // and don't do anything if the two happen at the same time.
@@ -124,5 +124,15 @@ module masked_dout_splice(
                             .dout( { m_dout_tlast, m_dout_tdata } ),
                             .valid( m_dout_tvalid ),
                             .rd_en( m_dout_tvalid && m_dout_tready ));
-        
+    
+    generate
+        if (DEBUG == "TRUE") begin : DBG
+            splice_ila u_ila(.clk(aclk),
+                             .probe0( state ),
+                             .probe1( byte_counter ),
+                             .probe2( last_byte ),
+                             .probe3( fifo_write ),
+                             .probe4( trig_counter ));
+        end
+    endgenerate        
 endmodule
