@@ -267,9 +267,8 @@ module turf_aurora_wrapper(
                             .probe2( hard_err ),
                             .probe3( soft_err ),
                             .probe4( frame_err ),
-                            .probe5( link_reset_out ),
-                            .probe6( gt0_rx_disp_err_out ),
-                            .probe7( gt0_rx_not_in_table_out ));
+                            .probe5( gt0_rx_disp_err_out ),
+                            .probe6( gt0_rx_not_in_table_out ));
                             
     
 // goddamn it we need to do this in Tcl to grab the IP core shit
