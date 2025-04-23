@@ -107,6 +107,8 @@ module turfio_hski2c_tb;
     wire [31:0] dat_o;
     wire ack;
     
+    reg sys_rst = 1;
+    
     hski2c_top #(.SIM_FAST("TRUE")) uut(.wb_clk_i(clk),
                    .wb_rst_i(1'b0),
                    .wb_cyc_i(cyc),
@@ -117,6 +119,9 @@ module turfio_hski2c_tb;
                    .wb_adr_i({12{1'b0}}),
                    .wb_ack_o(ack),
                    .wb_dat_o(dat_o),
+                   .sys_rst_i(sys_rst),
+                   .cratebridge_en_i(1'b0),
+                   .hsk_enable_i(1'b0),
                    .CONF(2'b00),
                    .sda_i(sda_i),
                    .sda_t(sda_t),
@@ -127,8 +132,9 @@ module turfio_hski2c_tb;
                    .I2C_RDY(I2C_RDY));
 
     initial begin
+        #500;
+        @(posedge clk); #1 rst = 0; sys_rst = 0;
         #100;
-        @(posedge clk); #1 rst = 0;
         @(posedge clk);
         #1 cyc = 1; dat_i = 32'd1; we = 1;
         while (!ack) @(posedge clk); 
@@ -144,6 +150,24 @@ module turfio_hski2c_tb;
         // our data, bastards
         #1000000;
         @(posedge clk);
+        // eff it try blowing the thing away
+        // eReloadFirmware from FE to 40
+        // 5 254 64 202 4 1 1 1 1 1 0
+        #1 uart_data = 8'd5; uart_write = 1; @(posedge clk); 
+        #1 uart_data = 8'd254; uart_write = 1; @(posedge clk); 
+        #1 uart_data = 8'd64; uart_write = 1; @(posedge clk); 
+        #1 uart_data = 8'd202; uart_write = 1; @(posedge clk); 
+        #1 uart_data = 8'd4; uart_write = 1; @(posedge clk); 
+        #1 uart_data = 8'd1; uart_write = 1; @(posedge clk); 
+        #1 uart_data = 8'd1; uart_write = 1; @(posedge clk); 
+        #1 uart_data = 8'd1; uart_write = 1; @(posedge clk); 
+        #1 uart_data = 8'd1; uart_write = 1; @(posedge clk); 
+        #1 uart_data = 8'd1; uart_write = 1; @(posedge clk); 
+        #1 uart_data = 8'd0; uart_write = 1; @(posedge clk);
+        #1 uart_write = 0; @(posedge clk);
+        #50000;
+        
+        
         // ePingPong from 00 to 40: 00 40 00 00 00
         // COBS:                 01 02 40 01 01 01 00
         #1 uart_data = 8'h01; uart_write = 1; @(posedge clk);
