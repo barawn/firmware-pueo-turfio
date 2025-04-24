@@ -24,6 +24,8 @@ module surf_interface_v2 #(parameter RXCLK_INV = 1'b0,
         input trig_i,
         // global event stream reset
         input event_reset_i,
+        // mask clock enable, just simplifies things
+        input mask_ce_i,
         
         input COUT_P,
         input COUT_N,
@@ -70,6 +72,7 @@ module surf_interface_v2 #(parameter RXCLK_INV = 1'b0,
                                  .aresetn( !event_reset_i ),
                                  .trig_i(trig_i),
                                  .mask_i(surf_mask),
+                                 .mask_ce_i(mask_ce_i),
                                  `CONNECT_AXI4S_MIN_IF( s_dout_ , surf_ ),
                                  `CONNECT_AXI4S_MIN_IF( m_dout_ , m_dout_ ),
                                  .m_dout_tlast(m_dout_tlast));
