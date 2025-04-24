@@ -25,7 +25,7 @@ module uart_hskbus_merge(
     // screw you so much, let's just figure this out...
     reg [1:0] rx_falling = {2{1'b0}};
     reg [7:0] rx_bytes = {8{1'b0}};
-    (* USE_DSP48 = "TRUE" *)
+    (* USE_DSP48 = "YES" *)
     reg [10:0] rx_holdoff_counter = {11{1'b0}};
     wire rx_holdoff_reached = (rx_holdoff_counter == {11{1'b0}});
     always @(posedge clk_i) begin
