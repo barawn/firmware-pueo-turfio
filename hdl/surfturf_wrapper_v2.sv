@@ -132,6 +132,12 @@ module surfturf_wrapper_v2 #(
     wire tfio_fw_marked;
     
     wire [7:0] disable_rxclk;
+
+    reg mask_ce = 0;
+    always @(posedge sysclk_i) begin
+        if (sync_i) mask_ce <= 1'b0;
+        else mask_ce <= ~mask_ce;
+    end
     
     // just... pull this from some'n for now
     wire trig = tfio_trig_tready && tfio_trig_tvalid;
@@ -229,6 +235,7 @@ module surfturf_wrapper_v2 #(
                             .sync_i(sync_i),
                             .trig_i(trig),
                             .event_reset_i(event_reset),
+                            .mask_ce_i(mask_ce),
                             `CONNECT_AXI4S_MIN_IFV( m_dout_ , dout_ , [i-1]),
                             .m_dout_tlast(dout_tlast[i-1]),
                             
