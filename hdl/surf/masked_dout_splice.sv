@@ -6,6 +6,7 @@ module masked_dout_splice(
         // we do need to count/decrement these
         input trig_i,
         input mask_i,
+        input mask_ce_i,
         // this is an overflow error
         output err_o,
         // input is a fake AXI4-stream
@@ -65,7 +66,7 @@ module masked_dout_splice(
     
     // a single FIFO per SURF should be fine, we shouldn't need to absorb
     // virtually any delay.
-    wire       fifo_write = (state != IDLE) && (mask_i ? 1'b1 : s_dout_tvalid);
+    wire       fifo_write = (state != IDLE) && (mask_i ? mask_ce_i : s_dout_tvalid);
     wire       fifo_overflow;
     reg        latched_overflow = 0;
     wire       fifo_valid;
@@ -90,7 +91,8 @@ module masked_dout_splice(
         end
 
         // no data if masked            
-        if (mask_i) din_store <= {8{1'b0}};
+        // eff it, right now we'll store byte counter
+        if (mask_i) din_store <= byte_counter;
         else din_store <= s_dout_tdata;            
     
         if (!aresetn)
