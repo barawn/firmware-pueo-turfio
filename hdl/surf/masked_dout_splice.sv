@@ -45,6 +45,11 @@ module masked_dout_splice(
     reg [TRIG_COUNTER_WIDTH-1:0] trig_counter = {TRIG_COUNTER_WIDTH{1'b0}};
     reg fake_event_needed = 0;
 
+    // try faking a real sample that way we know we're expanding it right
+    reg [23:0] fake_data = {24{1'b0}};
+    reg [2:0] fake_data_cycle = {3{1'b0}};
+    reg in_data = 0;
+
     // sigh, this requires more thought.
     // data coming in can't wait more than a clock
     // but it doesn't come in every clock.
@@ -92,7 +97,7 @@ module masked_dout_splice(
 
         // no data if masked            
         // eff it, right now we'll store byte counter
-        if (mask_i) din_store <= byte_counter;
+        if (mask_i) din_store <= fake_data[7:0];
         else din_store <= s_dout_tdata;            
     
         if (!aresetn)
@@ -108,6 +113,25 @@ module masked_dout_splice(
         else if (fifo_write && last_byte)
             in_event <= 0;            
     
+        if (state == IDLE) in_data <= 0;
+        else if (fifo_write && byte_counter == 3) in_data <= 1;
+        
+        if (!mask_i) fake_data_cycle <= 3'b000;
+        else if (!in_data) fake_data_cycle <= 3'b001;
+        else if (fifo_write) fake_data_cycle <= {fake_data_cycle[1:0], fake_data_cycle[2]};
+        
+        // conveniently this forces the header data to all zeros
+        // which is what we want
+        if (!in_data || !mask_i) fake_data <= 24'h001000;
+        else if (fifo_write) begin
+            if (fake_data_cycle[2]) begin
+                fake_data[23:12] <= {fake_data[7:0],fake_data[23:20]} + 2;
+                fake_data[11:0] <= fake_data[19:8] + 2;
+            end else begin
+                fake_data <= { fake_data[7:0], fake_data[23:8] };
+            end               
+        end
+               
         if (!aresetn) state <= IDLE;
         else begin
             case (state)
@@ -134,7 +158,9 @@ module masked_dout_splice(
                              .probe1( byte_counter ),
                              .probe2( last_byte ),
                              .probe3( fifo_write ),
-                             .probe4( trig_counter ));
+                             .probe4( trig_counter ),
+                             .probe5( fake_data ),
+                             .probe6( in_data ));
         end
     endgenerate        
 endmodule
