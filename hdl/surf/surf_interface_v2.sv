@@ -105,7 +105,7 @@ module surf_interface_v2 #(parameter RXCLK_INV = 1'b0,
                    
     surf_cout_interface_v2 #(.COUT_INV(COUT_INV),
                     .DOUT_INV(DOUT_INV),
-                    .DEBUG(DEBUG))
+                    .DEBUG(DEBUG != "FALSE" ? "PHY" : "FALSE"))
         u_surf_coutif(.sysclk_i(sysclk_i),
                    .sysclk_x2_i(sysclk_x2_i),
                    .sync_i(sync_i),

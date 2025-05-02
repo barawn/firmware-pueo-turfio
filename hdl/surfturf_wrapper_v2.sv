@@ -157,7 +157,8 @@ module surfturf_wrapper_v2 #(
                       `CONNECT_AXI4S_MIN_IF( runcmd_ , tfio_runcmd_ ),
                       `CONNECT_AXI4S_MIN_IF( trig_ , tfio_trig_ ));                                    
 
-    turfio_cmd_splice u_splice(.sysclk_i(sysclk_i),
+    turfio_cmd_splice #(.DEBUG("FALSE"))
+                      u_splice(.sysclk_i(sysclk_i),
                                .sync_i(sync_i),
                                .command_i(command_o),
                                .command_valid_i(command_valid_o),
