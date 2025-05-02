@@ -190,12 +190,13 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
     assign trig_tvalid = trig_holding_valid;
     assign trig_tdata = trig_holding_reg;
 
-    assign disable_rxclk_o = disable_rxclk_sysclk[1];
+    // uh wtf
+    assign disable_rxclk_o = disable_rxclk_sysclk;
     
     assign wb_err_o = 1'b0;
     assign wb_rty_o = 1'b0;
     // this is just the control register, we'll break it down to bytes
-    assign wb_dat_o = { disable_rxclk, {7{1'b0}},
+    assign wb_dat_o = { disable_rxclk,
                         {7{1'b0}}, event_reset, 
                         {6{1'b0}}, fw_mark1_wbclk, fw_mark0_wbclk, 
                         {4{1'b0}}, !trig_holding_valid_wbclk[1], !runcmd_holding_valid_wbclk[1], fw_empty_wbclk[1], fwupdate_fifo_reset };
