@@ -13,7 +13,7 @@ module pueo_turfio #( parameter NSURF=7,
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd2,
-                      parameter [7:0] VER_REV =   8'd8,
+                      parameter [7:0] VER_REV =   8'd9,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -755,7 +755,7 @@ module pueo_turfio #( parameter NSURF=7,
     // the inbounds come from the event merger!!
 
     // MERGER GOES HERE!!!!!!
-    surf_merger u_merger( .aclk( sysclk ),
+    surf_merger #(.DEBUG("FALSE")) u_merger( .aclk( sysclk ),
                           // uhhhhhh figure this out
                           .aresetn( 1'b1 ),
                           `CONNECT_AXI4S_MIN_IF( s_s0_ , s0_ ),
