@@ -13,7 +13,7 @@ module pueo_turfio #( parameter NSURF=7,
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd2,
-                      parameter [7:0] VER_REV =   8'd9,
+                      parameter [7:0] VER_REV =   8'd11,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -160,6 +160,11 @@ module pueo_turfio #( parameter NSURF=7,
         input CLKDIV2_N,
         output CLK_SYNC,
         output DBG_LED,
+        // GPIOs
+        input [1:0] GPI,
+        output [1:0] GPO,
+        output [1:0] GPOE_B,
+        
         // 100% unused
         input VP,
         input VN
@@ -168,6 +173,8 @@ module pueo_turfio #( parameter NSURF=7,
     localparam [15:0] FIRMWARE_VERSION = {VER_MAJOR, VER_MINOR, VER_REV};
     localparam [31:0] DATEVERSION = { FIRMWARE_DATE, FIRMWARE_VERSION };
         
+    localparam USE_VIO = "FALSE";
+
     // TURFIO inversion:
     // RXCLK[6:0] = 001_0011
     // CIN[6:0]   = 011_0001
@@ -272,6 +279,11 @@ module pueo_turfio #( parameter NSURF=7,
     /***********************************************/
 
     //////////////////////////////////////////////
+    // AURORA                                   //
+    //////////////////////////////////////////////
+    wire lane_up;
+
+    //////////////////////////////////////////////
     // CLOCKS                                   //
     //////////////////////////////////////////////
     
@@ -320,14 +332,18 @@ module pueo_turfio #( parameter NSURF=7,
     //                             UART MERGING                                     //
     //////////////////////////////////////////////////////////////////////////////////
 
-    hsk_vio u_hskvio(.clk(init_clk),
-                     .probe_in0(TCTRL_B),
-                     .probe_in1(hskbus_enable_local),
-                     .probe_in2(TRX),
-                     .probe_in3(DBG_RX),
-                     .probe_in4(SURF_RX),
-                     .probe_in5(sys_rst_b_reg));
-    
+    generate
+        if (USE_VIO == "TRUE") begin : VIO
+            hsk_vio u_hskvio(.clk(init_clk),
+                             .probe_in0(TCTRL_B),
+                             .probe_in1(hskbus_enable_local),
+                             .probe_in2(TRX),
+                             .probe_in3(DBG_RX),
+                             .probe_in4(SURF_RX),
+                             .probe_in5(sys_rst_b_reg));
+        end
+    endgenerate
+            
     wire [7:0] hskbus_rx_bytes;    
     
     uart_hskbus_merge #(.DEBUG("FALSE"))
@@ -408,7 +424,7 @@ module pueo_turfio #( parameter NSURF=7,
     `DEFINE_AXI4S_MIN_IF( cmd_addr_ , 32 );
     `DEFINE_AXI4S_MIN_IF( cmd_data_ , 32 );
     `DEFINE_AXI4S_MIN_IF( cmd_resp_ , 32 );
-    aurora_wb_master #(.ADDR_BITS(25),.DEBUG("TRUE"))
+    aurora_wb_master #(.ADDR_BITS(25),.DEBUG("FALSE"))
                      u_wbgtp( .aclk(wb_clk),
                               .aresetn(sys_rst_b),
                               `CONNECT_AXI4S_MIN_IF( s_addr_ , cmd_addr_ ),
@@ -450,11 +466,12 @@ module pueo_turfio #( parameter NSURF=7,
     `DEFINE_WB_IF( aurora_ , 12, 32);
     
     // ADD HSKI2C HERE
-    hski2c_top #(.DEBUG("FALSE")) 
+    hski2c_top #(.DEBUG("TRUE")) 
                u_hsk(.wb_clk_i(wb_clk),
                      .wb_rst_i(1'b0),
                      .sys_rst_i(sys_rst),
                      `CONNECT_WBS_IFM( wb_ , hski2c_ ),
+                     .lane_up_i(lane_up),
                      .hsk_enable_i(hsk_enable_i),
                      .hsk_enable_o(hsk_enable_o),
                      .hsk_enable_t(hsk_enable_t),
@@ -722,6 +739,7 @@ module pueo_turfio #( parameter NSURF=7,
                                       .trig_time_o(turf_trigtime),
                                       .trig_time_valid_o(turf_trigtime_valid));
 
+    assign GPOE_B[1] = 1'b0;
     turfio_sync_sysclk_count #(.DEBUG("FALSE"))
                              u_synccount(.sysclk_i(sysclk),
                                          .sync_offset_i(sync_offset),
@@ -730,9 +748,8 @@ module pueo_turfio #( parameter NSURF=7,
                                          .sysclk_count_o(sysclk_count),
                                          .sync_req_i(turf_runsync ),
                                          .sync_o(sync),
-                                         .dbg_surf_clk_o(DBG_LED),
+                                         .dbg_surf_clk_o(GPO[1]),
                                          .SYNC(CLK_SYNC));
-    
     wire locked;
     wire sysclk_reset=1'b0;
     sys_clk_generator u_sysclkgen(.clk_in1_p(CLKDIV2_P),
@@ -785,6 +802,7 @@ module pueo_turfio #( parameter NSURF=7,
                                   `CONNECT_AXI4S_MIN_IF( m_cmd_addr_ , cmd_addr_ ),
                                   `CONNECT_AXI4S_MIN_IF( m_cmd_data_ , cmd_data_ ),
                                   `CONNECT_AXI4S_MIN_IF( s_cmd_data_ , cmd_resp_ ),
+                                  .lane_up_o(lane_up),
                                   .sys_clk_i(sysclk),
                                   .cmd_rstb_i(sys_rst_b),
                                   `CONNECT_AXI4S_MIN_IF( s_axis_ , aurora_in_ ),
