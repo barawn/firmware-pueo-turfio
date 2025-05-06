@@ -66,6 +66,7 @@
 
 #define UART_STATUS_ERR 0x01
 #define UART_STATUS_LAST 0x02
+#define UART_STATUS_WATCHDOG 0x80
 
 // These are all mapped outputk as well
 #define PACKET_BASE  0x80
@@ -305,6 +306,18 @@ bool_t isr_serial(void)
   // if it's still busy, we disable interrupts after swapping.
   input(UART_RX, &fifoIn);
   input(UART_STATUS, &fifoTmp);
+  // check if we watchdog-tripped
+  if (fifoTmp & UART_STATUS_WATCHDOG) {
+    // goodbye, cruel world!
+    // We don't worry about the SURFs, they have their own
+    // watchdog where they blow up once RXCLK goes away.
+    // They're faster than the TURF anyway.
+    s4 = 0;
+    s5 = 0;
+    s6 = 0;
+    s7 = 0;
+    icap_reboot();
+  }
   // if there was a tuser error, toss the packet
   if (fifoTmp & UART_STATUS_ERR) {
     fifoPtr = 0;
