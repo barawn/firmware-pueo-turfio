@@ -21,6 +21,10 @@ module hski2c_top(
         output cratebridge_en_o,
         input cratebridge_en_i,
         
+        // lane up indicator. we need to take this
+        // b/c *we* handle the TURF watchdog, yo
+        input lane_up_i,
+        
         input [1:0] CONF,
         input HSK_RX,
         output HSK_TX,
@@ -238,6 +242,17 @@ module hski2c_top(
     reg cobs_error = 0;
     reg cobs_last = 0;
 
+    // watchdog stuff.
+    (* USE_DSP = "YES" *)
+    reg [47:0] lane_down_counter = {48{1'b0}};
+
+    reg watchdog_trip = 0;
+    // this is 3.35 seconds
+    wire watchdog_timer = lane_down_counter[28];
+    reg lane_up_stable = 0;
+    // this is 1.6 milliseconds
+    wire lane_up_stable_timer = lane_down_counter[17];
+
     // ok, so here's how our port mapping works.
     // 0x00 - 0x07 : reserved to make kport mapping easier
     // 0x08 - 0x0B : uart stuff
@@ -283,8 +298,8 @@ module hski2c_top(
     wire [7:0] general_control_and_ourid = (port_id[0]) ? general_control : our_id;
 
     wire [7:0] cobs_in = cobs_rx_tdata;
-    wire [7:0] cobs_status = { {6{1'b0}}, cobs_last, cobs_error };
-    assign     interrupt = cobs_rx_tvalid;    
+    wire [7:0] cobs_status = { watchdog_trip, {5{1'b0}}, cobs_last, cobs_error };
+    assign     interrupt = cobs_rx_tvalid || watchdog_trip;    
     
     wire [7:0] picoblaze_registers[15:0];
     wire [7:0] register_data = (port_id[4]) ? general_control_and_ourid : picoblaze_registers[port_id[3:0]];
@@ -325,8 +340,44 @@ module hski2c_top(
     wire gc_write = ((port_id & PB_MASK_OURID) == GENERAL_CONTROL_PORT) && write_strobe;
     assign hsk_enable_t = !gc_write;
     assign hsk_enable_o = out_port[7];
+
+    // ok here's the sequence
+    // we start off held in reset because we're not stable: so
+    // one reset condition is (!lane_up_i && !lane_up_stable)
+    // then when lane_up_i and lane_up_stable, we reset again
+    // so the next reset condition is (lane_up_i && lane_up_stable).
+    // and then our trip occurs at 2^28 if !lane_up_i.    
+    // our stable trip is 131072 = about 1.6 milliseconds.
+
+    // lane_up_stable will NEVER CLEAR once it's set
+    
+    // so we go
+    // t        lane_up      lane_up_stable     counter     watchdog trip
+    // 0        0            0                  in reset    0
+    // 1 ms     1            0                  running     0
+    // 2.6 ms   1            1                  in reset    0
+    // 1 sec    1            1                  in reset    0
+    // 2 sec    0            1                  running     0
+    // 5.3 sec  0            1                  running     1
+    // --> booom
         
     always @(posedge wb_clk_i) begin
+        // Watchdog.
+        if ((!lane_up_stable && !lane_up_i) ||
+            (lane_up_stable && lane_up_i)) 
+            lane_down_counter <= {48{1'b0}};
+        else
+            lane_down_counter <= lane_down_counter + 1;
+
+        // NEVER clears.
+        if (lane_up_stable_timer && lane_up_i)
+            lane_up_stable <= 1;
+
+        // NEVER clears.
+        if (watchdog_timer && lane_up_stable)
+            watchdog_trip <= 1;            
+
+
         // system reset
         sys_reset_rereg <= { sys_reset_rereg[0], sys_rst_i };
                 
@@ -442,6 +493,8 @@ module hski2c_top(
                .bram_dat_o(bram_data),
                .bram_we_i(bram_write),
                .bram_en_i(kport_id[7]));
+    always @(posedge wb_clk_i) begin
+    end
 
     generate
         if (DEBUG == "TRUE") begin : ILA
@@ -457,6 +510,8 @@ module hski2c_top(
             // 1 bit bankA_bram_addr
             // 1 bit bankB_bram_addr
             // compress ports and write
+            // 1 bit lane up
+            // 32-bit lane up counter
             wire [7:0] pb_port = kport_id;
             wire [7:0] pb_io = (read_strobe) ? in_port : out_port;
             wire pb_write = k_write_strobe || write_strobe;
@@ -472,7 +527,9 @@ module hski2c_top(
                              .probe7(hsk_bram_addr),
                              .probe8(bankA_bram_addr),
                              .probe9(bankB_bram_addr),
-                             .probe10(HSK_RX));
+                             .probe10(HSK_RX),
+                             .probe11(lane_up_i),
+                             .probe12(lane_up_stable));
         end
     endgenerate    
     // just for testing
