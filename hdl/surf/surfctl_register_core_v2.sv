@@ -20,6 +20,11 @@ module surfctl_register_core_v2(
         
         input sysclk_ok_i,
         input sysclk_i,
+
+        // these come from the live detector
+        // and automatic sequencer setup
+        input surf_live_i,
+        input surf_autotrain_en_i,
                 
         // IDELAY inputs/outputs and bitslip
         output idelay_cout_load_o,
@@ -165,11 +170,14 @@ module surfctl_register_core_v2(
     (* ASYNC_REG = "TRUE", CUSTOM_CC_DST = "SYSCLK" *)
     reg [1:0] iserdes_reset_resync = {2{1'b0}};
 
-    // oserdes reset
+    // oserdes reset. This STARTS OUT high
+    // to force keep COUT into a known state until
+    // pulled low by software. This can be done automatically
+    // if enabled.
     (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
-    reg oserdes_reset = 0;
+    reg oserdes_reset = 1;
     (* ASYNC_REG = "TRUE", CUSTOM_CC_DST = "SYSCLK" *)
-    reg [1:0] oserdes_reset_resync = {2{1'b0}};
+    reg [1:0] oserdes_reset_resync = {2{1'b1}};
     always @(posedge sysclk_i) begin
         iserdes_reset_resync <= { iserdes_reset_resync[0], iserdes_reset };
         oserdes_reset_resync <= { oserdes_reset_resync[0], oserdes_reset };
@@ -231,17 +239,29 @@ module surfctl_register_core_v2(
     assign dout_control_register[9] = dout_enable;
     assign dout_control_register[31:10] = control_register[31:10];
     
+    reg surf_autotrain_rereg = 0;
+    reg surf_live_rereg = 0;
     // REGISTER LOGIC    
+    wire common_control_write = (state == ACK && we_in_static && (adr_in_static == COUT_CONTROL_REG ||
+                                                                  adr_in_static == DOUT_CONTROL_REG));                                                                      
     always @(posedge wb_clk_i) begin
+        surf_autotrain_rereg <= surf_autotrain_en_i;
+        surf_live_rereg <= surf_live_i;
         // COMMON CONTROL REGISTER
-        if (state == ACK && we_in_static && (adr_in_static == COUT_CONTROL_REG ||
-                                             adr_in_static == DOUT_CONTROL_REG)) begin
-            if (sel_in_static[0]) begin
-                iserdes_reset <= dat_in_static[2];
-                oserdes_reset <= dat_in_static[4];
-            end
-            if (sel_in_static[1]) cin_train_enable <= dat_in_static[10];            
-        end                                             
+        // iserdes is ONLY controlled by register path
+        if (common_control_write)
+            if (sel_in_static[0]) iserdes_reset <= dat_in_static[2];
+        // oserdes reset is controlled by either a surf_live_i falling edge or register path
+        if (common_control_write)
+            if (sel_in_static[0]) oserdes_reset <= dat_in_static[4];
+        else if (!surf_live_i && surf_live_rereg)
+            oserdes_reset <= 1'b0;
+        // train enable is controlled by either register path or the automatic enable
+        if (common_control_write)
+            if (sel_in_static[1]) cin_train_enable <= dat_in_static[10];
+        else if (surf_autotrain_en_i && !surf_autotrain_rereg)
+            cin_train_enable <= 1'b1;
+                                        
         // COUT HSALIGN ONLY
         if (state == ACK && we_in_static && adr_in_static == COUT_CONTROL_REG) begin
             if (sel_in_static[1]) cout_enable <= dat_in_static[8];
