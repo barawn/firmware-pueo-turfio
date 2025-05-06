@@ -122,7 +122,7 @@ module surf_interface #(parameter RXCLK_INV = 1'b0,
                 .idelay_current_i(idelay_current),
                 .idelay_dout_current_i(idelay_dout_current),
                 .iserdes_rst_o(iserdes_rst),
-                .iserdes_bitslip_o(iserdes_bitsip),
+                .iserdes_bitslip_o(iserdes_bitslip),
                 .iserdes_dout_bitslip_o(iserdes_dout_bitslip),
                 .oserdes_rst_o(oserdes_rst),
                 
