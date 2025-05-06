@@ -93,12 +93,12 @@ set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN M4} [get_ports T_TCK]
 set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN N4} [get_ports T_TMS]
 
 ## GPIO
-#set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN G16 } [get_ports {    GPI[0]      }]
-#set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN G15 } [get_ports {    GPO[0]      }]
-#set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN F15 } [get_ports {    GPOE_B[0]   }]
-#set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN H17 } [get_ports {    GPI[1]      }]
-#set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN H18 } [get_ports {    GPO[1]      }]
-#set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN H16 } [get_ports {    GPOE_B[1]   }]
+set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN G16 } [get_ports {    GPI[0]      }]
+set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN G15 } [get_ports {    GPO[0]      }]
+set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN F15 } [get_ports {    GPOE_B[0]   }]
+set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN H17 } [get_ports {    GPI[1]      }]
+set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN H18 } [get_ports {    GPO[1]      }]
+set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN H16 } [get_ports {    GPOE_B[1]   }]
 
 ## main interfaces
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN K17} [get_ports {RXCLK_N[0]}]
