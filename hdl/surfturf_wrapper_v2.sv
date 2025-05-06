@@ -144,6 +144,9 @@ module surfturf_wrapper_v2 #(
     
     wire event_reset;
     
+    // the surfturf register core also includes
+    // the live detector and automatic train stuff now
+    // for the startup sequencer on the TURF
     surfturf_register_core #(.WB_CLK_TYPE(WB_CLK_TYPE))
             u_st_core(.wb_clk_i(wb_clk_i),
                       .wb_rst_i(wb_rst_i),
@@ -173,6 +176,10 @@ module surfturf_wrapper_v2 #(
                                .tfio_pps_i(tfio_pps_i),
                                .use_tfio_pps_i(use_tfio_pps_i),
                                .spliced_o(surf_command));
+
+    // vectors for the live detector
+    wire [27:0] surf_cout;
+    wire [55:0] surf_dout;
         
     generate
         genvar i;
