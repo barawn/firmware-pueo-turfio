@@ -59,8 +59,8 @@ module surf_cin_interface(
     // OSERDES. LSB is first out.
     OSERDESE2 #(.DATA_RATE_OQ("DDR"),
                 .DATA_WIDTH(4),
-                .INIT_OQ(CIN_INV),
-                .SRVAL_OQ(CIN_INV))
+                .INIT_OQ(~CIN_INV),
+                .SRVAL_OQ(~CIN_INV))
         u_surfcin_oserdes(.CLK(sysclk_x2_i),
                           .CLKDIV(sysclk_i),
                           .D1(command_hold[0] ^ CIN_INV),
