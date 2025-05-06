@@ -19,6 +19,10 @@ module surf_cout_interface_v2 #(parameter COUT_INV = 1'b0,
         output [5:0]    idelay_cout_current_o,
         output [5:0]    idelay_dout_current_o,
         
+        // for the surf live detector
+        output [3:0]    cout_o,
+        output [7:0]    dout_o,
+        
         output [31:0]   cout_data_o,
         output          cout_valid_o,
         input           cout_capture_i,
@@ -67,5 +71,9 @@ module surf_cout_interface_v2 #(parameter COUT_INV = 1'b0,
                             .dout_o(dout_data_o),
                             .dout_valid_o(dout_valid_o),
                             .dout_biterr_o(dout_biterr_o));
+
+    // surf live detector gets stuff without going through surf byte capture
+    assign cout_o = cout_from_iserdes;
+    assign dout_o = dout_from_iserdes;
 
 endmodule
