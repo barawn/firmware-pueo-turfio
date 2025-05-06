@@ -26,6 +26,14 @@ module surf_interface_v2 #(parameter RXCLK_INV = 1'b0,
         input event_reset_i,
         // mask clock enable, just simplifies things
         input mask_ce_i,
+        // when surf_live_i FALLS we force the serdes reset high again
+        input surf_live_i,
+        // when the automatic train enable is set up, this enables training
+        input surf_autotrain_en_i,
+        
+        // these are for the surf live detector
+        output [3:0] cout_o,
+        output [7:0] dout_o,
         
         input COUT_P,
         input COUT_N,
@@ -118,6 +126,9 @@ module surf_interface_v2 #(parameter RXCLK_INV = 1'b0,
                    .idelay_dout_load_i(idelay_dout_load),
                    .idelay_cout_current_o(idelay_cout_current),
                    .idelay_dout_current_o(idelay_dout_current),
+
+                   .cout_o(cout_o),
+                   .dout_o(dout_o),
                    
                    .cout_data_o(cout_data),
                    .cout_valid_o(cout_valid),
@@ -143,6 +154,8 @@ module surf_interface_v2 #(parameter RXCLK_INV = 1'b0,
                 `CONNECT_WBS_IFS(wb_ , wb_ ),
                 .sysclk_ok_i(sysclk_ok_i),
                 .sysclk_i(sysclk_i),
+                .surf_live_i(surf_live_i),
+                .surf_autotrain_en_i(surf_autotrain_en_i),
                 // IDELAYs are semicommon                
                 .idelay_cout_load_o(idelay_cout_load),
                 .idelay_dout_load_o(idelay_dout_load),
