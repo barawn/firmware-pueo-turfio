@@ -9,7 +9,7 @@ module turf_aurora_wrapper(
         input wb_clk_i,
         input wb_rst_i,
         `TARGET_NAMED_PORTS_WB_IF( wb_ , 12, 32 ),
-        
+
         // These are all in the wb_clk domain
         input cmd_rstb_i,
         // Command address + type
@@ -18,6 +18,9 @@ module turf_aurora_wrapper(
         `HOST_NAMED_PORTS_AXI4S_MIN_IF( m_cmd_data_ , 32),
         // Response data (for reads only). These are ONLY 32-bit, so don't need anything else.
         `TARGET_NAMED_PORTS_AXI4S_MIN_IF( s_cmd_data_ , 32),
+
+        // wishbone-clock side up indicator
+        output lane_up_o,
 
         // sysclk. regular data path is in sysclk domain
         input sys_clk_i,
@@ -39,8 +42,17 @@ module turf_aurora_wrapper(
         output MGTTX_P,
         output MGTTX_N
     );
-    
+    parameter DEBUG = "FALSE";
+        
     // sigh, ok, let's do this.
+    
+    // lane up indicator, in userclk
+    (* CUSTOM_CC_SRC = "USERCLK" *)
+    reg lane_up_userclk = 1'b0;
+    // lane up indicator, in wbclk
+    (* CUSTOM_CC_SRC = "INITCLK", ASYNC_REG = "TRUE" *)
+    reg [1:0] lane_up_initclk = 2'b00;
+    assign lane_up_o = lane_up_initclk[1];
     
     // link status register. This will be captured by wb_dat_reg.
     wire [31:0] link_status;
@@ -210,7 +222,7 @@ module turf_aurora_wrapper(
     // more more
     wire [3:0] gt0_rx_disp_err_out;
     wire [3:0] gt0_rx_not_in_table_out;
-                        
+
     // hook up the link status
     assign link_status_userclk[0] = lane_up;            //userclk
     assign link_status_userclk[1] = channel_up;         //userclk
@@ -261,15 +273,18 @@ module turf_aurora_wrapper(
     assign link_dmonitor = { {16{1'b0}}, dmonitor };
 
     // ffs
-    aurora_direct_ila u_ila(.clk(user_clk),
-                            .probe0( lane_up ),
-                            .probe1( channel_up ),
-                            .probe2( hard_err ),
-                            .probe3( soft_err ),
-                            .probe4( frame_err ),
-                            .probe5( gt0_rx_disp_err_out ),
-                            .probe6( gt0_rx_not_in_table_out ));
-                            
+    generate
+        if (DEBUG == "DIRECT") begin : ILA
+            aurora_direct_ila u_ila(.clk(user_clk),
+                                    .probe0( lane_up ),
+                                    .probe1( channel_up ),
+                                    .probe2( hard_err ),
+                                    .probe3( soft_err ),
+                                    .probe4( frame_err ),
+                                    .probe5( gt0_rx_disp_err_out ),
+                                    .probe6( gt0_rx_not_in_table_out ));
+        end
+    endgenerate                                            
     
 // goddamn it we need to do this in Tcl to grab the IP core shit
 //    aurora_ctrlstat_ila u_ila( .clk(init_clk),
@@ -322,6 +337,7 @@ module turf_aurora_wrapper(
 
     // ok, logic first
     always @(posedge wb_clk_i) begin
+        lane_up_initclk <= {lane_up_initclk[0], lane_up_userclk};
         // this is only for debugging, and is trimmed if debugging isn't used
         link_status_dbg <= link_status;
     
@@ -366,6 +382,8 @@ module turf_aurora_wrapper(
     end
 
     always @(posedge user_clk) begin
+        lane_up_userclk <= lane_up;
+    
         if (linkerr_reset_userclk) begin
             rx_overflow_occurred <= 1'b0;
             ufc_rx_overflow_occurred <= 1'b0;
