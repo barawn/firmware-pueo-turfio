@@ -50,7 +50,7 @@ module turf_aurora_wrapper(
     (* CUSTOM_CC_SRC = "USERCLK" *)
     reg lane_up_userclk = 1'b0;
     // lane up indicator, in wbclk
-    (* CUSTOM_CC_SRC = "INITCLK", ASYNC_REG = "TRUE" *)
+    (* CUSTOM_CC_DST = "INITCLK", ASYNC_REG = "TRUE" *)
     reg [1:0] lane_up_initclk = 2'b00;
     assign lane_up_o = lane_up_initclk[1];
     
