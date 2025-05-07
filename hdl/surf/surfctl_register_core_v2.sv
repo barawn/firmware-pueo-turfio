@@ -244,6 +244,17 @@ module surfctl_register_core_v2(
     // REGISTER LOGIC    
     wire common_control_write = (state == ACK && we_in_static && (adr_in_static == COUT_CONTROL_REG ||
                                                                   adr_in_static == DOUT_CONTROL_REG));                                                                      
+
+    wire autotrain_flag = (surf_autotrain_en_i && !surf_autotrain_rereg);
+    wire autotrain_oserdes_clear_reset;
+    SRL16E u_autotrain_delay(.D(autotrain_flag),
+                             .CE(1'b1),
+                             .CLK(wb_clk_i),
+                             .A0(1'b1),
+                             .A1(1'b1),
+                             .A2(1'b1),
+                             .A3(1'b1),
+                             .Q(autotrain_oserdes_clear_reset));
     always @(posedge wb_clk_i) begin
         surf_autotrain_rereg <= surf_autotrain_en_i;
         surf_live_rereg <= surf_live_i;
@@ -251,15 +262,20 @@ module surfctl_register_core_v2(
         // iserdes is ONLY controlled by register path
         if (common_control_write)
             if (sel_in_static[0]) iserdes_reset <= dat_in_static[2];
-        // oserdes reset is controlled by either a surf_live_i falling edge or register path
+        // oserdes reset is controlled by either a surf_live_i falling edge,
+        // register path, or a delay on the autotrain.
+        // when surf live falls, we jump back to reset.
         if (common_control_write)
             if (sel_in_static[0]) oserdes_reset <= dat_in_static[4];
         else if (!surf_live_i && surf_live_rereg)
+            oserdes_reset <= 1'b1;
+        else if (autotrain_oserdes_clear_reset)
             oserdes_reset <= 1'b0;
+            
         // train enable is controlled by either register path or the automatic enable
         if (common_control_write)
             if (sel_in_static[1]) cin_train_enable <= dat_in_static[10];
-        else if (surf_autotrain_en_i && !surf_autotrain_rereg)
+        else if (autotrain_flag)
             cin_train_enable <= 1'b1;
                                         
         // COUT HSALIGN ONLY
