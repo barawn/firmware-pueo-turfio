@@ -7,7 +7,8 @@
 // Aurora.
 // But I need to be able to Test Stuff Now, so this is what it is.
 // OK so probably not temporary, since we add the rxclk disable here.
-module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
+module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
+                                parameter SYS_CLK_TYPE = "NONE")(
         input wb_clk_i,
         input wb_rst_i,
         output event_reset_o,
@@ -15,6 +16,15 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
         // we likely won't need anywhere NEAR that
         `TARGET_NAMED_PORTS_WB_IF(wb_ , 10, 32),
         input sysclk_i,
+        input sysclk_ok_i,
+        // surf live detector
+        input [27:0] surf_cout_i,
+        input [55:0] surf_dout_i,
+        // these *stay* in wbclk land since they feed over
+        // to the surfctl_register_core also in wbclk land.
+        output [6:0] surf_live_o,
+        output [6:0] surf_autotrain_en_o,
+        
         output [7:0] disable_rxclk_o,
         // FW update output port stuff
         `HOST_NAMED_PORTS_AXI4S_MIN_IF( fw_ , 8),
@@ -24,32 +34,39 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
         `HOST_NAMED_PORTS_AXI4S_MIN_IF( trig_ , `RACKBUS_TRIG_BITS )       
     );
     
+    localparam ADDR_BITS = 5;
+    
     // register 0: control and FIFO status (no FIFOs for runcmd/trig!)
     // register 1: fwupdate register (32-bits, reshaped to 8 bits in sysclk domain
     // register 2: runcmd register (only 2 bits)
     // register 3: trigger register (only 15 bits)
-    localparam [3:0] CONTROL_ADDR = 4'h0;
-    localparam [3:0] FWUPDATE_ADDR = 4'h4;
-    localparam [3:0] RUNCMD_ADDR = 4'h8;
-    localparam [3:0] TRIG_ADDR = 4'hC;
-
+    localparam [ADDR_BITS-1:0] CONTROL_ADDR =  5'h00;
+    localparam [ADDR_BITS-1:0] FWUPDATE_ADDR = 5'h04;
+    localparam [ADDR_BITS-1:0] RUNCMD_ADDR =   5'h08;
+    localparam [ADDR_BITS-1:0] TRIG_ADDR =     5'h0C;
+    // the SURF live detector gets 4 additional addresses:
+    localparam [ADDR_BITS-1:0] LIVE_ADDR     =  5'h10;
+    localparam [ADDR_BITS-1:0] TRAININ_ADDR  =  5'h14; // also contains autotrain enable
+    localparam [ADDR_BITS-1:0] TRAINOUT_ADDR =  5'h18;
+    localparam [ADDR_BITS-1:0] TRAINCMPL_ADDR = 5'h1C;
+                
     reg update_disable_rxclk = 1'b0;
-    wire do_update_disable_rxclk = wb_cyc_i && wb_stb_i && wb_we_i && wb_adr_i[3:0] == CONTROL_ADDR && wb_sel_i[3] && wb_ack_o;
+    wire do_update_disable_rxclk = wb_cyc_i && wb_stb_i && wb_we_i && wb_adr_i[ADDR_BITS-1:0] == CONTROL_ADDR && wb_sel_i[3] && wb_ack_o;
     wire update_disable_rxclk_sysclk;
     flag_sync u_update_disable_flag(.in_clkA(update_disable_rxclk),.out_clkB(update_disable_rxclk_sysclk),
                                     .clkA(wb_clk_i),.clkB(sysclk_i));
     (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
     reg [7:0] disable_rxclk = {8{1'b1}};
-    (* CUSTOM_CC_DST = "SYSCLK", ASYNC_REG = "TRUE" *)
+    (* CUSTOM_CC_DST = SYS_CLK_TYPE, ASYNC_REG = "TRUE" *)
     reg [7:0] disable_rxclk_sysclk = {8{1'b1}};
     
     // capture in wb clk and hold it: it's flag-synced over to
     // sysclk, so we can just make a datapath only delay to the hold register
     (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
     reg [`RACKBUS_RUNCMD_BITS-1:0] runcmd_holding_reg = {`RACKBUS_RUNCMD_BITS{1'b0}};
-    (* CUSTOM_CC_SRC = "SYSCLK" *)
+    (* CUSTOM_CC_SRC = SYS_CLK_TYPE *)
     reg runcmd_holding_valid = 0;
-    wire runcmd_is_valid_wbclk = (wb_cyc_i && wb_stb_i && wb_ack_o && (wb_adr_i[3:0] == RUNCMD_ADDR) && wb_we_i && wb_sel_i[0]);
+    wire runcmd_is_valid_wbclk = (wb_cyc_i && wb_stb_i && wb_ack_o && (wb_adr_i[ADDR_BITS-1:0] == RUNCMD_ADDR) && wb_we_i && wb_sel_i[0]);
     wire runcmd_is_valid_sysclk;
     (* CUSTOM_CC_DST = WB_CLK_TYPE, ASYNC_REG = "TRUE" *)
     reg [1:0] runcmd_holding_valid_wbclk = {2{1'b0}};
@@ -57,24 +74,24 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
     // same as above
     (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
     reg [`RACKBUS_TRIG_BITS-1:0] trig_holding_reg = {`RACKBUS_TRIG_BITS{1'b0}};
-    (* CUSTOM_CC_SRC = "SYSCLK" *)
+    (* CUSTOM_CC_SRC = SYS_CLK_TYPE *)
     reg trig_holding_valid = 0;
-    wire trig_is_valid_wbclk = (wb_cyc_i && wb_stb_i && wb_ack_o && (wb_adr_i[3:0] == TRIG_ADDR) && wb_we_i && (wb_sel_i[0] && wb_sel_i[1]));
+    wire trig_is_valid_wbclk = (wb_cyc_i && wb_stb_i && wb_ack_o && (wb_adr_i[ADDR_BITS-1:0] == TRIG_ADDR) && wb_we_i && (wb_sel_i[0] && wb_sel_i[1]));
     wire trig_is_valid_sysclk;
     (* CUSTOM_CC_DST = WB_CLK_TYPE, ASYNC_REG = "TRUE" *)
     reg [1:0] trig_holding_valid_wbclk = {2{1'b0}};
     
     // fwupdate uses a real FIFO for now
-    wire fw_write = (wb_cyc_i && wb_stb_i && wb_ack_o && (wb_adr_i[3:0] == FWUPDATE_ADDR) && wb_we_i);
+    wire fw_write = (wb_cyc_i && wb_stb_i && wb_ack_o && (wb_adr_i[ADDR_BITS-1:0] == FWUPDATE_ADDR) && wb_we_i);
     wire fw_empty;
-    (* CUSTOM_CC_SRC = "SYSCLK" *)
+    (* CUSTOM_CC_SRC = SYS_CLK_TYPE *)
     reg fw_empty_sysclk = 0;
     (* CUSTOM_CC_DST = WB_CLK_TYPE, ASYNC_REG = "TRUE" *)
     reg [1:0] fw_empty_wbclk = {2{1'b0}};
     // mark we make a bit more complicated here: there are basically paired registers here
     // if something goes wrong (like you write to this when sysclk is not running)
     // writing again will fix it.
-    wire fw_do_mark0_wbclk = (wb_cyc_i && wb_stb_i && wb_ack_o && (wb_adr_i[3:0] == CONTROL_ADDR) && wb_we_i && wb_dat_i[8] && wb_sel_i[1]);
+    wire fw_do_mark0_wbclk = (wb_cyc_i && wb_stb_i && wb_ack_o && (wb_adr_i[ADDR_BITS-1:0] == CONTROL_ADDR) && wb_we_i && wb_dat_i[8] && wb_sel_i[1]);
     wire fw_do_mark0_sysclk;
     reg fw_mark0_wbclk = 0;
     reg fw_mark0_sysclk = 0;
@@ -85,7 +102,7 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
     flag_sync u_marked0_sync(.in_clkA(fw_marked0_sysclk),.out_clkB(fw_marked0_wbclk),
                               .clkA(sysclk_i),.clkB(wb_clk_i));    
 
-    wire fw_do_mark1_wbclk = (wb_cyc_i && wb_stb_i && wb_ack_o && (wb_adr_i[3:0] == CONTROL_ADDR) && wb_we_i && wb_dat_i[9] && wb_sel_i[1]);
+    wire fw_do_mark1_wbclk = (wb_cyc_i && wb_stb_i && wb_ack_o && (wb_adr_i[ADDR_BITS-1:0] == CONTROL_ADDR) && wb_we_i && wb_dat_i[9] && wb_sel_i[1]);
     wire fw_do_mark1_sysclk;
     reg fw_mark1_wbclk = 0;
     reg fw_mark1_sysclk = 0;
@@ -102,7 +119,7 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
     reg fwupdate_fifo_reset = 0;
     (* CUSTOM_CC_SRC = WB_CLK_TYPE *)   
     reg event_reset = 0;
-    (* CUSTOM_CC_DST = "SYSCLK", ASYNC_REG = "TRUE" *)
+    (* CUSTOM_CC_DST = SYS_CLK_TYPE, ASYNC_REG = "TRUE" *)
     reg [1:0] event_reset_sysclk = {2{1'b0}};
     
     assign event_reset_o = event_reset_sysclk[1];
@@ -129,6 +146,54 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE")(
     flag_sync u_trig_valid(.in_clkA(trig_is_valid_wbclk),.out_clkB(trig_is_valid_sysclk),
                            .clkA(wb_clk_i),.clkB(sysclk_i));                             
 
+    wire [6:0] surf_live;
+    wire [31:0] surf_live_register = { {25{1'b0}}, surf_live };
+    wire [6:0] surf_trainin_req;
+    reg [6:0] surf_autotrain = {7{1'b0}};    
+    wire [31:0] surf_trainin_register = { {9{1'b0}}, surf_autotrain, {9{1'b0}}, surf_trainin_req };
+    wire [6:0] surf_trainout_rdy;
+    wire [31:0] surf_trainout_register = { {25{1'b0}}, surf_trainout_rdy };
+    reg  [6:0] surf_train_complete = {7{1'b0}};
+    wire [31:0] surf_complete_register = { {25{1'b0}}, surf_train_complete };
+    
+    // live detector:
+    // power on: everything zero
+    // enable_rxclk: trainin_req goes high, if surf_autotrain is enabled,
+    //                                      then surf_autotrain_en_o goes high
+    //                                      and outputs forced into training and
+    //                                      OSERDES exits reset.
+    // -> surf trains on the input data
+    //    surf then puts its own outputs (COUT/DOUT) into training,
+    //    which sets trainout_rdy
+    // register interface sees trainout_rdy go high, trains on the inputs,
+    // and then sets the register in surf_train_complete 
+    generate
+        genvar i;
+        for (i=0;i<7;i=i+1) begin : LIVE
+            reg surf_autotrain_flag = 0;
+            reg surf_trainin_req_rereg = 0;
+            always @(posedge wb_clk_i) begin : AUTOTRAIN
+                surf_trainin_req_rereg <= surf_trainin_req[i];
+                surf_autotrain_flag <= (surf_trainin_req[i] &&
+                                        surf_autotrain[i] && !surf_trainin_req_rereg);
+            end
+            assign surf_autotrain_en_o[i] = surf_autotrain_flag;
+            assign surf_live_o[i] = surf_live[i];
+            surf_live_detector #(.WBCLKTYPE(WB_CLK_TYPE),
+                                 .SYSCLKTYPE(SYS_CLK_TYPE))
+                u_livedet(.sys_clk_i(sysclk_i),
+                          .sys_clk_ok_i(sysclk_ok_i),
+                          .wb_clk_i(wb_clk_i),
+                          .cout_i(surf_cout_i[4*i +: 4]),
+                          .dout_i(surf_dout_i[8*i +: 8]),
+                          .trainin_req_o(surf_trainin_req[i]),
+                          .trainout_rdy_o(surf_trainout_rdy[i]),
+                          .train_complete_i(surf_train_complete[i]),
+                          .surf_live_o(surf_live[i]));
+                                      
+        end
+    endgenerate    
+    
     always @(posedge sysclk_i) begin
         if (runcmd_tready) runcmd_holding_valid <= 1'b0;
         else if (runcmd_is_valid_sysclk) runcmd_holding_valid <= 1'b1;

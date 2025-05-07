@@ -62,7 +62,7 @@ module surf_live_detector(
             reg [1:0] surf_live_wbclk = {2{1'b0}};            
 
             reg [4:0] cout_counter = {5{1'b0}};
-            always @(posedge sys_clk_i or sys_clk_ok_i) begin : LOGIC
+            always @(posedge sys_clk_i or negedge sys_clk_ok_i) begin : LOGIC
                 if (!sys_clk_ok_i) surf_live <= 0;
                 else begin
                     if (cout_counter[4])

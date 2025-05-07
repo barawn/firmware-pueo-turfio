@@ -147,11 +147,12 @@ module surfturf_wrapper_v2 #(
     // vectors for the live detector
     wire [27:0] surf_cout;
     wire [55:0] surf_dout;
-
+    wire [6:0] surf_autotrain_en;
+    wire [6:0] surf_live;
     // the surfturf register core also includes
     // the live detector and automatic train stuff now
     // for the startup sequencer on the TURF
-    surfturf_register_core #(.WB_CLK_TYPE(WB_CLK_TYPE))
+    surfturf_register_core #(.WB_CLK_TYPE(WB_CLK_TYPE),.SYS_CLK_TYPE("SYSCLK"))
             u_st_core(.wb_clk_i(wb_clk_i),
                       .wb_rst_i(wb_rst_i),
                       `CONNECT_WBS_IFM( wb_ , surfturf_ ),
@@ -160,6 +161,8 @@ module surfturf_wrapper_v2 #(
                       .sysclk_ok_i(sysclk_ok_i),
                       .surf_cout_i(surf_cout_i),
                       .surf_dout_i(surf_dout_i),
+                      .surf_autotrain_en_o(surf_autotrain_en),
+                      .surf_live_o(surf_live),
                                             
                       .event_reset_o(event_reset),
                       .disable_rxclk_o(disable_rxclk),
@@ -242,6 +245,9 @@ module surfturf_wrapper_v2 #(
                             .sysclk_i(sysclk_i),
                             .sysclk_ok_i(sysclk_ok_i),
                             .sysclk_x2_i(sysclk_x2_i),
+
+                            .surf_live_i(surf_live[i]),
+                            .surf_autotrain_en_i(surf_autotrain_en[i]),
 
                             .disable_rxclk_i(disable_rxclk[i]),
                             
