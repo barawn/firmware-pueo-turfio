@@ -57,6 +57,9 @@ module surf_cin_interface(
     end        
         
     // OSERDES. LSB is first out.
+    // if CIN_INV is 1, we want INIT_OQ to be 0 and SRVAL_OQ to be 0
+    // that way when things are in reset and we're not running, things
+    // are held to 1.
     OSERDESE2 #(.DATA_RATE_OQ("DDR"),
                 .DATA_WIDTH(4),
                 .INIT_OQ(~CIN_INV),
