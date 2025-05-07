@@ -156,6 +156,12 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
     reg  [6:0] surf_train_complete = {7{1'b0}};
     wire [31:0] surf_complete_register = { {25{1'b0}}, surf_train_complete };
     
+    wire [31:0] live_registers[3:0];
+    assign live_registers[0] = surf_live_register;
+    assign live_registers[1] = surf_trainin_register;
+    assign live_registers[2] = surf_trainout_register;
+    assign live_registers[3] = surf_complete_register;
+    
     // live detector:
     // power on: everything zero
     // enable_rxclk: trainin_req goes high, if surf_autotrain is enabled,
@@ -167,6 +173,22 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
     //    which sets trainout_rdy
     // register interface sees trainout_rdy go high, trains on the inputs,
     // and then sets the register in surf_train_complete 
+
+    // OH FFS THE LIVE DETECTOR TAKES 'EM ALL!!!
+    surf_live_detector #(.WBCLKTYPE(WB_CLK_TYPE),
+                         .SYSCLKTYPE(SYS_CLK_TYPE))
+         u_livedet(.sys_clk_i(sysclk_i),
+                   .sys_clk_ok_i(sysclk_ok_i),
+                   .wb_clk_i(wb_clk_i),
+                   .cout_i(surf_cout_i),
+                   .dout_i(surf_dout_i),
+                   .trainin_req_o(surf_trainin_req),
+                   .trainout_rdy_o(surf_trainout_rdy),
+                   .train_complete_i(surf_train_complete),
+                   .surf_live_o(surf_live));
+
+    assign surf_live_o = surf_live;
+            
     generate
         genvar i;
         for (i=0;i<7;i=i+1) begin : LIVE
@@ -178,19 +200,6 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
                                         surf_autotrain[i] && !surf_trainin_req_rereg);
             end
             assign surf_autotrain_en_o[i] = surf_autotrain_flag;
-            assign surf_live_o[i] = surf_live[i];
-            surf_live_detector #(.WBCLKTYPE(WB_CLK_TYPE),
-                                 .SYSCLKTYPE(SYS_CLK_TYPE))
-                u_livedet(.sys_clk_i(sysclk_i),
-                          .sys_clk_ok_i(sysclk_ok_i),
-                          .wb_clk_i(wb_clk_i),
-                          .cout_i(surf_cout_i[4*i +: 4]),
-                          .dout_i(surf_dout_i[8*i +: 8]),
-                          .trainin_req_o(surf_trainin_req[i]),
-                          .trainout_rdy_o(surf_trainout_rdy[i]),
-                          .train_complete_i(surf_train_complete[i]),
-                          .surf_live_o(surf_live[i]));
-                                      
         end
     endgenerate    
     
@@ -225,7 +234,14 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
 
         ack <= wb_cyc_i && wb_stb_i;
         
-        if (wb_cyc_i && wb_stb_i && wb_we_i && wb_adr_i[3:0] == CONTROL_ADDR) begin
+        if (wb_cyc_i && wb_stb_i && wb_we_i && wb_adr_i[ADDR_BITS-1:0] == TRAININ_ADDR) begin
+            if (wb_sel_i[2]) surf_autotrain <= wb_dat_i[16 +: 7];
+        end
+        if (wb_cyc_i && wb_stb_i && wb_we_i && wb_adr_i[ADDR_BITS-1:0] == TRAINCMPL_ADDR) begin
+            if (wb_sel_i[0]) surf_train_complete <= wb_dat_i[0 +: 7];
+        end
+        
+        if (wb_cyc_i && wb_stb_i && wb_we_i && wb_adr_i[ADDR_BITS-1:0] == CONTROL_ADDR) begin
             if (wb_sel_i[0])
                 fwupdate_fifo_reset <= wb_dat_i[0];
             if (wb_sel_i[2])
@@ -258,12 +274,13 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
     // uh wtf
     assign disable_rxclk_o = disable_rxclk_sysclk;
     
-    assign wb_err_o = 1'b0;
-    assign wb_rty_o = 1'b0;
-    // this is just the control register, we'll break it down to bytes
-    assign wb_dat_o = { disable_rxclk,
+    wire [31:0] ctrl_register = { disable_rxclk,
                         {7{1'b0}}, event_reset, 
                         {6{1'b0}}, fw_mark1_wbclk, fw_mark0_wbclk, 
                         {4{1'b0}}, !trig_holding_valid_wbclk[1], !runcmd_holding_valid_wbclk[1], fw_empty_wbclk[1], fwupdate_fifo_reset };
+
     
+    assign wb_err_o = 1'b0;
+    assign wb_rty_o = 1'b0;
+    assign wb_dat_o = (wb_adr_i[4]) ? live_registers[wb_adr_i[2 +: 2]] : ctrl_register;
 endmodule
