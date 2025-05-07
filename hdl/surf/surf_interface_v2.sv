@@ -28,7 +28,7 @@ module surf_interface_v2 #(parameter RXCLK_INV = 1'b0,
         input mask_ce_i,
         // when surf_live_i FALLS we force the serdes reset high again
         input surf_live_i,
-        // when the automatic train enable is set up, this enables training
+        // when the automatic train enable is set up, enables training.
         input surf_autotrain_en_i,
         
         // these are for the surf live detector
