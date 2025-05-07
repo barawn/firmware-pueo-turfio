@@ -19,6 +19,7 @@ ip/debug/hskbus_uart_ila/hskbus_uart_ila.xci
 ip/debug/intercon_ila/intercon_ila.xci
 ip/debug/rackctl_ila/rackctl_ila.xci
 ip/debug/rackctl_vio/rackctl_vio.xci
+ip/debug/splice_ila/splice_ila.xci
 ip/surf/surf_combiner/surf_combiner.xci
 ip/debug/surf_cout_phy_ila/surf_cout_phy_ila.xci
 ip/surf/surf_event_fifo/surf_event_fifo.xci

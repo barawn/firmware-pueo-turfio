@@ -199,10 +199,11 @@ module surfctl_register_core(
     (* ASYNC_REG = "TRUE", CUSTOM_CC_DST = "SYSCLK" *)
     reg [1:0] dout_iserdes_reset_resync = {2{1'b0}};
 
+    // oserdes STARTS OUT in reset.
     (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
-    reg oserdes_reset = 0;
+    reg oserdes_reset = 1;
     (* ASYNC_REG = "TRUE", CUSTOM_CC_DST = "SYSCLK" *)
-    reg [1:0] oserdes_reset_resync = {2{1'b0}};
+    reg [1:0] oserdes_reset_resync = {2{1'b1}};
     always @(posedge sysclk_i) begin
         iserdes_reset_resync <= { iserdes_reset_resync[0], iserdes_reset };
         dout_iserdes_reset_resync <= { dout_iserdes_reset_resync[0], dout_iserdes_reset };

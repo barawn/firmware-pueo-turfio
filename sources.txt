@@ -37,16 +37,10 @@ hdl/pueo_turfio.sv
 hdl/aurora/aurora_turf_clock.sv
 hdl/aurora/aurora_wb_master.sv
 hdl/hski2c/hski2c_top.sv
-hdl/surf/surf_interface.sv
 verilog-library-barawn/hdl/obufds_autoinv.v
-hdl/surfturf_wrapper.sv
-hdl/surf/surf_cout_interface.sv
 hdl/surf/surf_cin_interface.sv
-hdl/surf/surfctl_register_core.sv
 verilog-library-barawn/hdl/ibufds_autoinv.v
-hdl/surf/surf_cout_phy.sv
 hdl/surf/surf_byte_capture.sv
-hdl/surf/surf_rackctl_test.sv
 hdl/surf/rackctl_bidir_phy.sv
 hdl/serial_if/turfio_boardman_wrapper.sv
 hdl/serial_if/boardman_interface_v2.v
