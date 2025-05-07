@@ -117,11 +117,16 @@ module turf_cin_parallel_sync(
     
     generate
         if (DEBUG == "TRUE") begin : ILA
+            (* CUSTOM_CC_DST = "SYSCLK" *)
+            reg do_cin_capture_dbg = 0;
+            always @(posedge sysclk_i) begin : DBGCC
+                do_cin_capture_dbg <= do_cin_capture;
+            end                
             turf_cin_ila u_ila(.clk(sysclk_i),
                                .probe0(enable_lock),
                                .probe1(locked),
                                .probe2(cin_history[24 +: 4]),
-                               .probe3(do_cin_capture),
+                               .probe3(do_cin_capture_dbg),
                                .probe4(cin_parallel_o),
                                .probe5(cin_parallel_valid_o),
                                .probe6(cin_biterr),
