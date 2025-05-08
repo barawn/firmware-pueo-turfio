@@ -247,5 +247,7 @@ module turf_interface #(
 
     assign rxclk_o = rxclk;
     assign rxclk_x2_o = rxclk_x2;
+    
+    assign command_locked_o = cin_sync_locked;
                    
 endmodule
