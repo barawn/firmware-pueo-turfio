@@ -72,6 +72,12 @@ module surf_cout_interface_v2 #(parameter COUT_INV = 1'b0,
                             .dout_valid_o(dout_valid_o),
                             .dout_biterr_o(dout_biterr_o));
 
+    // cout needs a parallel sync here!!
+    // but the difference is:
+    // 1. we SHOULD NOT need to lock - the ONLY thing we need to do
+    // is eye align and bitslip to align the ISERDES. The SURF's
+    // sequence should be FIXED by sync!!
+
     // surf live detector gets stuff without going through surf byte capture
     assign cout_o = cout_from_iserdes;
     assign dout_o = dout_from_iserdes;
