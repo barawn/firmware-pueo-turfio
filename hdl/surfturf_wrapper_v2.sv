@@ -159,8 +159,8 @@ module surfturf_wrapper_v2 #(
                       .sysclk_i(sysclk_i),
                       // live detector needs sysclk_ok_i
                       .sysclk_ok_i(sysclk_ok_i),
-                      .surf_cout_i(surf_cout_i),
-                      .surf_dout_i(surf_dout_i),
+                      .surf_cout_i(surf_cout),
+                      .surf_dout_i(surf_dout),
                       .surf_autotrain_en_o(surf_autotrain_en),
                       .surf_live_o(surf_live),
                                             
