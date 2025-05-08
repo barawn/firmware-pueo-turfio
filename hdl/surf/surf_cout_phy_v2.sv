@@ -11,11 +11,11 @@ module surf_cout_phy_v2 #(parameter COUT_INV = 1'b0,
         input iserdes_cout_bitslip_i,
         input iserdes_dout_bitslip_i,
         // common value
-        input [5:0] idelay_value_i,        
+        input [4:0] idelay_value_i,        
         input idelay_cout_load_i,
         input idelay_dout_load_i,
-        output [5:0] idelay_cout_current_o,
-        output [5:0] idelay_dout_current_o,        
+        output [4:0] idelay_cout_current_o,
+        output [4:0] idelay_dout_current_o,        
 
         // for COUT we output 4 bits, for DOUT we output all 8
         // and rando-capture

@@ -52,9 +52,9 @@ module surf_interface_v2 #(parameter RXCLK_INV = 1'b0,
     // IDELAY controls.
     wire idelay_cout_load;
     wire idelay_dout_load;
-    wire [5:0] idelay_value;
-    wire [5:0] idelay_cout_current;
-    wire [5:0] idelay_dout_current;
+    wire [4:0] idelay_value;
+    wire [4:0] idelay_cout_current;
+    wire [4:0] idelay_dout_current;
     // ISERDES controls
     wire iserdes_rst;
     wire iserdes_cout_bitslip;

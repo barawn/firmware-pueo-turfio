@@ -30,9 +30,9 @@ module surfctl_register_core_v2(
         output idelay_cout_load_o,
         output idelay_dout_load_o,
         // common value
-        output [5:0] idelay_value_o,
-        input [5:0] idelay_cout_current_i,
-        input [5:0] idelay_dout_current_i,
+        output [4:0] idelay_value_o,
+        input [4:0] idelay_cout_current_i,
+        input [4:0] idelay_dout_current_i,
         // common reset
         output iserdes_rst_o,
         output iserdes_cout_bitslip_o,
@@ -352,7 +352,7 @@ module surfctl_register_core_v2(
     assign cout_enable_o = cout_enable_sysclk[1];
     assign mask_o = mask_dout_sysclk[1];
     // idelay outputs    
-    assign idelay_value_o = dat_in_static[5:0];
+    assign idelay_value_o = dat_in_static[4:0];
     assign idelay_cout_load_o = sysclk_waiting_flag_sysclk &&
                                 adr_in_static == COUT_IDELAY_REG &&
                                 we_in_static;
