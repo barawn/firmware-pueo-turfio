@@ -1,5 +1,14 @@
 `timescale 1ns / 1ps
 // DOUT path.
+// The difference with the DOUT path is that the parallelization is handled
+// entirely in the ISERDES via bitslip, since the DOUT path does not
+// synchronize - it's just a byte stream.
+//
+// Note that once sync_i is issued, any future sync won't do anything
+// since it will be in the same cycle.
+//
+// Note that dout_capture_i is a flag in sysclk: it's stretched here to a 2-cycle
+// pulse so it will always trigger a single capture.
 module surf_byte_capture(
         input sysclk_i,
         input sync_i,
@@ -75,9 +84,11 @@ module surf_byte_capture(
         dout_ce <= (dout_capture_rereg || dout_capture_i || dout_enable_i) && ~capture;
         
         if (dout_ce) dout_store <= dout_i;
+        dout_valid <= dout_ce;
     end        
 
     assign dout_biterr_o = dout_biterr;
     assign dout_o = dout_store;
+    assign dout_valid_o = dout_valid;
     
 endmodule
