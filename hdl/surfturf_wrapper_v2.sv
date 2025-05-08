@@ -177,7 +177,6 @@ module surfturf_wrapper_v2 #(
                                .sync_i(sync_i),
                                .command_i(command_o),
                                .command_valid_i(command_valid_o),
-                               .command_locked_i(command_locked_o),
                                `CONNECT_AXI4S_MIN_IF( mode1_ , mode1_ ),
                                .mode1_tuser(mode1_tuser),
                                `CONNECT_AXI4S_MIN_IF( tfio_runcmd_ , tfio_runcmd_ ),
@@ -216,7 +215,6 @@ module surfturf_wrapper_v2 #(
                               .rxclk_ok_i(rxclk_ok_i),
                               .rxclk_o(rxclk_o),
                               .rxclk_x2_o(rxclk_x2_o),
-                              .command_locked_o(command_locked_o),
                               .command_o(command_o),
                               .command_valid_o(command_valid_o),
                               .response_i(response_i),
@@ -246,8 +244,11 @@ module surfturf_wrapper_v2 #(
                             .sysclk_ok_i(sysclk_ok_i),
                             .sysclk_x2_i(sysclk_x2_i),
 
-                            .surf_live_i(surf_live[i]),
-                            .surf_autotrain_en_i(surf_autotrain_en[i]),
+                            .cout_o(surf_cout[4*(i-1) +: 4]),
+                            .dout_o(surf_dout[8*(i-1) +: 8]),
+                            
+                            .surf_live_i(surf_live[i-1]),
+                            .surf_autotrain_en_i(surf_autotrain_en[i-1]),
 
                             .disable_rxclk_i(disable_rxclk[i]),
                             
