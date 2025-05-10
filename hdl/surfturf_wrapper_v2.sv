@@ -172,10 +172,11 @@ module surfturf_wrapper_v2 #(
                       `CONNECT_AXI4S_MIN_IF( runcmd_ , tfio_runcmd_ ),
                       `CONNECT_AXI4S_MIN_IF( trig_ , tfio_trig_ ));                                    
 
-    turfio_cmd_splice #(.DEBUG("FALSE"))
+    turfio_cmd_splice #(.DEBUG("TRUE"))
                       u_splice(.sysclk_i(sysclk_i),
                                .sync_i(sync_i),
                                .command_i(command_o),
+                               .command_locked_i(command_locked_o),
                                .command_valid_i(command_valid_o),
                                `CONNECT_AXI4S_MIN_IF( mode1_ , mode1_ ),
                                .mode1_tuser(mode1_tuser),
@@ -217,6 +218,7 @@ module surfturf_wrapper_v2 #(
                               .rxclk_x2_o(rxclk_x2_o),
                               .command_o(command_o),
                               .command_valid_o(command_valid_o),
+                              .command_locked_o(command_locked_o),
                               .response_i(response_i),
                               .surf_response_i(surf_response),
                               .RXCLK_P(T_RXCLK_P),
