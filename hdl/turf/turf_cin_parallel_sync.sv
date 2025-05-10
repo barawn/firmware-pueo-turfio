@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 `include "turfio_debug.vh"
-
+`define DLYFF #0.1
 // Take the 4-bit CIN input and expand it out to 32 bits. We also take
 // controls for enabling alignment. Actual alignment to the specific
 // 7.8125 MHz period happens upstream of this.
@@ -83,36 +83,36 @@ module turf_cin_parallel_sync(
     // data comes out least-significant nybble first so shift
     // RIGHT.        
     always @(posedge sysclk_i) begin
-        if (rst_i) enable_lock <= 1'b0;
-        else if (lock_i) enable_lock <= 1'b1;
+        if (rst_i) enable_lock <= `DLYFF 1'b0;
+        else if (lock_i) enable_lock <= `DLYFF 1'b1;
     
-        cin_history[24 +: 4] <= cin_i[3:0];
-        cin_history[20 +: 4] <= cin_history[24 +: 4];
-        cin_history[16 +: 4] <= cin_history[20 +: 4];
-        cin_history[12 +: 4] <= cin_history[16 +: 4];
-        cin_history[8 +: 4] <= cin_history[12 +: 4];
-        cin_history[4 +: 4] <= cin_history[8 +: 4];
-        cin_history[0 +: 4] <= cin_history[4 +: 4];        
+        cin_history[24 +: 4] <= `DLYFF cin_i[3:0];
+        cin_history[20 +: 4] <= `DLYFF cin_history[24 +: 4];
+        cin_history[16 +: 4] <= `DLYFF cin_history[20 +: 4];
+        cin_history[12 +: 4] <= `DLYFF cin_history[16 +: 4];
+        cin_history[8 +: 4] <= `DLYFF cin_history[12 +: 4];
+        cin_history[4 +: 4] <= `DLYFF cin_history[8 +: 4];
+        cin_history[0 +: 4] <= `DLYFF cin_history[4 +: 4];        
 
-        if (rst_i) locked <= 1'b0;
-        else if (enable_lock && current_cin == TRAIN_SEQUENCE) locked <= 1'b1;
+        if (rst_i) locked <= `DLYFF 1'b0;
+        else if (enable_lock && current_cin == TRAIN_SEQUENCE) locked <= `DLYFF 1'b1;
 
-        enable_capture <= sysclk_sequence == 4'h6;        
+        enable_capture <= `DLYFF sysclk_sequence == 4'h6;        
 
-        if (rst_i) locked_rereg <= 1'b0;
-        else locked_rereg <= locked;
+        if (rst_i) locked_rereg <= `DLYFF 1'b0;
+        else locked_rereg <= `DLYFF locked;
             
-        if (!locked) sysclk_sequence <= 4'h0;
-        else sysclk_sequence <= sysclk_sequence[2:0] + 1;
+        if (!locked) sysclk_sequence <= `DLYFF 4'h0;
+        else sysclk_sequence <= `DLYFF sysclk_sequence[2:0] + 1;
         
         if (do_cin_capture) begin
-            cin_capture <= current_cin;
+            cin_capture <= `DLYFF current_cin;
         end
         
         // cin biterrs only count when we're not locked, because that
         // allows us to turn off the training pattern. Saves some power.
-        if (locked) cin_biterr <= 1'b0;
-        else cin_biterr <= (cin_history[3:0] != cin_delayed[3:0]);    
+        if (locked) cin_biterr <= `DLYFF 1'b0;
+        else cin_biterr <= `DLYFF (cin_history[3:0] != cin_delayed[3:0]);    
     end
     
     generate
@@ -120,7 +120,7 @@ module turf_cin_parallel_sync(
             (* CUSTOM_CC_DST = "SYSCLK" *)
             reg do_cin_capture_dbg = 0;
             always @(posedge sysclk_i) begin : DBGCC
-                do_cin_capture_dbg <= do_cin_capture;
+                do_cin_capture_dbg <= `DLYFF do_cin_capture;
             end                
             turf_cin_ila u_ila(.clk(sysclk_i),
                                .probe0(enable_lock),
