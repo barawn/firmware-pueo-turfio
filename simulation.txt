@@ -11,3 +11,4 @@ sim/turfio_hski2c_tb_behav.wcfg
 sim/i2c_slave_model.v
 sim/adm1176_model.sv
 sim/adm1278_model.sv
+sim/turf_cin_parallel_sync_tb.sv
