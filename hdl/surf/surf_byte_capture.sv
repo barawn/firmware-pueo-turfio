@@ -46,12 +46,16 @@ module surf_byte_capture(
 
     // these are for bit error testing    
     reg dout_biterr = 0;
-    wire [7:0] dout_history;
-    srlvec #(.NBITS(8)) u_dout_srl(.clk(sysclk_i),
-                                  .ce(~dout_enable_i),
-                                  .a(4'h1),
-                                  .din(dout_i),
-                                  .dout(dout_history));    
+    // We don't actually need this, because dout is
+    // totally static with an 8 bit training pattern. So just
+    // reregister it.
+    reg [7:0] dout_rereg = {8{1'b0}};
+//    wire [7:0] dout_history;
+//    srlvec #(.NBITS(8)) u_dout_srl(.clk(sysclk_i),
+//                                  .ce(~dout_enable_i),
+//                                  .a(4'h1),
+//                                  .din(dout_i),
+//                                  .dout(dout_history));    
         
     // these aren't actually async registers: they're flags qualified
     // by already-static values, so they just need a standard delay
@@ -68,7 +72,8 @@ module surf_byte_capture(
     reg       dout_valid = 0;
     
     always @(posedge sysclk_i) begin
-        if (~dout_enable_i && ~dout_enable_delay) dout_biterr <= (dout_history != dout_i);
+        dout_rereg <= dout_i;
+        if (~dout_enable_i && ~dout_enable_delay) dout_biterr <= (dout_i != dout_rereg);
 
         dout_capture_rereg <= dout_capture_i;
         // ok, now this is a bit tricky. We need to make sure that dout_ce is always
