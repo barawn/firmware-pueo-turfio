@@ -13,7 +13,7 @@ module pueo_turfio #( parameter NSURF=7,
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd2,
-                      parameter [7:0] VER_REV =   8'd14,
+                      parameter [7:0] VER_REV =   8'd18,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -307,6 +307,8 @@ module pueo_turfio #( parameter NSURF=7,
     wire sysclk_x2;
     // Sysclk is OK (toggling) 
     wire sysclk_ok;
+    // MMCM reset
+    wire sysclk_rst;
     
     wire clk200_locked;
     BUFG u_initclk_bufg(.I(INITCLK),.O(init_clk_in));
@@ -550,6 +552,7 @@ module pueo_turfio #( parameter NSURF=7,
                    .hskbus_crate_i(cratebridge_enable),
                    .hskbus_rx_bytes_i(hskbus_rx_bytes),
                                                          
+                   .sysclk_rst_o(sysclk_rst),
                    .enable_crate_o(ENABLE),
                    .enable_3v3_o(EN_3V3),
                    .crate_conf_i(CONF),
@@ -672,7 +675,7 @@ module pueo_turfio #( parameter NSURF=7,
                .rxclk_ok_i(rxclk_ok),
                .rxclk_x2_o(rxclk_x2),        
                .sysclk_i(sysclk),
-               .sysclk_ok_i(sysclk_ok),
+               .sysclk_ok_i(sysclk_ok && locked),
                .sysclk_x2_i(sysclk_x2),
                .T_RXCLK_P(T_RXCLK_P),
                .T_RXCLK_N(T_RXCLK_N),
@@ -751,10 +754,11 @@ module pueo_turfio #( parameter NSURF=7,
                                          .dbg_surf_clk_o(GPO[1]),
                                          .SYNC(CLK_SYNC));
     wire locked;
-    wire sysclk_reset=1'b0;
+    wire sysclk_reset = !locked;
+    wire sysclk_resetn = locked;    
     sys_clk_generator u_sysclkgen(.clk_in1_p(CLKDIV2_P),
                                   .clk_in1_n(CLKDIV2_N),
-                                  .reset(sysclk_reset),
+                                  .reset(sysclk_rst),
                                   .sys_clk(sysclk),
                                   .sys_clk_x2(sysclk_x2),
                                   .locked(locked));
@@ -774,7 +778,7 @@ module pueo_turfio #( parameter NSURF=7,
     // MERGER GOES HERE!!!!!!
     surf_merger #(.DEBUG("FALSE")) u_merger( .aclk( sysclk ),
                           // uhhhhhh figure this out
-                          .aresetn( 1'b1 ),
+                          .aresetn( sysclk_resetn ),
                           `CONNECT_AXI4S_MIN_IF( s_s0_ , s0_ ),
                           .s_s0_tlast( s0_tlast ),
                           `CONNECT_AXI4S_MIN_IF( s_s1_ , s1_ ),
@@ -804,6 +808,7 @@ module pueo_turfio #( parameter NSURF=7,
                                   `CONNECT_AXI4S_MIN_IF( s_cmd_data_ , cmd_resp_ ),
                                   .lane_up_o(lane_up),
                                   .sys_clk_i(sysclk),
+                                  .sys_rst_i(sysclk_reset),
                                   .cmd_rstb_i(sys_rst_b),
                                   `CONNECT_AXI4S_MIN_IF( s_axis_ , aurora_in_ ),
                                   .s_axis_tlast(aurora_in_tlast),

@@ -48,6 +48,7 @@ module tio_id_ctrl(
         input        hskbus_crate_i,
         input [7:0]  hskbus_rx_bytes_i,
                 
+        output       sysclk_rst_o,
         output       enable_crate_o,
         output       enable_3v3_o,
         input [1:0]  crate_conf_i,
@@ -117,6 +118,9 @@ module tio_id_ctrl(
     (* IOB = "TRUE" *)
     reg i2c_rdy = 1'b0;                
     
+    // sysclk MMCM reset, to ensure clean startup
+    reg sysclk_rst = 1;
+    
     // Status/control register
     wire [31:0] ctrlstat_reg;
     assign ctrlstat_reg[0] = sys_clk_ok_o;
@@ -126,7 +130,7 @@ module tio_id_ctrl(
     assign ctrlstat_reg[4] = i2c_rdy;  
     assign ctrlstat_reg[5] = hsk_local_i;
     assign ctrlstat_reg[6] = hskbus_crate_i;
-    assign ctrlstat_reg[7] = 1'b0;
+    assign ctrlstat_reg[7] = sysclk_rst_o;
     assign ctrlstat_reg[9:8] = crate_conf;
     assign ctrlstat_reg[15:10] = {6{1'b0}};
     assign ctrlstat_reg[16 +: 8]= hskbus_rx_bytes_i;
@@ -207,6 +211,10 @@ module tio_id_ctrl(
             enable_3v3 <= wb_dat_i[3];
         end        
 
+        if (sel_ctrlstat && wb_we_i && wb_ack_o && wb_sel_i[0]) begin
+            sysclk_rst <= wb_dat_i[7];
+        end            
+
         // the alignment here lets you just write the desired address here unless you're
         // trying to burst or something
         if (sel_boardman_debug && wb_we_i && wb_ack_o) begin
@@ -258,6 +266,8 @@ module tio_id_ctrl(
     assign sync_offset_o = sync_offset_plus_en[7:0];
     assign en_ext_sync_o = sync_offset_plus_en[8];
     assign clk_offset_o = clock_offset;
+
+    assign sysclk_rst_o = sysclk_rst;
 
     assign enable_crate_o = enable_crate;
     assign enable_3v3_o = enable_3v3;
