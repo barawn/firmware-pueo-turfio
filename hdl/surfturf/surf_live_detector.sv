@@ -57,17 +57,23 @@ module surf_live_detector(
             
             (* CUSTOM_CC_SRC = SYSCLKTYPE *)
             reg surf_live = 0;
+            
+            (* CUSTOM_CC_DST = SYSCLKTYPE, ASYNC_REG = "TRUE" *)
+            reg [1:0] surf_train_complete = 0;
 
             (* CUSTOM_CC_DST = WBCLKTYPE, ASYNC_REG = "TRUE" *)
             reg [1:0] surf_live_wbclk = {2{1'b0}};            
 
             reg [4:0] cout_counter = {5{1'b0}};
-            always @(posedge sys_clk_i or negedge sys_clk_ok_i) begin : LOGIC
+            always @(posedge sys_clk_i) begin : LNR
+                surf_train_complete <= { surf_train_complete[0], train_complete_i[i] };
+            end
+            always @(posedge sys_clk_i or negedge sys_clk_ok_i) begin : LWR
                 if (!sys_clk_ok_i) surf_live <= 0;
                 else begin
                     if (cout_counter[4])
                         surf_live <= 0;
-                    else if (train_out_rdy && train_complete_i[i])
+                    else if (train_out_rdy && surf_train_complete[1])
                         surf_live <= 1;
                 end
                 // this only matters at startup, it's a once-and-done
