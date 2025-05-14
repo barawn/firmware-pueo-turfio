@@ -638,6 +638,8 @@ module pueo_turfio #( parameter NSURF=7,
     `DEFINE_AXI4S_MIN_IF( s6_ , 8 );
     wire s6_tlast;
     
+    wire locked;
+    
     surfturf_wrapper_v2 #(.T_RXCLK_INV(T_RXCLK_INV),
                        .T_TXCLK_INV(T_TXCLK_INV),
                        .T_COUT_INV(T_COUT_INV),
@@ -753,7 +755,6 @@ module pueo_turfio #( parameter NSURF=7,
                                          .sync_o(sync),
                                          .dbg_surf_clk_o(GPO[1]),
                                          .SYNC(CLK_SYNC));
-    wire locked;
     wire sysclk_reset = !locked;
     wire sysclk_resetn = locked;    
     sys_clk_generator u_sysclkgen(.clk_in1_p(CLKDIV2_P),
