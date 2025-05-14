@@ -110,7 +110,7 @@ module surf_live_detector(
                 else begin
                     if (cout_counter[4]) 
                         train_out_rdy <= 0;
-                    else if (train_in_req && cout_i[4*i +: 4] == {4{1'b0}}) 
+                    else if (train_in_req && cout_i[4*i +: 4] != {4{1'b1}}) 
                         train_out_rdy <= 1;
                 end                    
             end
