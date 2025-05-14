@@ -107,9 +107,13 @@ set clockmon_cc_regs [ get_cells -hier -filter {NAME =~ *u_clockmon/*level_cdc_f
 set clockmon_run_reset_regs [ get_cells -hier -filter {NAME =~ *u_clockmon/clk_running_reset_reg*}]
 set clockmon_run_regs [get_cells -hier -filter {NAME=~ *u_clockmon/*u_clkmon*}]
 set clockmon_run_cc_regs [get_cells -hier -filter {NAME=~ *u_clockmon/clk_running_status_cdc1_reg*}]
+set clockmon_run_cc2_regs [get_cells -hier -filter {NAME=~ *u_clockmon/clk_running_status_cdc2_reg*}]
 set_max_delay -datapath_only -from $clockmon_level_regs -to $clockmon_cc_regs 10.000
 set_max_delay -datapath_only -from $clockmon_run_reset_regs -to $clockmon_run_regs 10.000
 set_max_delay -datapath_only -from $clockmon_run_regs -to $clockmon_run_cc_regs 10.000
+
+set live_regs [get_cells -hier -filter {NAME=~ "u_surfturf/u_st_core/*reg*"}]
+set_max_delay -datapath_only -from $clockmon_run_cc2_regs -to $live_regs 10.000
 
 # These all now get automatically set by the CUSTOM_CC_SRC/DST attributes.
 # the TURF module has a bajillion clock-crosses to deal with. This is our first set...
