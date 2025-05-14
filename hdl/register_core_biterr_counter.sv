@@ -61,4 +61,5 @@ module register_core_biterr_counter #(parameter RCLK_TYPE = "NONE",
                     .count_out(error_count_dclk),
                     .count_out_valid(error_count_valid_dclk));                        
     
+    assign error_count_o = error_count_rclk;
 endmodule
