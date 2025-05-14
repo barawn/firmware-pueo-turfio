@@ -45,11 +45,14 @@ module surf_cout_interface_v2 #(parameter COUT_INV = 1'b0,
     wire [3:0] cout_from_iserdes;
     wire [7:0] dout_from_iserdes;
 
+    wire dout_sync;
+
     surf_cout_phy_v2 #(.COUT_INV(COUT_INV),.DOUT_INV(DOUT_INV),
                     .DEBUG(DEBUG == "PHY" ? "TRUE" : "FALSE"))
         u_phy(.sysclk_i(sysclk_i),
               .sysclk_x2_i(sysclk_x2_i),
               .sync_i(sync_i),
+              .dout_sync_i(dout_sync),
               .iserdes_rst_i(iserdes_rst_i),
               .iserdes_cout_bitslip_i(iserdes_cout_bitslip_i),
               .iserdes_dout_bitslip_i(iserdes_dout_bitslip_i),
@@ -66,6 +69,7 @@ module surf_cout_interface_v2 #(parameter COUT_INV = 1'b0,
               .DOUT_N(DOUT_N));
     surf_byte_capture u_cap(.sysclk_i(sysclk_i),
                             .sync_i(sync_i),
+                            .dout_sync_o(dout_sync),
                             .dout_capture_i(dout_capture_i),
                             .dout_enable_i(dout_enable_i),
                             .dout_i(dout_from_iserdes),

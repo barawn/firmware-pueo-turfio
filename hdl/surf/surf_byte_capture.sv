@@ -12,6 +12,10 @@
 module surf_byte_capture(
         input sysclk_i,
         input sync_i,
+        // this is our internal capture sequence.
+        // we make sure that the OSERDES reset
+        // always happens in sync with this.
+        output dout_sync_o,
         input dout_capture_i,
         input dout_enable_i,
         input [7:0] dout_i,
@@ -23,6 +27,8 @@ module surf_byte_capture(
     
     reg capture = 0;
     always @(posedge sysclk_i) if (sync_i) capture <= 1'b0; else capture <= ~capture;
+    
+    assign dout_sync_o = capture;
     
     // this ALSO goes to the register core after a capture
     (* CUSTOM_CC_SRC = "SYSCLK" *)    
