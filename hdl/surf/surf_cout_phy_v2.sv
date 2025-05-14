@@ -5,7 +5,8 @@ module surf_cout_phy_v2 #(parameter COUT_INV = 1'b0,
                        parameter DEBUG = "FALSE")(
         input sysclk_i,                       
         input sysclk_x2_i,
-                               
+        // just for debugging
+        input sync_i,
         // common reset
         input iserdes_rst_i,
         input iserdes_cout_bitslip_i,
@@ -94,18 +95,21 @@ module surf_cout_phy_v2 #(parameter COUT_INV = 1'b0,
                                .CLKDIV(sysclk_i),
                                .RST(iserdes_rst_i),
                                .DDLY(dout_dly),
-                               .Q1(dout_o[3]),
-                               .Q2(dout_o[2]),
-                               .Q3(dout_o[1]),
-                               .Q4(dout_o[0]),
-                               .Q5(dout_o[7]),
-                               .Q6(dout_o[6]),
-                               .Q7(dout_o[5]),
-                               .Q8(dout_o[4]));                
+                               .Q1(dout_o[7]),
+                               .Q2(dout_o[6]),
+                               .Q3(dout_o[5]),
+                               .Q4(dout_o[4]),
+                               .Q5(dout_o[3]),
+                               .Q6(dout_o[2]),
+                               .Q7(dout_o[1]),
+                               .Q8(dout_o[0]));                
 
     generate
         if (DEBUG == "TRUE") begin : DBG
-            surf_cout_phy_ila u_ila(.clk(sysclk_i),.probe0(cout_o),.probe1(dout_o));
+            surf_cout_phy_ila u_ila(.clk(sysclk_i),
+                                    .probe0(cout_o),
+                                    .probe1(dout_o),
+                                    .probe2(sync_i));
         end
     endgenerate
     
