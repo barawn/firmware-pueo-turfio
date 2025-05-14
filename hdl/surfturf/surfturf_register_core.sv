@@ -8,7 +8,8 @@
 // But I need to be able to Test Stuff Now, so this is what it is.
 // OK so probably not temporary, since we add the rxclk disable here.
 module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
-                                parameter SYS_CLK_TYPE = "NONE")(
+                                parameter SYS_CLK_TYPE = "NONE",
+                                parameter DEBUG = "TRUE")(
         input wb_clk_i,
         input wb_rst_i,
         output event_reset_o,
@@ -153,9 +154,20 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
     wire [31:0] surf_trainin_register = { {9{1'b0}}, surf_autotrain, {9{1'b0}}, surf_trainin_req };
     wire [6:0] surf_trainout_rdy;
     wire [31:0] surf_trainout_register = { {25{1'b0}}, surf_trainout_rdy };
+    (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
     reg  [6:0] surf_train_complete = {7{1'b0}};
     wire [31:0] surf_complete_register = { {25{1'b0}}, surf_train_complete };
     
+    generate
+        if (DEBUG == "TRUE") begin : ILA
+            livedet_ila u_ila(.clk(wb_clk_i),
+                              .probe0(surf_live),
+                              .probe1(surf_trainin_req),
+                              .probe2(surf_trainout_rdy),
+                              .probe3(surf_autotrain),
+                              .probe4(surf_autotrain_en_o));
+        end
+    endgenerate            
     wire [31:0] live_registers[3:0];
     assign live_registers[0] = surf_live_register;
     assign live_registers[1] = surf_trainin_register;
