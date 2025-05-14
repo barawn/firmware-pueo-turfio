@@ -5,8 +5,8 @@ module surf_cout_phy_v2 #(parameter COUT_INV = 1'b0,
                        parameter DEBUG = "FALSE")(
         input sysclk_i,                       
         input sysclk_x2_i,
-        // just for debugging
         input sync_i,
+        input dout_sync_i,
         // common reset
         input iserdes_rst_i,
         input iserdes_cout_bitslip_i,
@@ -19,7 +19,6 @@ module surf_cout_phy_v2 #(parameter COUT_INV = 1'b0,
         output [4:0] idelay_dout_current_o,        
 
         // for COUT we output 4 bits, for DOUT we output all 8
-        // and rando-capture
         output [3:0] cout_o,
         output [7:0] dout_o,
 
@@ -35,7 +34,19 @@ module surf_cout_phy_v2 #(parameter COUT_INV = 1'b0,
     wire dout_norm, dout_inv;
     wire cout, dout, txclk;
     wire cout_dly, dout_dly, txclk_dly;
-    
+
+    // This is reregistered and driven into reset
+    // by iserdes_rst_i and pulled out of reset
+    // by dout_sync_i to make sure that each time
+    // we reset, it's still being done relative
+    // to the same 2 clock cycle. I have *no idea*
+    // if this is necessary but who TF knows
+    // how bitslipping works.
+    reg iserdes_reset = 0;   
+    always @(posedge sysclk_i) begin
+        if (iserdes_rst_i) iserdes_reset <= 1;
+        else if (dout_sync_i) iserdes_reset <= 0;
+    end 
     
     ibufds_autoinv #(.INV(COUT_INV)) u_cout(.I_P(COUT_P),.I_N(COUT_N),.O(cout_norm),.OB(cout_inv));
     ibufds_autoinv #(.INV(DOUT_INV)) u_dout(.I_P(DOUT_P),.I_N(DOUT_N),.O(dout_norm),.OB(dout_inv));
@@ -73,7 +84,7 @@ module surf_cout_phy_v2 #(parameter COUT_INV = 1'b0,
                                .CLK(sysclk_x2_i),
                                .CLKB(~sysclk_x2_i),
                                .CLKDIV(sysclk_i),
-                               .RST(iserdes_rst_i),
+                               .RST(iserdes_reset),
                                .DDLY(cout_dly),
                                .Q1(cout_parallel[3]),
                                .Q2(cout_parallel[2]),
@@ -93,7 +104,7 @@ module surf_cout_phy_v2 #(parameter COUT_INV = 1'b0,
                                .CLK(sysclk_x2_i),
                                .CLKB(~sysclk_x2_i),
                                .CLKDIV(sysclk_i),
-                               .RST(iserdes_rst_i),
+                               .RST(iserdes_reset),
                                .DDLY(dout_dly),
                                .Q1(dout_o[7]),
                                .Q2(dout_o[6]),
