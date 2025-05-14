@@ -24,6 +24,7 @@ module turf_aurora_wrapper(
 
         // sysclk. regular data path is in sysclk domain
         input sys_clk_i,
+        input sys_rst_i,
                 
         // regular input data path.
         output aurora_clk,
@@ -441,7 +442,7 @@ module turf_aurora_wrapper(
                                .dout({ tx_userclk_tlast, tx_userclk_tkeep, tx_userclk_tdata } ),
                                .wr_clk( sys_clk_i ),
                                .rd_clk( user_clk ),
-                               .rst(1'b0),
+                               .rst(sys_rst_i),
                                .wr_en( s_axis_tvalid && s_axis_tready ),
                                .full(tx_ccfull),
                                .valid( tx_userclk_tvalid ),
@@ -464,7 +465,7 @@ module turf_aurora_wrapper(
                                .dout( { m_axis_tlast, m_axis_tkeep, m_axis_tdata } ),
                                .wr_clk( user_clk ),
                                .rd_clk( sys_clk_i ),
-                               .rst(1'b0),
+                               .rst(sys_rst_i),
                                .wr_en( rx_userclk_tvalid ),
                                .valid( m_axis_tvalid ),
                                .rd_en( m_axis_tvalid && m_axis_tready),
