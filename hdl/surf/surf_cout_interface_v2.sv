@@ -49,6 +49,7 @@ module surf_cout_interface_v2 #(parameter COUT_INV = 1'b0,
                     .DEBUG(DEBUG == "PHY" ? "TRUE" : "FALSE"))
         u_phy(.sysclk_i(sysclk_i),
               .sysclk_x2_i(sysclk_x2_i),
+              .sync_i(sync_i),
               .iserdes_rst_i(iserdes_rst_i),
               .iserdes_cout_bitslip_i(iserdes_cout_bitslip_i),
               .iserdes_dout_bitslip_i(iserdes_dout_bitslip_i),
@@ -70,8 +71,7 @@ module surf_cout_interface_v2 #(parameter COUT_INV = 1'b0,
                             .dout_i(dout_from_iserdes),
                             .dout_o(dout_data_o),
                             .dout_valid_o(dout_valid_o),
-                            .dout_biterr_o(dout_biterr_o));
-
+                            .dout_biterr_o(dout_biterr_o));    
     // cout needs a parallel sync here!!
     // but the difference is:
     // 1. we SHOULD NOT need to lock - the ONLY thing we need to do
