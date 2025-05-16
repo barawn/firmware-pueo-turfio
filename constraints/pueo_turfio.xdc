@@ -20,9 +20,11 @@
 # RXCLK4
 
 ## crate serial
-set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN L14 } [get_ports { SURF_RX }]
+set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN L14} [get_ports SURF_RX]
 ## this is open drain from SURFs
-set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN U10 PULLUP TRUE} [get_ports { SURF_TX }]
+set_property IOSTANDARD LVCMOS25 [get_ports SURF_TX]
+set_property PACKAGE_PIN U10 [get_ports SURF_TX]
+set_property PULLUP true [get_ports SURF_TX]
 
 ## debug serial. These were named from the FT2232's perspective originally, so they're swapped here
 ## relative to the schematic.
@@ -33,7 +35,9 @@ set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN D14} [get_ports DBG_LED]
 ## turf serial.
 set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN D15} [get_ports F_TTX]
 # this is SDA anyway so the pull shouldn't matter? I hope?
-set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN B15 PULLTYPE PULLUP} [get_ports TRX]
+set_property IOSTANDARD LVCMOS25 [get_ports TRX]
+set_property PACKAGE_PIN B15 [get_ports TRX]
+set_property PULLUP true [get_ports TRX]
 # this is pulled down on the board
 set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN D9} [get_ports TCTRL_B]
 
@@ -93,12 +97,12 @@ set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN M4} [get_ports T_TCK]
 set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN N4} [get_ports T_TMS]
 
 ## GPIO
-set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN G16 } [get_ports {    GPI[0]      }]
-set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN G15 } [get_ports {    GPO[0]      }]
-set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN F15 } [get_ports {    GPOE_B[0]   }]
-set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN H17 } [get_ports {    GPI[1]      }]
-set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN H18 } [get_ports {    GPO[1]      }]
-set_property -dict { IOSTANDARD LVCMOS25 PACKAGE_PIN H16 } [get_ports {    GPOE_B[1]   }]
+set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN G16} [get_ports {GPI[0]}]
+set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN G15} [get_ports {GPO[0]}]
+set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN F15} [get_ports {GPOE_B[0]}]
+set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN H17} [get_ports {GPI[1]}]
+set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN H18} [get_ports {GPO[1]}]
+set_property -dict {IOSTANDARD LVCMOS25 PACKAGE_PIN H16} [get_ports {GPOE_B[1]}]
 
 ## main interfaces
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN K17} [get_ports {RXCLK_N[0]}]
@@ -224,7 +228,9 @@ set_property -dict {PACKAGE_PIN A3} [get_ports MGTRX_N]
 set_property -dict {PACKAGE_PIN F2} [get_ports MGTTX_P]
 set_property -dict {PACKAGE_PIN F1} [get_ports MGTTX_N]
 
-set_property -dict {PACKAGE_PIN B17 IOSTANDARD LVCMOS25 PULLUP true} [get_ports SYS_RESET_B]
+set_property PACKAGE_PIN B17 [get_ports SYS_RESET_B]
+set_property IOSTANDARD LVCMOS25 [get_ports SYS_RESET_B]
+set_property PULLUP true [get_ports SYS_RESET_B]
 
 set_property BITSTREAM.GENERAL.COMPRESS TRUE [current_design]
 
@@ -244,3 +250,16 @@ set_property BITSTREAM.CONFIG.SPI_BUSWIDTH 2 [current_design]
 
 set_property BITSTREAM.CONFIG.USERID 32'h08232024 [current_design]
 
+
+set_property -dict {BEL IDELAYE2 LOC IDELAY_X0Y7} [get_cells {u_surfturf/LP[1].SURFS.u_surf/u_surf_coutif/u_phy/u_doutdlyN}]
+set_property -dict {BEL IDELAYE2 LOC IDELAY_X0Y17} [get_cells {u_surfturf/LP[2].SURFS.u_surf/u_surf_coutif/u_phy/u_doutdlyN}]
+set_property -dict {BEL IDELAYE2 LOC IDELAY_X0Y1} [get_cells {u_surfturf/LP[3].SURFS.u_surf/u_surf_coutif/u_phy/u_doutdlyN}]
+set_property -dict {BEL IDELAYE2 LOC IDELAY_X1Y1} [get_cells {u_surfturf/LP[4].SURFS.u_surf/u_surf_coutif/u_phy/u_doutdlyN}]
+set_property -dict {BEL IDELAYE2 LOC IDELAY_X1Y31} [get_cells {u_surfturf/LP[5].SURFS.u_surf/u_surf_coutif/u_phy/u_doutdlyN}]
+set_property -dict {BEL IDELAYE2 LOC IDELAY_X1Y39} [get_cells {u_surfturf/LP[6].SURFS.u_surf/u_surf_coutif/u_phy/u_doutdlyN}]
+set_property -dict {BEL IDELAYE2 LOC IDELAY_X1Y43} [get_cells {u_surfturf/LP[7].SURFS.u_surf/u_surf_coutif/u_phy/u_doutdlyN}]
+set_property -dict {BEL IDELAYE2 LOC IDELAY_X0Y83} [get_cells {u_surfturf/LP[0].TURF/u_turfcin/u_cin_idelays}]
+set_property C_CLK_INPUT_FREQ_HZ 300000000 [get_debug_cores dbg_hub]
+set_property C_ENABLE_CLK_DIVIDER false [get_debug_cores dbg_hub]
+set_property C_USER_SCAN_CHAIN 1 [get_debug_cores dbg_hub]
+connect_debug_port dbg_hub/clk [get_nets u_clk200/inst/clk_out2_clk200_wiz]
