@@ -52,9 +52,9 @@ module surf_interface_v2 #(parameter RXCLK_INV = 1'b0,
     // IDELAY controls.
     wire idelay_cout_load;
     wire idelay_dout_load;
-    wire [4:0] idelay_value;
-    wire [4:0] idelay_cout_current;
-    wire [4:0] idelay_dout_current;
+    wire [5:0] idelay_value;
+    wire [5:0] idelay_cout_current;
+    wire [5:0] idelay_dout_current;
     // ISERDES controls
     wire iserdes_rst;
     wire iserdes_cout_bitslip;
@@ -92,6 +92,7 @@ module surf_interface_v2 #(parameter RXCLK_INV = 1'b0,
     wire        dout_capture;
     wire        dout_biterr;
     wire        dout_enable;
+    wire        dout_capture_phase;
             
     // OSERDES controls
     wire oserdes_rst;
@@ -139,6 +140,7 @@ module surf_interface_v2 #(parameter RXCLK_INV = 1'b0,
                    .dout_valid_o(dout_valid),
                    .dout_capture_i(dout_capture),
                    .dout_biterr_o(dout_biterr),
+                   .dout_capture_phase_i(dout_capture_phase),
                                       
                    // the actual douts/couts come in a bit
                    .COUT_P(COUT_P),
@@ -176,6 +178,7 @@ module surf_interface_v2 #(parameter RXCLK_INV = 1'b0,
                 .dout_biterr_i(dout_biterr),
                 .dout_capture_o(dout_capture),
                 .dout_enable_o(dout_enable),
+                .dout_capture_phase_o(dout_capture_phase),
                 
                 .mask_o(surf_mask),
 

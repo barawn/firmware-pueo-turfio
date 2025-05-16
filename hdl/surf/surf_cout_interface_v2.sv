@@ -13,11 +13,11 @@ module surf_cout_interface_v2 #(parameter COUT_INV = 1'b0,
         input           iserdes_cout_bitslip_i,
         input           iserdes_dout_bitslip_i,
         // common value
-        input [4:0]     idelay_value_i,        
+        input [5:0]     idelay_value_i,        
         input           idelay_cout_load_i,
         input           idelay_dout_load_i,
-        output [4:0]    idelay_cout_current_o,
-        output [4:0]    idelay_dout_current_o,
+        output [5:0]    idelay_cout_current_o,
+        output [5:0]    idelay_dout_current_o,
         
         // for the surf live detector
         output [3:0]    cout_o,
@@ -34,6 +34,7 @@ module surf_cout_interface_v2 #(parameter COUT_INV = 1'b0,
         input           dout_capture_i,
         input           dout_enable_i,
         output          dout_biterr_o,
+        input           dout_capture_phase_i,
         
         input COUT_P,
         input COUT_N,
@@ -47,12 +48,13 @@ module surf_cout_interface_v2 #(parameter COUT_INV = 1'b0,
 
     wire dout_sync;
 
-    surf_cout_phy_v2 #(.COUT_INV(COUT_INV),.DOUT_INV(DOUT_INV),
+    surf_cout_phy_v3 #(.COUT_INV(COUT_INV),.DOUT_INV(DOUT_INV),
                     .DEBUG(DEBUG == "PHY" ? "TRUE" : "FALSE"))
         u_phy(.sysclk_i(sysclk_i),
               .sysclk_x2_i(sysclk_x2_i),
               .sync_i(sync_i),
               .dout_sync_i(dout_sync),
+              .dout_capture_phase_i(dout_capture_phase_i),
               .iserdes_rst_i(iserdes_rst_i),
               .iserdes_cout_bitslip_i(iserdes_cout_bitslip_i),
               .iserdes_dout_bitslip_i(iserdes_dout_bitslip_i),

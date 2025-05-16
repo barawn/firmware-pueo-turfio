@@ -29,6 +29,7 @@ module surf_cout_phy_v2 #(parameter COUT_INV = 1'b0,
     );
     
     wire [7:0] cout_parallel;
+    wire [7:0] dout_parallel;
     // handle the automatic inversions
     wire cout_norm, cout_inv;
     wire dout_norm, dout_inv;
@@ -97,7 +98,7 @@ module surf_cout_phy_v2 #(parameter COUT_INV = 1'b0,
     (* CUSTOM_CC_DST = "SYSCLK" *)
     ISERDESE2 #(.INTERFACE_TYPE("NETWORKING"),
                 .DATA_RATE("DDR"),
-                .DATA_WIDTH(8),
+                .DATA_WIDTH(4),
                 .IOBDELAY("IFD"),
                 .NUM_CE(1))
                 u_dout_iserdes(.BITSLIP(iserdes_dout_bitslip_i),
@@ -106,24 +107,37 @@ module surf_cout_phy_v2 #(parameter COUT_INV = 1'b0,
                                .CLKDIV(sysclk_i),
                                .RST(iserdes_reset),
                                .DDLY(dout_dly),
-                               .Q1(dout_o[7]),
-                               .Q2(dout_o[6]),
-                               .Q3(dout_o[5]),
-                               .Q4(dout_o[4]),
-                               .Q5(dout_o[3]),
-                               .Q6(dout_o[2]),
-                               .Q7(dout_o[1]),
-                               .Q8(dout_o[0]));                
+                               .Q1(dout_parallel[3]),
+                               .Q2(dout_parallel[2]),
+                               .Q3(dout_parallel[1]),
+                               .Q4(dout_parallel[0]),
+                               .Q5(dout_parallel[7]),
+                               .Q6(dout_parallel[6]),
+                               .Q7(dout_parallel[5]),
+                               .Q8(dout_parallel[4]));                
+
+    // in our first clock, we get the low 4 bits
+    // then in the second clock we get the high 4 bits
+    reg [3:0] dout_history = {4{1'b0}};
+    reg [7:0] dout_store = {8{1'b0}};
+    always @(posedge sysclk_i) begin
+        dout_history <= dout_parallel[3:0];
+        // we will need to check if this results in nybble-aligned data or misaligned
+        if (dout_sync_i) dout_store <= { dout_parallel[3:0], dout_history };
+    end
 
     generate
         if (DEBUG == "TRUE") begin : DBG
             surf_cout_phy_ila u_ila(.clk(sysclk_i),
                                     .probe0(cout_o),
-                                    .probe1(dout_o),
-                                    .probe2(sync_i));
+                                    .probe1(dout_parallel[3:0]),
+                                    .probe2(sync_i),
+                                    .probe3(dout_sync_i),
+                                    .probe4(dout_store)
+                                    );
         end
     endgenerate
     
     assign cout_o = cout_parallel[3:0];
-        
+    assign dout_o = dout_store;        
 endmodule

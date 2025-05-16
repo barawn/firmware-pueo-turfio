@@ -31,9 +31,9 @@ module surfctl_register_core_v2(
         output idelay_cout_load_o,
         output idelay_dout_load_o,
         // common value
-        output [4:0] idelay_value_o,
-        input [4:0] idelay_cout_current_i,
-        input [4:0] idelay_dout_current_i,
+        output [5:0] idelay_value_o,
+        input [5:0] idelay_cout_current_i,
+        input [5:0] idelay_dout_current_i,
         // common reset
         output iserdes_rst_o,
         output iserdes_cout_bitslip_o,
@@ -59,6 +59,9 @@ module surfctl_register_core_v2(
         input dout_biterr_i,
         output dout_enable_o,
         output dout_capture_o,
+        // This flips the capture phase for dout. This is basically
+        // instead of the parallelizer.
+        output dout_capture_phase_o,
                 
         // train enable
         output cin_train_o,
@@ -191,6 +194,12 @@ module surfctl_register_core_v2(
     (* CUSTOM_CC_DST = "SYSCLK", ASYNC_REG = "TRUE" *)
     reg [1:0] cin_train_enable_sysclk = {2{1'b0}};
             
+    // determine which phase to capture dout in
+    (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
+    reg dout_capture_phase = 0;
+    (* CUSTOM_CC_DST = "SYSCLK", ASYNC_REG = "TRUE" *)
+    reg [1:0] dout_capture_phase_sysclk = {2{1'b0}};
+
     // treat the DOUT data as valid
     (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
     reg dout_enable = 0;
@@ -221,7 +230,8 @@ module surfctl_register_core_v2(
     assign control_register[2] = iserdes_reset;     // common iserdes reset
     assign control_register[3] = 1'b0;              // unused, is parallelizer reset
     assign control_register[4] = oserdes_reset;     // OSERDES reset (common)
-    assign control_register[7:5] = 3'b000;          // reserved
+    assign control_register[6:5] = 2'b00;           // reserved
+    assign control_register[7] = 1'b0;              // dout capture phase, spliced in
     // these are pointless, they get spliced in
     assign control_register[8] = 1'b0;              // not common (enable or lock enable)
     assign control_register[9] = 1'b0;              // not common (lock status or copy of bit 8)
@@ -230,12 +240,14 @@ module surfctl_register_core_v2(
     assign control_register[15] = mask_dout;        // mask off this SURF
     assign control_register[31:16] = {16{1'b0}};    // RXCLK phase adjust
     // Duplicate this so it acts the same as the lock req/status.
-    assign cout_control_register[7:0] = control_register[7:0];
+    assign cout_control_register[6:0] = control_register[6:0];
+    assign cout_control_register[7] = 1'b0;
     assign cout_control_register[8] = cout_enable;
     assign cout_control_register[9] = cout_enable; 
     assign cout_control_register[31:10] = control_register[31:10];
     // Duplicate this so it acts the same as the lock req/status.
-    assign dout_control_register[7:0] = control_register[7:0];
+    assign dout_control_register[6:0] = control_register[6:0];
+    assign dout_control_register[7] = dout_capture_phase;
     assign dout_control_register[8] = dout_enable;
     assign dout_control_register[9] = dout_enable;
     assign dout_control_register[31:10] = control_register[31:10];
@@ -285,8 +297,14 @@ module surfctl_register_core_v2(
         // DOUT HSALIGN ONLY
         if (state == ACK && we_in_static && adr_in_static == DOUT_CONTROL_REG) begin
             if (sel_in_static[1]) dout_enable <= dat_in_static[8];
-            if (sel_in_static[1]) mask_dout <= dat_in_static[15];
         end            
+
+        if (state == ACK && we_in_static && (adr_in_static == COUT_CONTROL_REG || adr_in_static == DOUT_CONTROL_REG)) begin
+            if (sel_in_static[0]) dout_capture_phase <= dat_in_static[7];
+        end
+        if (state == ACK && we_in_static && (adr_in_static == COUT_CONTROL_REG || adr_in_static == DOUT_CONTROL_REG)) begin
+            if (sel_in_static[1]) mask_dout <= dat_in_static[15];
+        end        
         // CAPTURE INPUTS AND HOLD STATIC
         if (wb_cyc_i && wb_stb_i) begin
             if (wb_sel_i[0]) dat_in_static[7:0] <= wb_dat_i[7:0];
@@ -333,6 +351,7 @@ module surfctl_register_core_v2(
     
     // Synchronize the train/dout/couts
     always @(posedge sysclk_i) begin
+        dout_capture_phase_sysclk <= { dout_capture_phase_sysclk[0], dout_capture_phase };
         cin_train_enable_sysclk <= { cin_train_enable_sysclk[0], cin_train_enable };
         dout_enable_sysclk <= { dout_enable_sysclk[0], dout_enable };
         cout_enable_sysclk <= { cout_enable_sysclk[0], cout_enable };        
@@ -350,9 +369,12 @@ module surfctl_register_core_v2(
     // enable outputs
     assign dout_enable_o = dout_enable_sysclk[1];
     assign cout_enable_o = cout_enable_sysclk[1];
+    // mask
     assign mask_o = mask_dout_sysclk[1];
+    // capture phase
+    assign dout_capture_phase_o = dout_capture_phase_sysclk[1];
     // idelay outputs    
-    assign idelay_value_o = dat_in_static[4:0];
+    assign idelay_value_o = dat_in_static[5:0];
     assign idelay_cout_load_o = sysclk_waiting_flag_sysclk &&
                                 adr_in_static == COUT_IDELAY_REG &&
                                 we_in_static;
