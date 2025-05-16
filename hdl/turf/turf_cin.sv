@@ -12,6 +12,12 @@ module turf_cin #(parameter CIN_INV = 1'b0)( input rxclk_i,
                  input CIN_P,
                  input CIN_N
     );
+    wire [4:0] cntdelay_P = idelay_value_i[5] ? {5{1'b1}} : idelay_value_i[4:0];
+    wire [4:0] cntdelay_N = idelay_value_i[5] ? idelay_value_i[4:0] : {5{1'b0}};
+    wire [4:0] cntvalueout_P;
+    wire [4:0] cntvalueout_N;
+    assign idelay_value_o[5] = cntvalueout_P == {5{1'b1}};
+    assign idelay_value_o[4:0] = (idelay_value_o[5]) ? cntvalueout_N : cntvalueout_P;    
     
     wire [7:0] cin_parallel;        
 
@@ -20,28 +26,35 @@ module turf_cin #(parameter CIN_INV = 1'b0)( input rxclk_i,
     wire cin_in_p = (CIN_INV) ? CIN_N : CIN_P;
     // CIN negative inputs to IBUFDS_DIFF_OUT
     wire cin_in_n = (CIN_INV) ? CIN_P : CIN_N;
-    // CIN positive output from IBUFDS_DIFF_OUT
-    wire cin_out_p;
-    // CIN negative output from IBUFDS_DIFF_OUT
-    wire cin_out_n;
-    // Correct polarity CIN signal
-    wire cin_out = (CIN_INV) ? cin_out_n : cin_out_p;
-    // CIN out of IDELAY
-    wire cin_delayed;
+    // Output from IBUF.
+    wire cin;
+    // From M IDELAY.
+    wire cin_idelay_m;
+    // From S IDELAY.
+    wire cin_idelay_s;
 
-    // CIN path        
-    // source (current value) and destination (load)
-    IBUFDS_DIFF_OUT #(.IBUF_LOW_PWR("FALSE"))
-        u_cin_ibuf(.I(cin_in_p),.IB(cin_in_n),.O(cin_out_p),.OB(cin_out_n));
+    IBUFDS u_ibuf(.I(cin_in_p), .IB(cin_in_n),.O(cin) );    
     (* CUSTOM_CC_DST = "RXCLK", CUSTOM_CC_SRC = "RXCLK" *)
     IDELAYE2 #(.IDELAY_TYPE("VAR_LOAD"),
-               .HIGH_PERFORMANCE_MODE("TRUE"))
-             u_cin_idelay(.C(rxclk_i),
+               .HIGH_PERFORMANCE_MODE("TRUE"),
+               .IS_IDATAIN_INVERTED(CIN_INV),               
+               .DELAY_SRC("IDATAIN"))
+             u_cin_idelaym(.C(rxclk_i),
                           .LD(idelay_load_i),
-                          .CNTVALUEIN(idelay_value_i),
-                          .CNTVALUEOUT(idelay_value_o),
-                          .IDATAIN(cin_out),
-                          .DATAOUT(cin_delayed));
+                          .CNTVALUEIN(cntdelay_P),
+                          .CNTVALUEOUT(cntvalueout_P),
+                          .IDATAIN(cin),
+                          .DATAOUT(cin_idelay_m));
+    (* CUSTOM_CC_DST = "RXCLK", CUSTOM_CC_SRC = "RXCLK" *)
+    IDELAYE2 #(.IDELAY_TYPE("VAR_LOAD"),
+               .HIGH_PERFORMANCE_MODE("TRUE"),
+               .DELAY_SRC("DATAIN"))
+             u_cin_idelays(.C(rxclk_i),
+                           .LD(idelay_load_i),
+                           .CNTVALUEIN(cntdelay_N),
+                           .CNTVALUEOUT(cntvalueout_N),
+                           .DATAIN(cin_idelay_m),
+                           .DATAOUT(cin_idelay_s));
     // ISERDES uses network-type byte order, meaning the first in time is the MSB bit.
     // OSERDES is opposite that (LSB is first out)
     // In UltraScale they are BOTH LSB is first in.
@@ -61,7 +74,7 @@ module turf_cin #(parameter CIN_INV = 1'b0)( input rxclk_i,
                       .CLKB(~rxclk_x2_i),
                       .CLKDIV(rxclk_i),
                       .RST(iserdes_rst_i),
-                      .DDLY(cin_delayed),
+                      .DDLY(cin_idelay_s),
                       .Q1(cin_parallel[3]),
                       .Q2(cin_parallel[2]),
                       .Q3(cin_parallel[1]),
