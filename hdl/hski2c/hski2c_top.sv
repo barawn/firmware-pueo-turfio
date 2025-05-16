@@ -246,6 +246,7 @@ module hski2c_top(
     (* USE_DSP = "YES" *)
     reg [47:0] lane_down_counter = {48{1'b0}};
 
+    reg watchdog_disable = 0;
     reg watchdog_trip = 0;
     // this is 3.35 seconds
     wire watchdog_timer = lane_down_counter[28];
@@ -298,8 +299,8 @@ module hski2c_top(
     wire [7:0] general_control_and_ourid = (port_id[0]) ? general_control : our_id;
 
     wire [7:0] cobs_in = cobs_rx_tdata;
-    wire [7:0] cobs_status = { watchdog_trip, {5{1'b0}}, cobs_last, cobs_error };
-    assign     interrupt = cobs_rx_tvalid || watchdog_trip;    
+    wire [7:0] cobs_status = { watchdog_trip && !watchdog_disable, {5{1'b0}}, cobs_last, cobs_error };
+    assign     interrupt = cobs_rx_tvalid || (watchdog_trip && !watchdog_disable);    
     
     wire [7:0] picoblaze_registers[15:0];
     wire [7:0] register_data = (port_id[4]) ? general_control_and_ourid : picoblaze_registers[port_id[3:0]];
@@ -410,6 +411,9 @@ module hski2c_top(
             processor_reset <= sys_reset_flag;
         else if (wb_cyc_i && wb_stb_i && wb_we_i && ack && wb_sel_i[0])
             processor_reset <= wb_dat_i[0];
+
+        if (wb_cyc_i && wb_stb_i && wb_we_i && ack && wb_sel_i[1])
+            watchdog_disable <= wb_dat_i[8];
 
         ack <= wb_cyc_i && wb_stb_i;
         
@@ -537,7 +541,10 @@ module hski2c_top(
 //    assign cobs_valid = 0;
 //    assign cobs_in = 8'h00;
 //    assign our_id = 8'h40;
-    assign wb_dat_o = { {30{1'b0}}, cratebridge_enable_actual, processor_reset };
+    assign wb_dat_o = { {8{1'b0}},
+                        {8{1'b0}},
+                        {7{1'b0}}, watchdog_disable, 
+                        {6{1'b0}}, cratebridge_enable_actual, processor_reset };
     assign wb_ack_o = ack && wb_cyc_i;
     assign wb_err_o = 1'b0;
     assign wb_rty_o = 1'b0;
