@@ -148,7 +148,8 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
                            .clkA(wb_clk_i),.clkB(sysclk_i));                             
 
     wire [6:0] surf_live;
-    wire [31:0] surf_live_register = { {25{1'b0}}, surf_live };
+    wire [6:0] surf_misaligned;
+    wire [31:0] surf_live_register = {  {9{1'b0}}, surf_misaligned, {9{1'b0}}, surf_live };
     wire [6:0] surf_trainin_req;
     reg [6:0] surf_autotrain = {7{1'b0}};    
     wire [31:0] surf_trainin_register = { {9{1'b0}}, surf_autotrain, {9{1'b0}}, surf_trainin_req };
@@ -157,6 +158,7 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
     (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
     reg  [6:0] surf_train_complete = {7{1'b0}};
     wire [31:0] surf_complete_register = { {25{1'b0}}, surf_train_complete };
+    
     
     generate
         if (DEBUG == "TRUE") begin : ILA
@@ -197,6 +199,7 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
                    .trainin_req_o(surf_trainin_req),
                    .trainout_rdy_o(surf_trainout_rdy),
                    .train_complete_i(surf_train_complete),
+                   .surf_misaligned_o(surf_misaligned),
                    .surf_live_o(surf_live));
 
     assign surf_live_o = surf_live;

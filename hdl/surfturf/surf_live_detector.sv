@@ -13,6 +13,10 @@
 // go ahead and lock on it.
 // Obviously detecting COUT going low is actually "COUT is anything other than 0xF".
 //
+// Once we're at train out request and train_complete_i is set, we then wait for
+// DOUT == 0x00 to set SURF live: however we need to go 0x6A -> 0x00. ANYTHING ELSE
+// indicates a misalignment which gets flagged as surf_misaligned_o.
+//
 // trainin_req_o can autoswitch CIN to training mode if it's allowed (which it is by default)
 //
 // COUT/DOUT are in sysclk, but the actual statuses are generated in wbclk space because
@@ -32,8 +36,15 @@ module surf_live_detector(
         // out train complete (from the autostart module, or just tied high)
         input [6:0] train_complete_i,
         // live indicator
-        output [6:0] surf_live_o
+        output [6:0] surf_live_o,
+        // indicates we actually went
+        // 0x6a (something other than 0) (zero)
+        // probably 0x6A 0x6A 0x60.
+        // this should never happen
+        output [6:0] surf_misaligned_o        
     );
+    
+    parameter [7:0] DOUT_TRAIN = 8'h6A;
     
     // counter to kill SURF on COUT loss: 16 is fine, that's impossible
     // we use COUT rather than DOUT to go poof because DOUT can literally be basically anything
@@ -64,16 +75,30 @@ module surf_live_detector(
             (* CUSTOM_CC_DST = WBCLKTYPE, ASYNC_REG = "TRUE" *)
             reg [1:0] surf_live_wbclk = {2{1'b0}};            
 
+            (* CUSTOM_CC_SRC = SYSCLKTYPE *)
+            reg surf_misaligned = 0;
+            
+            (* CUSTOM_CC_DST = WBCLKTYPE, ASYNC_REG = "TRUE" *)
+            reg [1:0] surf_misaligned_wbclk = {2{1'b0}};
+
+            wire dout_out_of_train = (surf_train_complete[1] && dout_i != DOUT_TRAIN);
+            wire dout_is_null = (dout_i == {8{1'b0}});
+            
             reg [4:0] cout_counter = {5{1'b0}};
             always @(posedge sys_clk_i) begin : LNR
                 surf_train_complete <= { surf_train_complete[0], train_complete_i[i] };
             end
             always @(posedge sys_clk_i or negedge sys_clk_ok_i) begin : LWR
+                if (!sys_clk_ok_i) surf_misaligned <= 0;
+                else if (dout_out_of_train && !dout_is_null) surf_misaligned <= 1;
+            
+                // surf_live requires surf train complete and dout_out_of_train.
+                // surf_live and !surf_misaligned means you can enable the DOUT interface.
                 if (!sys_clk_ok_i) surf_live <= 0;
                 else begin
                     if (cout_counter[4])
                         surf_live <= 0;
-                    else if (train_out_rdy && surf_train_complete[1])
+                    else if (surf_train_complete[1] && dout_out_of_train)
                         surf_live <= 1;
                 end
                 // this only matters at startup, it's a once-and-done
@@ -119,10 +144,12 @@ module surf_live_detector(
                 train_in_req_wbclk <= { train_in_req_wbclk[0], train_in_req };
                 train_out_rdy_wbclk <= { train_out_rdy_wbclk[0], train_out_rdy };
                 surf_live_wbclk <= { surf_live_wbclk[0], surf_live };
+                surf_misaligned_wbclk <= { surf_misaligned_wbclk[0], surf_misaligned };
             end
             assign trainin_req_o[i] = train_in_req_wbclk[1];
             assign trainout_rdy_o[i] = train_out_rdy_wbclk[1];
             assign surf_live_o[i] = surf_live_wbclk[1];
+            assign surf_misaligned_o[i] = surf_misaligned_wbclk[1];
         end
     endgenerate
 
