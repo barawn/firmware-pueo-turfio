@@ -175,6 +175,12 @@ module turf_interface #(
                   .CIN_P(CIN_P),
                   .CIN_N(CIN_N));                                      
 
+    // DEBUGGING DEBUGGING
+    wire cin_iserdes_bitslip_sysclk;
+    flag_sync u_bitslip_sync(.in_clkA(cin_iserdes_bitslip),
+                             .out_clkB(cin_iserdes_bitslip_sysclk),
+                             .clkA(rxclk),.clkB(sysclk_i));
+
     // SYSCLK crossing.
     rxclk_sysclk_transfer 
         u_rxsys(.rxclk_i(rxclk_o),
@@ -188,6 +194,7 @@ module turf_interface #(
                    .cin_i(cin_parallel_sysclk),
                    .rst_i(cin_sync_reset),
                    .capture_i( cin_sync_capture ),
+                   .bitslipped_i(cin_iserdes_bitslip_sysclk),
                    .lock_i(cin_sync_lock),
                    .locked_o(cin_sync_locked),
                    .cin_parallel_o(command_o),
