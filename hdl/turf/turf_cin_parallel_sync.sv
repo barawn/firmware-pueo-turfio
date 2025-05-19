@@ -18,6 +18,8 @@ module turf_cin_parallel_sync(
         // Instruct this module to execute a capture
         // even though we're unaligned.
         input capture_i,
+        // DEBUGGING
+        input bitslipped_i,
         // Lock onto the next correct training sequence
         // and keep it going.
         input lock_i,
@@ -131,7 +133,8 @@ module turf_cin_parallel_sync(
                                .probe5(cin_parallel_valid_o),
                                .probe6(cin_biterr),
                                .probe7(current_cin),
-                               .probe8(sysclk_sequence));
+                               .probe8(sysclk_sequence),
+                               .probe9(bitslipped_i));
         end
     endgenerate
     
