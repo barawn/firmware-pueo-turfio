@@ -156,6 +156,10 @@ set_cc_paths $sysclk $initclk $clktypelist
 set_cc_paths $userclk $initclk $clktypelist
 set_cc_paths $initclk $userclk $clktypelist
 
+set bitslip_src_regs [get_cells -hier -filter { CUSTOM_CC_SRC =~ "INITCLK"}]
+set bitslip_dbg_reg [get_cells -hier -filter { NAME =~ "u_surfturf/LP[0].TURF.u_turf/u_bitslip_sync/A_POS_POL.FlagToggle_clkA_reg" }]
+set_max_delay -quiet -datapath_only -from $bitslip_src_regs -to $bitslip_dbg_reg 10.00
+
 
 set_param iconstr.diffPairPulltype opposite
 
