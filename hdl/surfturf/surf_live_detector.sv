@@ -81,8 +81,8 @@ module surf_live_detector(
             (* CUSTOM_CC_DST = WBCLKTYPE, ASYNC_REG = "TRUE" *)
             reg [1:0] surf_misaligned_wbclk = {2{1'b0}};
 
-            wire dout_out_of_train = (surf_train_complete[1] && dout_i != DOUT_TRAIN);
-            wire dout_is_null = (dout_i == {8{1'b0}});
+            wire dout_out_of_train = (surf_train_complete[1] && dout_i[8*i +: 8] != DOUT_TRAIN);
+            wire dout_is_null = (dout_i[8*i +: 8] == {8{1'b0}});
             
             reg [4:0] cout_counter = {5{1'b0}};
             always @(posedge sys_clk_i) begin : LNR
