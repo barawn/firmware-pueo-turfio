@@ -252,7 +252,7 @@ module surfturf_wrapper_v2 #(
                             .surf_live_i(surf_live[i-1]),
                             .surf_autotrain_en_i(surf_autotrain_en[i-1]),
 
-                            .disable_rxclk_i(disable_rxclk[i]),
+                            .disable_rxclk_i(disable_rxclk[i-1]),
                             
                             .sync_i(sync_i),
                             .trig_i(trig),
