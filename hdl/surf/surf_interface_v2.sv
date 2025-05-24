@@ -63,6 +63,7 @@ module surf_interface_v2 #(parameter RXCLK_INV = 1'b0,
     wire [31:0] cout_data;
     wire        cout_valid;
     wire        cout_capture;
+    wire        cout_captured;
     wire        cout_biterr;
     wire        cout_enable;
     // DOUT data path. It only needs an enable.
@@ -134,6 +135,7 @@ module surf_interface_v2 #(parameter RXCLK_INV = 1'b0,
                    .cout_data_o(cout_data),
                    .cout_valid_o(cout_valid),
                    .cout_capture_i(cout_capture),
+                   .cout_captured_i(cout_captured),
                    .cout_biterr_o(cout_biterr),
                    
                    .dout_data_o(dout_data),
@@ -171,6 +173,7 @@ module surf_interface_v2 #(parameter RXCLK_INV = 1'b0,
                 
                 .cout_data_i(cout_data),
                 .cout_capture_o(cout_capture),
+                .cout_captured_o(cout_captured),
                 .cout_biterr_i(cout_biterr),
                 .cout_enable_o(cout_enable),
                 

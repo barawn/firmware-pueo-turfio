@@ -19,13 +19,16 @@ module surf_cout_interface_v2 #(parameter COUT_INV = 1'b0,
         output [5:0]    idelay_cout_current_o,
         output [5:0]    idelay_dout_current_o,
         
-        // for the surf live detector
+        // this is actually what goes to the TURF transmitter
         output [3:0]    cout_o,
+        // for the surf live detector
         output [7:0]    dout_o,
         
         output [31:0]   cout_data_o,
         output          cout_valid_o,
+        
         input           cout_capture_i,
+        input           cout_captured_i,
         input           cout_enable_i,
         output          cout_biterr_o,
 
@@ -78,14 +81,23 @@ module surf_cout_interface_v2 #(parameter COUT_INV = 1'b0,
                             .dout_o(dout_data_o),
                             .dout_valid_o(dout_valid_o),
                             .dout_biterr_o(dout_biterr_o));    
-    // cout needs a parallel sync here!!
-    // but the difference is:
-    // 1. we SHOULD NOT need to lock - the ONLY thing we need to do
-    // is eye align and bitslip to align the ISERDES. The SURF's
-    // sequence should be FIXED by sync!!
-
-    // surf live detector gets stuff without going through surf byte capture
+    // COUT capture is significantly easier. We only actually capture
+    // for training, based on an 8-cycle counter that resets with sync_i.
+    // The value **should** stay static, so I just need to adjust the reset
+    // value. And then we DON'T actually output a 32-bit value! We just
+    // pass along the 4-bit value and re-clock it out to the TURF, which
+    // then does the same thing.
+    surf_cout_parallelizer u_cout_parallel(.sysclk_i(sysclk_i),
+                                           .sync_i(sync_i),
+                                           .capture_i(cout_capture_i),
+                                           .captured_i(cout_captured_i),
+                                           .enable_i(cout_enable_i),
+                                           .biterr_o(cout_bitter_o),
+                                           .cout_parallel_o(cout_data_o),
+                                           .cout_i(cout_o));
+    
     assign cout_o = cout_from_iserdes;
+    // surf live detector gets stuff without going through surf byte capture    
     assign dout_o = dout_from_iserdes;
 
 endmodule

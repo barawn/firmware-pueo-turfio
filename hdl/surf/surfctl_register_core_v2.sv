@@ -52,7 +52,8 @@ module surfctl_register_core_v2(
         input cout_biterr_i,
         output cout_enable_o,
         output cout_capture_o,
-            
+        output cout_captured_o,
+                    
         // DOUT alignment happens only on an 8-bit path
         // We don't have a sync lock, but we do have an enable.
         input [7:0] dout_data_i,
@@ -115,12 +116,19 @@ module surfctl_register_core_v2(
     wire sysclk_waiting_flag_sysclk;
     // flag indicating that the task is complete
     wire sysclk_ack_flag_wbclk;
+    // and this last flag informs sysclk that we're totally done if needed.
+    wire done_flag_wbclk;
+    // in sysclk
+    wire done_flag_sysclk;
 
     register_core_cc_task u_wb_sys_cc(.rclk_i(wb_clk_i),
                                       .dclk_i(sysclk_i),
                                       .waiting_rclk_i(sysclk_waiting),
                                       .waiting_dclk_o(sysclk_waiting_flag_sysclk),
                                       .acknowledge_rclk_o(sysclk_ack_flag_wbclk));
+
+    flag_sync u_donesync(.in_clkA(done_flag_wbclk),.out_clkB(done_flag_sysclk),
+                         .clkA(wb_clk_i),.clkB(sysclk_i));
 
     //////////////////////////////////////////////////////////////////////
     //                      BIT ERROR COUNTING                          //
@@ -166,7 +174,8 @@ module surfctl_register_core_v2(
     reg [FSM_BITS-1:0] state = IDLE;
     
     assign sysclk_waiting = (state == WAIT_ACK_SYSCLK);    
-
+    assign done_flag_wbclk = (state == ACK);
+    
     // iserdes reset is common
     (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
     reg iserdes_reset = 0;
@@ -354,6 +363,8 @@ module surfctl_register_core_v2(
     
     // capture flags
     assign cout_capture_o = sysclk_waiting_flag_sysclk && adr_in_static == COUT_DATA_REG;
+    // doesn't matter that this goes off a lot I think
+    assign cout_captured_o = done_flag_sysclk;
     assign dout_capture_o = sysclk_waiting_flag_sysclk && adr_in_static == DOUT_DATA_REG;
     // enable outputs
     assign dout_enable_o = dout_enable_sysclk[1];

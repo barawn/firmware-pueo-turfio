@@ -84,13 +84,12 @@ module surf_cout_phy_v3 #(parameter COUT_INV = 1'b0,
     
     wire [7:0] cout_parallel;
     wire [7:0] dout_parallel;
-    // leave COUT alone for now
-    // handle the automatic inversions
+
+    // ALWAYS use cout_norm to put it at the P-side.
     wire cout_norm, cout_inv;
-    wire cout;
+    wire cout_dly_P;
     wire cout_dly;
     ibufds_autoinv #(.INV(COUT_INV)) u_cout(.I_P(COUT_P),.I_N(COUT_N),.O(cout_norm),.OB(cout_inv));
-    assign cout = (COUT_INV == 1'b1) ? cout_inv : cout_norm;
     
     // DOUT chain.
     wire dout_m = (DOUT_INV) ? DOUT_N : DOUT_P;
@@ -141,18 +140,39 @@ module surf_cout_phy_v3 #(parameter COUT_INV = 1'b0,
                                .Q7(dout_parallel[5]),
                                .Q8(dout_parallel[4]));                
 
-
-    
-    
+//    wire [4:0] dout_cntdelay_P = idelay_value_i[5] ? {5{1'b1}} : idelay_value_i[4:0];
+//    wire [4:0] dout_cntdelay_N = idelay_value_i[5] ? idelay_value_i[4:0] : {5{1'b0}};
+//    wire [4:0] dout_cntdelayout_P;
+//    wire [4:0] dout_cntdelayout_N;
+//    assign idelay_dout_current_o[5] = (dout_cntdelayout_P == {5{1'b1}});
+//    assign idelay_dout_current_o[4:0] = idelay_dout_current_o[5] ? dout_cntdelayout_N : dout_cntdelayout_P;    
+    wire [4:0] cout_cntdelay_P = idelay_value_i[5] ? {5{1'b1}} : idelay_value_i[4:0];
+    wire [4:0] cout_cntdelay_N = idelay_value_i[5] ? idelay_value_i[4:0] : {5{1'b0}};
+    wire [4:0] cout_cntdelayout_P;
+    wire [4:0] cout_cntdelayout_N;
+    assign idelay_cout_current_o[5] = (cout_cntdelayout_P == {5{1'b1}});
+    assign idelay_cout_current_o[4:0] = idelay_cout_current_o[5] ? cout_cntdelayout_N : cout_cntdelayout_P;    
+        
     // these are both source and destination clock cross
     (* CUSTOM_CC_SRC = "SYSCLK", CUSTOM_CC_DST = "SYSCLK" *)
     IDELAYE2 #(.IDELAY_TYPE("VAR_LOAD"),
-               .HIGH_PERFORMANCE_MODE("TRUE"))
-               u_cout_delay(.C(sysclk_i),
+               .HIGH_PERFORMANCE_MODE("TRUE"),
+               .IS_IDATAIN_INVERTED(COUT_INV))
+             u_cout_delay_P(.C(sysclk_i),
                             .LD(idelay_cout_load_i),
-                            .CNTVALUEIN(idelay_value_i),
-                            .CNTVALUEOUT(idelay_cout_current_o),
-                            .IDATAIN(cout),
+                            .CNTVALUEIN(cout_cntdelay_P),
+                            .CNTVALUEOUT(cout_cntdelayout_P),
+                            .IDATAIN(cout_norm),
+                            .DATAOUT(cout_dly_P));
+    (* CUSTOM_CC_SRC = "SYSCLK", CUSTOM_CC_DST = "SYSCLK" *)
+    IDELAYE2 #(.IDELAY_TYPE("VAR_LOAD"),
+               .HIGH_PERFORMANCE_MODE("TRUE"),
+               .DELAY_SRC("DATAIN"))
+             u_cout_delay_N(.C(sysclk_i),
+                            .LD(idelay_cout_load_i),
+                            .CNTVALUEIN(cout_cntdelay_P),
+                            .CNTVALUEOUT(cout_cntdelayout_P),
+                            .DATAIN(cout_dly_P),
                             .DATAOUT(cout_dly));
     // this is only a destination
     (* CUSTOM_CC_DST = "SYSCLK" *)
