@@ -183,7 +183,7 @@ module turf_interface #(
 
     // SYSCLK crossing.
     rxclk_sysclk_transfer 
-        u_rxsys(.rxclk_i(rxclk_o),
+        u_rxsys(.rxclk_i(rxclk),
                 .data_i(cin_parallel),
                 .sysclk_i(sysclk_i),
                 .data_o(cin_parallel_sysclk),
