@@ -35,6 +35,16 @@ module turf_rxclk_gen #(parameter INVERT_CLOCKS = "TRUE")(
     BUFG u_rxclk_fb(.I(rxclk_fb_to_bufg),.O(rxclk_fb_bufg));
     BUFG u_rxclk_bufg(.I(rxclk_to_bufg),.O(rxclk_o));
     BUFG u_rxclk_x2_bufg(.I(rxclk_x2_to_bufg),.O(rxclk_x2_o));
+    // AAAUUUGH
+    // We can't use a BUFR/BUFIO combination because synchronizing
+    // BUFRs is virtually impossible. (Screw off, Xilinx).
+    // But driven by 2x MMCM outputs, RXCLK/RXCLKx2 need to have
+    // a fine phase shift AND have a relative shift between them,
+    // but we can't do that??? AAAUUUGH
+    // 
+    // I think the only workable solution is to just try abandoning
+    // the bitslip operation. If we need to we can try abandoning
+    // the ISERDES entirely in favor of an IDDR2!
     MMCME2_ADV #( .CLKFBOUT_MULT_F(8.000),
                   .CLKFBOUT_PHASE(0.000),
                   .CLKIN1_PERIOD(8.000),
