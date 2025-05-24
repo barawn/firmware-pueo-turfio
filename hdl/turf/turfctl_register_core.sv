@@ -231,13 +231,15 @@ module turfctl_register_core(
     // MMCM reset (async, doesn't matter)
     reg       mmcm_reset = 0;
     // ISERDES reset (also copied to output).
+    // The ISERDES reset is statically held high until the clock alignment is found and
+    // we release RXCLK for running.
     (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
-    reg       iserdes_reset = 0;
+    reg       iserdes_reset = 1;
     (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
     reg       oserdes_reset = 0;
     // Resync registers.
     (* ASYNC_REG = "TRUE", CUSTOM_CC_DST = "RXCLK" *)
-    reg [1:0] iserdes_reset_resync = {2{1'b0}};
+    reg [1:0] iserdes_reset_resync = {2{1'b1}};
     always @(posedge rxclk_i) iserdes_reset_resync <= {iserdes_reset_resync[0], iserdes_reset };
     (* ASYNC_REG = "TRUE", CUSTOM_CC_DST = "SYSCLK" *)
     reg [1:0] oserdes_reset_resync = {2{1'b0}};
