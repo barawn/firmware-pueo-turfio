@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-module surf_cout_parallelizer(
+module surf_cout_parallelizer #(parameter DEBUG = "FALSE")(
         // System clock.
         input sysclk_i,
         // 16-clock global period.
@@ -72,7 +72,26 @@ module surf_cout_parallelizer(
         if ((sync_delayed || sync_half) && !capture_hold)
             cout_capture <= {cout_i, cout_history};
     end
+    
+    // ILA:
+    // cout_history,cout_i
+    // sync_delayed
+    // sync_half
+    // capture_hold
+    // cout_biterr
+    generate
+        if (DEBUG == "TRUE") begin : ILA
+            wire [31:0] cout_to_capture = {cout_i, cout_history};
+            surfcout_ila u_ila(.clk(sysclk_i),
+                               .probe0( cout_to_capture ),
+                               .probe1( sync_delayed ),
+                               .probe2( sync_half ),
+                               .probe3( capture_hold ),
+                               .probe4( cout_biterr ));
+        end
+    endgenerate        
+    
     assign cout_o = cout_i;
     assign cout_parallel_o = cout_capture;
-    assign biterr_o = cout_biterr;;
+    assign biterr_o = cout_biterr;
 endmodule

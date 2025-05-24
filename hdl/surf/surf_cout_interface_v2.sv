@@ -87,12 +87,13 @@ module surf_cout_interface_v2 #(parameter COUT_INV = 1'b0,
     // value. And then we DON'T actually output a 32-bit value! We just
     // pass along the 4-bit value and re-clock it out to the TURF, which
     // then does the same thing.
-    surf_cout_parallelizer u_cout_parallel(.sysclk_i(sysclk_i),
+    surf_cout_parallelizer #(.DEBUG(DEBUG != "FALSE" ? "TRUE" : "FALSE"))
+                           u_cout_parallel(.sysclk_i(sysclk_i),
                                            .sync_i(sync_i),
                                            .capture_i(cout_capture_i),
                                            .captured_i(cout_captured_i),
                                            .enable_i(cout_enable_i),
-                                           .biterr_o(cout_bitter_o),
+                                           .biterr_o(cout_biterr_o),
                                            .cout_parallel_o(cout_data_o),
                                            .cout_i(cout_o));
     
