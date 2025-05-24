@@ -309,8 +309,8 @@ module turfctl_register_core(
             end
         end    
     
-        if (wb_cyc_i && wb_stb_i) begin
-            // stupid, but whatever
+        if (wb_cyc_i && wb_stb_i && state == IDLE) begin
+            // SUPER stupid, but whatever. now there's no change these can change??
             if (wb_sel_i[0]) dat_in_static[7:0] <= wb_dat_i[7:0];
             if (wb_sel_i[1]) dat_in_static[15:8] <= wb_dat_i[15:8];
             if (wb_sel_i[2]) dat_in_static[23:16] <= wb_dat_i[23:16];
