@@ -170,8 +170,8 @@ module surf_cout_phy_v3 #(parameter COUT_INV = 1'b0,
                .DELAY_SRC("DATAIN"))
              u_cout_delay_N(.C(sysclk_i),
                             .LD(idelay_cout_load_i),
-                            .CNTVALUEIN(cout_cntdelay_P),
-                            .CNTVALUEOUT(cout_cntdelayout_P),
+                            .CNTVALUEIN(cout_cntdelay_N),
+                            .CNTVALUEOUT(cout_cntdelayout_N),
                             .DATAIN(cout_dly_P),
                             .DATAOUT(cout_dly));
     // this is only a destination
