@@ -21,6 +21,7 @@ module surf_cout_parallelizer(
     localparam [3:0] SYNC_OFFSET = 4;
     localparam [3:0] SYNC_HALF = 7;
     reg [27:0] cout_history = {28{1'b0}};
+    (* CUSTOM_CC_SRC = "SYSCLK" *)
     reg [31:0] cout_capture = {32{1'b0}};
 
     reg cout_biterr = 0;
@@ -31,6 +32,7 @@ module surf_cout_parallelizer(
                                   .din(cout_history[3:0]),
                                   .dout(cout_delayed));        
 
+    (* CUSTOM_CC_DST = "SYSCLK" *)
     reg capture_hold = 0;    
     // instead of creating an actual 8 clock sequence we just delay sync 2x and offset by 8
     wire sync_delayed;
