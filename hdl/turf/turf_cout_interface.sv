@@ -105,7 +105,8 @@ module turf_cout_interface(
     generate
         genvar i;
         for (i=0;i<NUM_SURF;i=i+1) begin : SL
-            wire [3:0] surf_cin = (train_i) ? response_hold[3:0] : surf_response_i[3:0];
+            // dumbass, this needs to be a *part select*
+            wire [3:0] surf_cin = (train_i) ? response_hold[3:0] : surf_response_i[4*i +: 4];
             // output from oserdes
             wire surf_cout;
             // positive output from OBUFDS
