@@ -67,9 +67,10 @@ module turf_interface #(
         output        command_locked_o,
         output [31:0] command_o,
         output        command_valid_o,
-        // Response inputs (for COUTTIO)
+        // Response inputs (for COUTTIO) - UNUSED
         input  [31:0] response_i,
-        // SURF inputs to forward when not training
+        // SURF inputs to forward when not training -
+        // WHY WOULD WE ENTER TRAINING YOU IDIOT - JUST KEEP THE SURFS ON
         input  [27:0] surf_response_i,
         input RXCLK_P,
         input RXCLK_N,
