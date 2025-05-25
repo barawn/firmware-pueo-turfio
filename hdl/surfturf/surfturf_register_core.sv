@@ -27,6 +27,7 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
         output [6:0] surf_autotrain_en_o,
         
         output [7:0] disable_rxclk_o,
+        output [3:0] cout_offset_o,
         // FW update output port stuff
         `HOST_NAMED_PORTS_AXI4S_MIN_IF( fw_ , 8),
         output [1:0] fw_mark_o,
@@ -35,31 +36,48 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
         `HOST_NAMED_PORTS_AXI4S_MIN_IF( trig_ , `RACKBUS_TRIG_BITS )       
     );
     
-    localparam ADDR_BITS = 5;
+    localparam ADDR_BITS = 6;
     
     // register 0: control and FIFO status (no FIFOs for runcmd/trig!)
     // register 1: fwupdate register (32-bits, reshaped to 8 bits in sysclk domain
     // register 2: runcmd register (only 2 bits)
     // register 3: trigger register (only 15 bits)
-    localparam [ADDR_BITS-1:0] CONTROL_ADDR =  5'h00;
-    localparam [ADDR_BITS-1:0] FWUPDATE_ADDR = 5'h04;
-    localparam [ADDR_BITS-1:0] RUNCMD_ADDR =   5'h08;
-    localparam [ADDR_BITS-1:0] TRIG_ADDR =     5'h0C;
+    localparam [ADDR_BITS-1:0] CONTROL_ADDR =  6'h00;
+    localparam [ADDR_BITS-1:0] FWUPDATE_ADDR = 6'h04;
+    localparam [ADDR_BITS-1:0] RUNCMD_ADDR =   6'h08;
+    localparam [ADDR_BITS-1:0] TRIG_ADDR =     6'h0C;
     // the SURF live detector gets 4 additional addresses:
-    localparam [ADDR_BITS-1:0] LIVE_ADDR     =  5'h10;
-    localparam [ADDR_BITS-1:0] TRAININ_ADDR  =  5'h14; // also contains autotrain enable
-    localparam [ADDR_BITS-1:0] TRAINOUT_ADDR =  5'h18;
-    localparam [ADDR_BITS-1:0] TRAINCMPL_ADDR = 5'h1C;
+    localparam [ADDR_BITS-1:0] LIVE_ADDR     =  6'h10;
+    localparam [ADDR_BITS-1:0] TRAININ_ADDR  =  6'h14; // also contains autotrain enable
+    localparam [ADDR_BITS-1:0] TRAINOUT_ADDR =  6'h18;
+    localparam [ADDR_BITS-1:0] TRAINCMPL_ADDR = 6'h1C;
+    // and now we need YET ANOTHER group for... uh... something
+    localparam [ADDR_BITS-1:0] COUTCTRL_ADDR  = 6'h20;    
                 
     reg update_disable_rxclk = 1'b0;
     wire do_update_disable_rxclk = wb_cyc_i && wb_stb_i && wb_we_i && wb_adr_i[ADDR_BITS-1:0] == CONTROL_ADDR && wb_sel_i[3] && wb_ack_o;
     wire update_disable_rxclk_sysclk;
     flag_sync u_update_disable_flag(.in_clkA(update_disable_rxclk),.out_clkB(update_disable_rxclk_sysclk),
                                     .clkA(wb_clk_i),.clkB(sysclk_i));
+
     (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
     reg [7:0] disable_rxclk = {8{1'b1}};
-    (* CUSTOM_CC_DST = SYS_CLK_TYPE, ASYNC_REG = "TRUE" *)
+    (* CUSTOM_CC_DST = SYS_CLK_TYPE *)
     reg [7:0] disable_rxclk_sysclk = {8{1'b1}};
+    
+    reg update_coutoffset = 1'b0;
+    wire do_update_coutoffset = wb_cyc_i && wb_stb_i && wb_we_i && wb_adr_i[ADDR_BITS-1:0] == COUTCTRL_ADDR && wb_sel_i[0] && wb_ack_o;
+    wire update_coutoffset_sysclk;
+    flag_sync u_update_coutoffset_flag(.in_clkA(update_coutoffset),.out_clkB(update_coutoffset_sysclk),
+                                       .clkA(wb_clk_i),.clkB(sysclk_i));
+        
+    // this is the capture ofset from SYNC to when we capture a trained message.
+    // this should be just a constant but we'll figure it out first.
+    (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
+    reg [3:0] cout_offset = {4{1'b0}};
+    (* CUSTOM_CC_DST = SYS_CLK_TYPE *)
+    reg [3:0] cout_offset_sysclk = {4{1'b0}};
+    
     
     // capture in wb clk and hold it: it's flag-synced over to
     // sysclk, so we can just make a datapath only delay to the hold register
@@ -159,6 +177,10 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
     reg  [6:0] surf_train_complete = {7{1'b0}};
     wire [31:0] surf_complete_register = { {25{1'b0}}, surf_train_complete };
     
+    wire [31:0] coutctrl_register = { {8{1'b0}},
+                                      {8{1'b0}},
+                                      {8{1'b0}},
+                                      {{4{1'b0}}, cout_offset } };
     
     generate
         if (DEBUG == "TRUE") begin : ILA
@@ -233,8 +255,13 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
         if (fw_do_mark1_sysclk) fw_mark1_sysclk <= 1;
         else if (fw_marked_i) fw_mark1_sysclk <= 0;
 
-        disable_rxclk_sysclk <= {disable_rxclk_sysclk[0], disable_rxclk};
+        // oh my god how long was this wrong for
+        if (update_disable_rxclk_sysclk)
+            disable_rxclk_sysclk <= disable_rxclk;
         
+        if (update_coutoffset_sysclk)
+            cout_offset_sysclk <= cout_offset;
+            
         event_reset_sysclk <= {event_reset_sysclk[0], event_reset};
     end
     
@@ -276,6 +303,10 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
             runcmd_holding_reg <= wb_dat_i[0 +: `RACKBUS_RUNCMD_BITS];
         if (trig_is_valid_wbclk)
             trig_holding_reg <= wb_dat_i[0 + `RACKBUS_TRIG_BITS];                                
+
+        if (do_update_coutoffset)
+            cout_offset <= wb_dat_i[3:0];
+        update_coutoffset <= do_update_coutoffset;
     end
     
     assign fw_mark_o = { fw_mark1_sysclk, fw_mark0_sysclk };
@@ -288,14 +319,18 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
 
     // uh wtf
     assign disable_rxclk_o = disable_rxclk_sysclk;
+
+    assign cout_offset_o = cout_offset_sysclk;
     
     wire [31:0] ctrl_register = { disable_rxclk,
                         {7{1'b0}}, event_reset, 
                         {6{1'b0}}, fw_mark1_wbclk, fw_mark0_wbclk, 
                         {4{1'b0}}, !trig_holding_valid_wbclk[1], !runcmd_holding_valid_wbclk[1], fw_empty_wbclk[1], fwupdate_fifo_reset };
 
-    
+    wire [31:0] lower_registers = (wb_adr_i[4]) ? live_registers[wb_adr_i[2 +: 2]] : ctrl_register;
+    wire [31:0] upper_registers = coutctrl_register;
+        
     assign wb_err_o = 1'b0;
     assign wb_rty_o = 1'b0;
-    assign wb_dat_o = (wb_adr_i[4]) ? live_registers[wb_adr_i[2 +: 2]] : ctrl_register;
+    assign wb_dat_o = (wb_adr_i[5]) ? upper_registers : lower_registers;
 endmodule

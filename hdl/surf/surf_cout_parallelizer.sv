@@ -12,14 +12,17 @@ module surf_cout_parallelizer #(parameter DEBUG = "FALSE")(
         input enable_i,
         // Input data from iserdes
         input [3:0] cout_i,
+        // OK, and *now* we're actually going to make this programmable.
+        // Fine. From SURFTURF, though, since it's global.
+        input [3:0] cout_offset_i,
         // Parallel output data to the register core.
         output [31:0] cout_parallel_o,
         // bit error output
         output biterr_o
     );
-    // NO IDEA    
-    localparam [3:0] SYNC_OFFSET = 4;
-    localparam [3:0] SYNC_HALF = 7;
+    // This needs to be 6: we pick up an extra in the FF, and it's a tap count
+    // so the delay is increased by 1.
+    localparam [3:0] SYNC_HALF = 6;
     reg [27:0] cout_history = {28{1'b0}};
     (* CUSTOM_CC_SRC = "SYSCLK" *)
     reg [31:0] cout_capture = {32{1'b0}};
@@ -39,10 +42,10 @@ module surf_cout_parallelizer #(parameter DEBUG = "FALSE")(
     wire sync_half_delayed;
     reg sync_half = 0;
     SRL16E u_sync_delay(.D(sync_i),
-                        .A0(SYNC_OFFSET[0]),
-                        .A1(SYNC_OFFSET[1]),
-                        .A2(SYNC_OFFSET[2]),
-                        .A3(SYNC_OFFSET[3]),
+                        .A0(cout_offset_i[0]),
+                        .A1(cout_offset_i[1]),
+                        .A2(cout_offset_i[2]),
+                        .A3(cout_offset_i[3]),
                         .CE(1'b1),
                         .CLK(sysclk_i),
                         .Q(sync_delayed));
@@ -91,7 +94,6 @@ module surf_cout_parallelizer #(parameter DEBUG = "FALSE")(
         end
     endgenerate        
     
-    assign cout_o = cout_i;
     assign cout_parallel_o = cout_capture;
     assign biterr_o = cout_biterr;
 endmodule

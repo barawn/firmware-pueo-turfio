@@ -132,7 +132,7 @@ module surfturf_wrapper_v2 #(
     wire tfio_fw_marked;
     
     wire [7:0] disable_rxclk;
-
+    wire [3:0] cout_offset;
     reg mask_ce = 0;
     always @(posedge sysclk_i) begin
         if (sync_i) mask_ce <= 1'b0;
@@ -166,6 +166,7 @@ module surfturf_wrapper_v2 #(
                                             
                       .event_reset_o(event_reset),
                       .disable_rxclk_o(disable_rxclk),
+                      .cout_offset_o(cout_offset),
                       `CONNECT_AXI4S_MIN_IF( fw_ , tfio_fw_ ),
                       .fw_mark_o(tfio_fw_mark),
                       .fw_marked_i(tfio_fw_marked),
@@ -188,6 +189,9 @@ module surfturf_wrapper_v2 #(
                                .tfio_pps_i(tfio_pps_i),
                                .use_tfio_pps_i(use_tfio_pps_i),
                                .spliced_o(surf_command));
+
+    // yeah just pass the COUTs straight over to the OSERDES.
+    assign surf_response = surf_cout;
         
     generate
         genvar i;
@@ -253,6 +257,7 @@ module surfturf_wrapper_v2 #(
                             .surf_autotrain_en_i(surf_autotrain_en[i-1]),
 
                             .disable_rxclk_i(disable_rxclk[i-1]),
+                            .cout_offset_i(cout_offset),
                             
                             .sync_i(sync_i),
                             .trig_i(trig),

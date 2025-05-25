@@ -17,6 +17,7 @@ module surf_interface_v2 #(parameter RXCLK_INV = 1'b0,
         input sysclk_x2_i,
 
         input disable_rxclk_i,
+        input [3:0] cout_offset_i,
         
         input [31:0] command_i,
         input sync_i,
@@ -137,6 +138,7 @@ module surf_interface_v2 #(parameter RXCLK_INV = 1'b0,
                    .cout_capture_i(cout_capture),
                    .cout_captured_i(cout_captured),
                    .cout_biterr_o(cout_biterr),
+                   .cout_offset_i(cout_offset_i),
                    
                    .dout_data_o(dout_data),
                    .dout_valid_o(dout_valid),
