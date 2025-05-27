@@ -37,7 +37,7 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
     );
     
     localparam ADDR_BITS = 6;
-    
+    localparam [3:0] COUT_OFFSET_DEFAULT = 4'd3;
     // register 0: control and FIFO status (no FIFOs for runcmd/trig!)
     // register 1: fwupdate register (32-bits, reshaped to 8 bits in sysclk domain
     // register 2: runcmd register (only 2 bits)
@@ -74,9 +74,9 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
     // this is the capture ofset from SYNC to when we capture a trained message.
     // this should be just a constant but we'll figure it out first.
     (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
-    reg [3:0] cout_offset = {4{1'b0}};
+    reg [3:0] cout_offset = COUT_OFFSET_DEFAULT;
     (* CUSTOM_CC_DST = SYS_CLK_TYPE *)
-    reg [3:0] cout_offset_sysclk = {4{1'b0}};
+    reg [3:0] cout_offset_sysclk = COUT_OFFSET_DEFAULT;
     
     
     // capture in wb clk and hold it: it's flag-synced over to
