@@ -82,6 +82,8 @@ module tio_id_ctrl(
     parameter WB_CLK_TYPE = "INITCLK";
     localparam [31:0] ICAP_KEY = "FKey";
 
+    localparam [7:0] SYNC_OFFSET_DEFAULT = 8'd8;
+
     // Board manager stuff
     // Upper address bits when upper bit is set. Aligned to match addr (e.g. just write the address).
     reg [3:0] boardman_upper_addr = {4{1'b0}};    
@@ -101,7 +103,7 @@ module tio_id_ctrl(
     
     // Sync offset + enable
     (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
-    reg [8:0] sync_offset_plus_en = {9{1'b0}};
+    reg [8:0] sync_offset_plus_en = { {1'b0}, SYNC_OFFSET_DEFAULT };
     
     // Clock offset.
     (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
