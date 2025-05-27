@@ -13,7 +13,7 @@ module pueo_turfio #( parameter NSURF=7,
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd3,
-                      parameter [7:0] VER_REV =   8'd11,
+                      parameter [7:0] VER_REV =   8'd13,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -657,6 +657,11 @@ module pueo_turfio #( parameter NSURF=7,
                 .sync_i(sync),
                 .command_o(turf_command),
                 .command_valid_o(turf_command_valid),
+                
+                .trigtime_i(turf_trigtime),
+                .trigtime_valid_i(turf_trigtime_valid),
+                .runrst_i(turf_runreset),
+                .runstop_i(turf_runstop),
                 
                 `CONNECT_AXI4S_MIN_IF( m_s0_ , s0_ ),
                 .m_s0_tlast(s0_tlast),

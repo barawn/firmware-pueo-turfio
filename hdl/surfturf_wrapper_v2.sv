@@ -35,6 +35,12 @@ module surfturf_wrapper_v2 #(
         // this needs to go EVERYWHERE we swap between PPSes!!!
         input use_tfio_pps_i,        
         
+        input [14:0]    trigtime_i,
+        input           trigtime_valid_i,
+        
+        input           runrst_i,
+        input           runstop_i,
+        
         // turf outputs
         output          command_locked_o,
         output [31:0]   command_o,
@@ -139,8 +145,14 @@ module surfturf_wrapper_v2 #(
         else mask_ce <= ~mask_ce;
     end
     
-    // just... pull this from some'n for now
-    wire trig = tfio_trig_tready && tfio_trig_tvalid;
+    // welp, now we need to actually do it for real.
+    reg trig_running = 0;
+    always @(posedge sysclk_i) begin
+        if (runrst_i) trig_running <= 1;
+        else if (runstop_i) trig_running <= 0;
+    end        
+    // let our old bullcrap work too
+    wire trig = trig_running && (trigtime_valid_i || tfio_trig_tvalid);
     
     wire event_reset;
     
