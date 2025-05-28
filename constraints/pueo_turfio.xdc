@@ -259,6 +259,18 @@ set_property -dict {BEL IDELAYE2 LOC IDELAY_X1Y31} [get_cells {u_surfturf/LP[5].
 set_property -dict {BEL IDELAYE2 LOC IDELAY_X1Y39} [get_cells {u_surfturf/LP[6].SURFS.u_surf/u_surf_coutif/u_phy/u_doutdlyN}]
 set_property -dict {BEL IDELAYE2 LOC IDELAY_X1Y43} [get_cells {u_surfturf/LP[7].SURFS.u_surf/u_surf_coutif/u_phy/u_doutdlyN}]
 set_property -dict {BEL IDELAYE2 LOC IDELAY_X0Y83} [get_cells {u_surfturf/LP[0].TURF/u_turfcin/u_cin_idelays}]
+
+set_property -dict {BEL IDELAYE2 LOC IDELAY_X0Y9} [get_cells {u_surfturf/LP[1].SURFS.u_surf/u_surf_coutif/u_phy/u_cout_delay_N}]
+set_property -dict {BEL IDELAYE2 LOC IDELAY_X0Y3} [get_cells {u_surfturf/LP[2].SURFS.u_surf/u_surf_coutif/u_phy/u_cout_delay_N}]
+set_property -dict {BEL IDELAYE2 LOC IDELAY_X0Y5} [get_cells {u_surfturf/LP[3].SURFS.u_surf/u_surf_coutif/u_phy/u_cout_delay_N}]
+set_property -dict {BEL IDELAYE2 LOC IDELAY_X1Y19} [get_cells {u_surfturf/LP[4].SURFS.u_surf/u_surf_coutif/u_phy/u_cout_delay_N}]
+set_property -dict {BEL IDELAYE2 LOC IDELAY_X1Y17} [get_cells {u_surfturf/LP[5].SURFS.u_surf/u_surf_coutif/u_phy/u_cout_delay_N}]
+set_property -dict {BEL IDELAYE2 LOC IDELAY_X1Y35} [get_cells {u_surfturf/LP[6].SURFS.u_surf/u_surf_coutif/u_phy/u_cout_delay_N}]
+set_property -dict {BEL IDELAYE2 LOC IDELAY_X1Y41} [get_cells {u_surfturf/LP[7].SURFS.u_surf/u_surf_coutif/u_phy/u_cout_delay_N}]
+
+
+
+
 set_property C_CLK_INPUT_FREQ_HZ 300000000 [get_debug_cores dbg_hub]
 set_property C_ENABLE_CLK_DIVIDER false [get_debug_cores dbg_hub]
 set_property C_USER_SCAN_CHAIN 1 [get_debug_cores dbg_hub]
