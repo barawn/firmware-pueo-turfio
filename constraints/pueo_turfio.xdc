@@ -152,26 +152,47 @@ set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN R17} [get_ports {TXCLK_N[0]}]
 
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN V12 DIFF_TERM 1} [get_ports {DOUT_P[0]}]
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN V13 DIFF_TERM 1} [get_ports {DOUT_N[0]}]
+
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN T17 DIFF_TERM 1} [get_ports {DOUT_P[1]}]
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN U17 DIFF_TERM 1} [get_ports {DOUT_N[1]}]
+
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN U9 DIFF_TERM 1} [get_ports {DOUT_P[2]}]
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN V9 DIFF_TERM 1} [get_ports {DOUT_N[2]}]
+
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN V8 DIFF_TERM 1} [get_ports {DOUT_N[3]}]
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN V7 DIFF_TERM 1} [get_ports {DOUT_P[3]}]
+
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN N1 DIFF_TERM 1} [get_ports {DOUT_P[4]}]
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN P1 DIFF_TERM 1} [get_ports {DOUT_N[4]}]
+
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN L4 DIFF_TERM 1} [get_ports {DOUT_N[5]}]
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN L3 DIFF_TERM 1} [get_ports {DOUT_P[5]}]
+
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN K2 DIFF_TERM 1} [get_ports {DOUT_P[6]}]
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN K1 DIFF_TERM 1} [get_ports {DOUT_N[6]}]
 
 
-set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN U14} [get_ports {COUT_N[0]}]
-set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN V14} [get_ports {COUT_P[0]}]
-set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN T12} [get_ports {COUT_P[2]}]
-set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN U12} [get_ports {COUT_N[2]}]
-set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN U11} [get_ports {COUT_P[1]}]
-set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN V11} [get_ports {COUT_N[1]}]
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN U14 DIFF_TERM 1} [get_ports {COUT_N[0]}]
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN V14 DIFF_TERM 1} [get_ports {COUT_P[0]}]
+
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN U11 DIFF_TERM 1} [get_ports {COUT_P[1]}]
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN V11 DIFF_TERM 1} [get_ports {COUT_N[1]}]
+
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN T12 DIFF_TERM 1} [get_ports {COUT_P[2]}]
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN U12 DIFF_TERM 1} [get_ports {COUT_N[2]}]
+
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN U2 DIFF_TERM 1} [get_ports {COUT_N[3]}]
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN U1 DIFF_TERM 1} [get_ports {COUT_P[3]}]
+
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN V3 DIFF_TERM 1} [get_ports {COUT_N[4]}]
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN V2 DIFF_TERM 1} [get_ports {COUT_P[4]}]
+
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN M1 DIFF_TERM 1} [get_ports {COUT_P[5]}]
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN M2 DIFF_TERM 1} [get_ports {COUT_N[5]}]
+
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN K3 DIFF_TERM 1} [get_ports {COUT_N[6]}]
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN L2 DIFF_TERM 1} [get_ports {COUT_P[6]}]
+
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN B9} [get_ports T_TXCLK_P]
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN A9} [get_ports T_TXCLK_N]
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN C11} [get_ports {T_COUT_P[1]}]
@@ -196,10 +217,6 @@ set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN C18} [get_ports {T_COUT_N[4]}
 #set_property -dict { IOSTANDARD LVDS_25 PACKAGE_PIN F18     } [get_ports {T_SPARE_P  }]
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN F17} [get_ports {T_COUT_N[5]}]
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN E18} [get_ports {T_COUT_P[5]}]
-set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN K3} [get_ports {COUT_N[6]}]
-set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN L2} [get_ports {COUT_P[6]}]
-set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN M1} [get_ports {COUT_P[5]}]
-set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN M2} [get_ports {COUT_N[5]}]
 set_property IOSTANDARD LVDS_25 [get_ports {TXCLK_P[6]}]
 set_property PULLDOWN true [get_ports {TXCLK_P[6]}]
 set_property PACKAGE_PIN N3 [get_ports {TXCLK_P[6]}]
@@ -216,10 +233,6 @@ set_property IOSTANDARD LVDS_25 [get_ports {TXCLK_P[3]}]
 set_property PULLDOWN true [get_ports {TXCLK_P[3]}]
 set_property PACKAGE_PIN R3 [get_ports {TXCLK_P[3]}]
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN T2} [get_ports {TXCLK_N[3]}]
-set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN U2} [get_ports {COUT_N[3]}]
-set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN U1} [get_ports {COUT_P[3]}]
-set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN V3} [get_ports {COUT_N[4]}]
-set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN V2} [get_ports {COUT_P[4]}]
 
 set_property -dict {PACKAGE_PIN D6} [get_ports F_LCLK_P]
 set_property -dict {PACKAGE_PIN D5} [get_ports F_LCLK_N]
