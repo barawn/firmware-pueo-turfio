@@ -164,7 +164,7 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
                              .clkA(wb_clk_i),.clkB(sysclk_i));
     flag_sync u_trig_valid(.in_clkA(trig_is_valid_wbclk),.out_clkB(trig_is_valid_sysclk),
                            .clkA(wb_clk_i),.clkB(sysclk_i));                             
-
+    wire [6:0] surf_boot_seen;
     wire [6:0] surf_live;
     wire [6:0] surf_misaligned;
     wire [31:0] surf_live_register = {  {9{1'b0}}, surf_misaligned, {9{1'b0}}, surf_live };
@@ -175,7 +175,7 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
     wire [31:0] surf_trainout_register = { {25{1'b0}}, surf_trainout_rdy };
     (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
     reg  [6:0] surf_train_complete = {7{1'b0}};
-    wire [31:0] surf_complete_register = { {25{1'b0}}, surf_train_complete };
+    wire [31:0] surf_complete_register = { {9{1'b0}}, surf_boot_seen, {9{1'b0}}, surf_train_complete };
     
     wire [31:0] coutctrl_register = { {8{1'b0}},
                                       {8{1'b0}},
@@ -218,6 +218,7 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
                    .wb_clk_i(wb_clk_i),
                    .cout_i(surf_cout_i),
                    .dout_i(surf_dout_i),
+                   .surf_boot_o(surf_boot_seen),
                    .trainin_req_o(surf_trainin_req),
                    .trainout_rdy_o(surf_trainout_rdy),
                    .train_complete_i(surf_train_complete),

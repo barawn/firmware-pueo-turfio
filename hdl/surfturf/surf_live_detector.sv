@@ -21,6 +21,7 @@
 //
 // COUT/DOUT are in sysclk, but the actual statuses are generated in wbclk space because
 // they interact with registers.
+//
 module surf_live_detector(
         input sys_clk_i,
         input sys_clk_ok_i,
@@ -29,6 +30,8 @@ module surf_live_detector(
         input [27:0] cout_i,
         // vector of all 7x8 = 56 DOUT inputs
         input [55:0] dout_i,
+        // boot indicator
+        output [6:0] surf_boot_o,
         // train in request
         output [6:0] trainin_req_o,
         // train out ready
@@ -54,7 +57,10 @@ module surf_live_detector(
     generate
         genvar i;
         for (i=0;i<7;i=i+1) begin : SL
+            (* CUSTOM_CC_SRC = SYSCLKTYPE *)
             reg boot_seen = 0;
+            (* CUSTOM_CC_DST = WBCLKTYPE, ASYNC_REG = "TRUE" *)
+            reg [1:0] boot_seen_wbclk = {2{1'b0}};
 
             (* CUSTOM_CC_SRC = SYSCLKTYPE *)
             reg train_in_req = 0;
@@ -141,11 +147,13 @@ module surf_live_detector(
             end
             
             always @(posedge wb_clk_i) begin
+                boot_seen_wbclk <= {boot_seen_wbclk[0], boot_seen};
                 train_in_req_wbclk <= { train_in_req_wbclk[0], train_in_req };
                 train_out_rdy_wbclk <= { train_out_rdy_wbclk[0], train_out_rdy };
                 surf_live_wbclk <= { surf_live_wbclk[0], surf_live };
                 surf_misaligned_wbclk <= { surf_misaligned_wbclk[0], surf_misaligned };
             end
+            assign surf_boot_o[i] = boot_seen_wbclk[1];
             assign trainin_req_o[i] = train_in_req_wbclk[1];
             assign trainout_rdy_o[i] = train_out_rdy_wbclk[1];
             assign surf_live_o[i] = surf_live_wbclk[1];
