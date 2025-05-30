@@ -26,6 +26,7 @@ ip/debug/surf_cout_phy_ila/surf_cout_phy_ila.xci
 ip/surf/surf_event_fifo/surf_event_fifo.xci
 ip/surf/surf_reducer/surf_reducer.xci
 ip/debug/surfbridge_ila/surfbridge_ila.xci
+ip/debug/surfcout_ila/surfcout_ila.xci
 ip/debug/sync_ila/sync_ila.xci
 ip/clock/sys_clk_generator/sys_clk_generator.xci
 ip/debug/tgs_ila/tgs_ila.xci

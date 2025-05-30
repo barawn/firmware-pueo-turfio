@@ -71,3 +71,4 @@ hdl/uart/uart_hskbus_merge.sv
 hdl/surf/masked_dout_splice.sv
 hdl/surf_merger.sv
 hdl/surf/surf_cout_phy_v3.sv
+hdl/surf/surf_cout_parallelizer.sv
