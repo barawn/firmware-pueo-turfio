@@ -77,7 +77,7 @@ module surf_interface_v2 #(parameter RXCLK_INV = 1'b0,
     
     
     wire        surf_mask;
-    masked_dout_splice #(.DEBUG("FALSE"))
+    masked_dout_splice #(.DEBUG(DEBUG != "FALSE" ? "TRUE" : "FALSE"))
                        u_splice( .aclk(sysclk_i),
                                  .aresetn( !event_reset_i ),
                                  .trig_i(trig_i),
@@ -143,6 +143,7 @@ module surf_interface_v2 #(parameter RXCLK_INV = 1'b0,
                    .dout_data_o(dout_data),
                    .dout_valid_o(dout_valid),
                    .dout_capture_i(dout_capture),
+                   .dout_enable_i(dout_enable),
                    .dout_biterr_o(dout_biterr),
                    .dout_capture_phase_i(dout_capture_phase),
                                       
