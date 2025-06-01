@@ -120,9 +120,10 @@ module masked_dout_splice(
         else if (!in_data) fake_data_cycle <= 3'b001;
         else if (fifo_write) fake_data_cycle <= {fake_data_cycle[1:0], fake_data_cycle[2]};
         
-        // conveniently this forces the header data to all zeros
-        // which is what we want
-        if (!in_data || !mask_i) fake_data <= 24'h001000;
+        // the dumbass trick here is that we reuse the ports on the ILA to grab real data
+        // too.
+        if (!mask_i) fake_data <= { {8{1'b0}}, m_dout_tdata, s_dout_tdata };
+        else if (!in_data) fake_data <= 24'h001000;
         else if (fifo_write) begin
             if (fake_data_cycle[2]) begin
                 fake_data[23:12] <= {fake_data[7:0],fake_data[23:20]} + 2;
@@ -160,7 +161,8 @@ module masked_dout_splice(
                              .probe3( fifo_write ),
                              .probe4( trig_counter ),
                              .probe5( fake_data ),
-                             .probe6( in_data ));
+                             .probe6( in_data ),
+                             .probe7( s_dout_tvalid ));
         end
     endgenerate        
 endmodule
