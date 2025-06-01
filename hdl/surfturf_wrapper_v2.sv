@@ -87,7 +87,7 @@ module surfturf_wrapper_v2 #(
         output [6:0] RXCLK_N                
     );
     
-    localparam [6:0] SURF_DEBUG = 7'b0100000;
+    localparam [6:0] SURF_DEBUG = 7'b0000001;
 
     // output datapath vector.
     `DEFINE_AXI4S_MIN_IFV( dout_ , 8, [6:0] );
@@ -146,6 +146,7 @@ module surfturf_wrapper_v2 #(
     end
     
     // welp, now we need to actually do it for real.
+    // I need to maybe make sure the local runcmds work???
     reg trig_running = 0;
     always @(posedge sysclk_i) begin
         if (runrst_i) trig_running <= 1;
@@ -154,7 +155,8 @@ module surfturf_wrapper_v2 #(
     // let our old bullcrap work too
     wire trig = trig_running && (trigtime_valid_i || tfio_trig_tvalid);
     
-    wire event_reset;
+    wire event_reset_local;
+    wire event_reset = !trig_running || event_reset_local;
     
     // vectors for the live detector
     wire [27:0] surf_cout;
@@ -164,7 +166,7 @@ module surfturf_wrapper_v2 #(
     // the surfturf register core also includes
     // the live detector and automatic train stuff now
     // for the startup sequencer on the TURF
-    surfturf_register_core #(.WB_CLK_TYPE(WB_CLK_TYPE),.SYS_CLK_TYPE("SYSCLK"))
+    surfturf_register_core #(.WB_CLK_TYPE(WB_CLK_TYPE),.SYS_CLK_TYPE("SYSCLK"),.DEBUG("FALSE"))
             u_st_core(.wb_clk_i(wb_clk_i),
                       .wb_rst_i(wb_rst_i),
                       `CONNECT_WBS_IFM( wb_ , surfturf_ ),
@@ -176,7 +178,7 @@ module surfturf_wrapper_v2 #(
                       .surf_autotrain_en_o(surf_autotrain_en),
                       .surf_live_o(surf_live),
                                             
-                      .event_reset_o(event_reset),
+                      .event_reset_o(event_reset_local),
                       .disable_rxclk_o(disable_rxclk),
                       .cout_offset_o(cout_offset),
                       `CONNECT_AXI4S_MIN_IF( fw_ , tfio_fw_ ),
