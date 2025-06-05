@@ -4,12 +4,14 @@
  *
  */
 
+// VERSION 8 CHANGES:
+// add eAurora
 // VERSION 7 CHANGES:
 // fix eReloadFirmware so it works (issue w/icap reboot)
 // VERSION 6 CHANGES:
 // MOVE ePMBus/eEnable/eReloadFirmware TO NOT CLASH WITH SURF
 // ADD eCrateBridge COMMAND
-#define PB_TURFIO_VERSION 7
+#define PB_TURFIO_VERSION 8
 
 // We use the stock UART/COBS decoder, but we don't
 // buffer except at the UART level.
@@ -119,9 +121,14 @@
 
 // our housekeeping ID (conf pin read)
 #define OUR_ID 0x10
-// general control port (read/write)
-// bit 0 : housekeeping buffer
-// bit 1 : disable (probably)
+// The general control port is heavily overloaded,
+// so document it here:
+// bit 0 is hsk_bram_addr: determines the housekeeping bank (not a control)
+// bit 3/2/1 are unused
+// bit 4 is the ICAP enable. No touchy touchy
+// bit 5 is the Aurora reset. Output only.
+// bit 6 is the cratebridge enable. Feel free.
+// bit 7 is the crate power enable. Only touch in extreme circumstances.
 #define GC_PORT 0x11
 // bitmask
 #define HSK_BUF_BIT 0x1
@@ -272,6 +279,7 @@
 #define eVolts 0x11
 #define eIdentify 0x12
 #define eCurrents 0x13
+#define eAurora 0x15
 // V6+ NOW ALL OUR COMMANDS ARE UNIQUE
 #define eEnable 0xC8
 #define ePMBus 0xC9
@@ -289,6 +297,8 @@
 #define Currents_LENGTH 16
 // always 1 byte
 #define Enable_LENGTH 1
+// always 1 byte
+#define Aurora_LENGTH 1
 
 // we steal 256 bytes for the buffer
 // this is 128 instructions
@@ -670,6 +680,8 @@ void update_housekeeping() {
   input(TEMP_0, &curTmp);
   output(TURFIO_BASE+5, curTmp);
   input(TEMP_1, &curTmp);
+  // we embed stuff in TEMP_1 so trim it
+  curTmp &= 0x0F;
   output(TURFIO_BASE+4, curTmp);
   // done with TURFIO, change device
   goto hskNextDevice;
@@ -870,6 +882,7 @@ void parse_serial() {
   if (curTmp == eVolts) goto do_Volts;
   if (curTmp == eIdentify) goto do_Identify;
   if (curTmp == eCurrents) goto do_Currents;
+  if (curTmp == eAurora) goto do_Aurora;
   if (curTmp == eStatistics) goto do_Statistics;
   if (curTmp == eEnable) goto do_Enable;
   if (curTmp == ePMBus) goto do_PMBus;
@@ -956,6 +969,16 @@ void parse_serial() {
   } while (s5 != SURF_IOUT_MAX);
   goto finishPacket;
 
+ do_Aurora:
+  hsk_header();
+  input(TEMP_1, &curTmp);
+  curTmp2 = 0;
+  curTmp2 -= curTmp;  
+  output(PACKET_DATA, curTmp);
+  output(PACKET_DATA+1, curTmp2);
+  outputk(PACKET_LEN_K, Aurora_LENGTH);
+  // we already handled checksum, just jump past
+  goto goodPacket;  
  do_ReloadFirmware:
   // maybe check stuff and error at
   // some point, for now just effing do it
