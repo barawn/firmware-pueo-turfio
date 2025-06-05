@@ -21,7 +21,11 @@ module turf_aurora_wrapper(
 
         // wishbone-clock side up indicator
         output lane_up_o,
-
+        // wishbone-clock low 4 bits of stat register
+        output [3:0] hsk_stat_o,
+        // wishbone-clock housekeeping reset
+        input hsk_rst_i,
+        
         // sysclk. regular data path is in sysclk domain
         input sys_clk_i,
         input sys_rst_i,
@@ -57,9 +61,12 @@ module turf_aurora_wrapper(
     
     // link status register. This will be captured by wb_dat_reg.
     wire [31:0] link_status;
-    // this is just for debugging
+    // most of this is debugging - bottom 4 bits go to housekeeping
     (* CUSTOM_CC_DST = "INITCLK", KEEP = "TRUE" *)
     reg [31:0] link_status_dbg = {32{1'b0}};
+    
+    assign hsk_stat_o = link_status_dbg[3:0];
+    
     // this is the pure link status register in userclk
     wire [31:0] link_status_userclk;
     // this is the *holding* register in userclk for link status
@@ -361,11 +368,21 @@ module turf_aurora_wrapper(
                 DRP_WAIT: if (gt_drprdy) state <= ACK;
             endcase
         end
-        // register capture
+        // reset is both register path and housekeeping
         if (wb_cyc_i && wb_stb_i && wb_we_i && wb_ack_o) begin
             if (!gt_drpaccess && ctrlstat_addr == 4'h0) begin
                 if (wb_sel_i[0]) begin
                     reset_in <= wb_dat_i[0];
+                end
+            end
+        end else begin
+            reset_in <= hsk_rst_i;
+        end            
+        
+        // register capture
+        if (wb_cyc_i && wb_stb_i && wb_we_i && wb_ack_o) begin
+            if (!gt_drpaccess && ctrlstat_addr == 4'h0) begin
+                if (wb_sel_i[0]) begin
                     gt_reset_in <= wb_dat_i[1];
                     gt_powerdown_wbclk <= wb_dat_i[3];
                     gt_loopback_wbclk <= wb_dat_i[4 +: 3];

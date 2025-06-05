@@ -12,8 +12,8 @@ module pueo_turfio #( parameter NSURF=7,
                       parameter SIMULATION="FALSE",
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
-                      parameter [3:0] VER_MINOR = 4'd3,
-                      parameter [7:0] VER_REV =   8'd16,
+                      parameter [3:0] VER_MINOR = 4'd4,
+                      parameter [7:0] VER_REV =   8'd0,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -468,12 +468,17 @@ module pueo_turfio #( parameter NSURF=7,
     `DEFINE_WB_IF( aurora_ , 12, 32);
     
     // ADD HSKI2C HERE
+    // We want SOME aurora info/controls
+    wire [3:0] aurora_hsk_stat;
+    wire       aurora_hsk_rst;
     hski2c_top #(.DEBUG("FALSE")) 
                u_hsk(.wb_clk_i(wb_clk),
                      .wb_rst_i(1'b0),
                      .sys_rst_i(sys_rst),
                      `CONNECT_WBS_IFM( wb_ , hski2c_ ),
                      .lane_up_i(lane_up),
+                     .aurora_stat_i(aurora_hsk_stat),
+                     .aurora_rst_o(aurora_hsk_rst),
                      .hsk_enable_i(hsk_enable_i),
                      .hsk_enable_o(hsk_enable_o),
                      .hsk_enable_t(hsk_enable_t),
@@ -813,6 +818,8 @@ module pueo_turfio #( parameter NSURF=7,
                                   `CONNECT_AXI4S_MIN_IF( m_cmd_data_ , cmd_data_ ),
                                   `CONNECT_AXI4S_MIN_IF( s_cmd_data_ , cmd_resp_ ),
                                   .lane_up_o(lane_up),
+                                  .hsk_stat_o(aurora_hsk_stat),
+                                  .hsk_rst_i(aurora_hsk_rst),
                                   .sys_clk_i(sysclk),
                                   .sys_rst_i(sysclk_reset),
                                   .cmd_rstb_i(sys_rst_b),
