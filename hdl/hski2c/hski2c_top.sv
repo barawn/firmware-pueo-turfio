@@ -25,6 +25,9 @@ module hski2c_top(
         // b/c *we* handle the TURF watchdog, yo
         input lane_up_i,
         
+        input [3:0] aurora_stat_i,
+        output      aurora_rst_o,
+        
         input [1:0] CONF,
         input HSK_RX,
         output HSK_TX,
@@ -71,7 +74,7 @@ module hski2c_top(
     // AND clear the cratebridge enable. That brings us back to baseline.
     reg [1:0] sys_reset_rereg = {2{1'b0}};
     wire sys_reset_flag = sys_reset_rereg == 2'b01;    
-    
+        
     // hsk_reset is controlled by the PicoBlaze.
     // It will clear the FIFO, clear the COBS decoder,
     // clear the outbound FIFO.
@@ -285,11 +288,10 @@ module hski2c_top(
     // 0101_1000 CONF = 11
     localparam [7:0] GENERAL_CONTROL_PORT = 8'h11;
     
-    // what... the effing hell was I doing???
-    // Let's ACTUALLY define this shit
+    // General control port reads
     // Bit 7: ENABLE output
     // Bit 6: Cratebridge
-    // Bit 5: Reserved
+    // Bit 5: Aurora reset (out only)
     // Bit 4: ICAP enable
     // Bit 3:1 reserved
     // Bit 0: HSK BRAM addr
@@ -301,7 +303,7 @@ module hski2c_top(
     wire [7:0] cobs_in = cobs_rx_tdata;
     wire [7:0] cobs_status = { watchdog_trip && !watchdog_disable, {5{1'b0}}, cobs_last, cobs_error };
     assign     interrupt = cobs_rx_tvalid || (watchdog_trip && !watchdog_disable);    
-    
+
     wire [7:0] picoblaze_registers[15:0];
     wire [7:0] register_data = (port_id[4]) ? general_control_and_ourid : picoblaze_registers[port_id[3:0]];
     assign in_port = (port_id[7]) ? bram_data : register_data;
@@ -322,7 +324,7 @@ module hski2c_top(
     assign picoblaze_registers[13] = i2c_inport;
     // i2c ONLY EVER READS from 12, so we can abuse this for the temperature stuff
     assign picoblaze_registers[14] = temp_bus[7:0];
-    assign picoblaze_registers[15] = { {4{1'b0}}, temp_high };        
+    assign picoblaze_registers[15] = { aurora_stat_i, temp_high };        
 
     // 0x0E is the low byte temperature port, it captures the read bits for the top 4
     localparam [7:0] TEMPERATURE_PORT = 8'h0E;
@@ -550,4 +552,6 @@ module hski2c_top(
     assign wb_rty_o = 1'b0;
 
     assign cratebridge_en_o = cratebridge_enable;
+
+    assign aurora_rst_o = out_port[5] && gc_write;
 endmodule
