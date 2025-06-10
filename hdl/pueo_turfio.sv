@@ -13,7 +13,7 @@ module pueo_turfio #( parameter NSURF=7,
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd4,
-                      parameter [7:0] VER_REV =   8'd0,
+                      parameter [7:0] VER_REV =   8'd1,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -164,7 +164,9 @@ module pueo_turfio #( parameter NSURF=7,
         input [1:0] GPI,
         output [1:0] GPO,
         output [1:0] GPOE_B,
-        
+        // calibration controls
+        output CALSEL,      // D16
+        output CALPWDN,     // E16
         // 100% unused
         input VP,
         input VN
@@ -561,6 +563,10 @@ module pueo_turfio #( parameter NSURF=7,
                    .enable_crate_o(ENABLE),
                    .enable_3v3_o(EN_3V3),
                    .crate_conf_i(CONF),
+                   
+                   .calsel_o(CALSEL),
+                   .calpwdn_o(CALPWDN),
+                   
                    .i2c_rdy_i(I2C_RDY),
                    
                    .rx_clk_ok_o(rxclk_ok),

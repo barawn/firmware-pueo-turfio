@@ -52,6 +52,9 @@ module tio_id_ctrl(
         output       enable_crate_o,
         output       enable_3v3_o,
         input [1:0]  crate_conf_i,
+        
+        output       calsel_o,
+        output       calpwdn_o,
         // probably temporary
         input        i2c_rdy_i,
         
@@ -123,6 +126,12 @@ module tio_id_ctrl(
     // sysclk MMCM reset, to ensure clean startup
     reg sysclk_rst = 1;
     
+    // calibration controls
+    (* IOB = "TRUE" *)
+    reg calsel = 0;
+    (* IOB = "TRUE" *)
+    reg calpwdn = 1;
+    
     // Status/control register
     wire [31:0] ctrlstat_reg;
     assign ctrlstat_reg[0] = sys_clk_ok_o;
@@ -134,7 +143,9 @@ module tio_id_ctrl(
     assign ctrlstat_reg[6] = hskbus_crate_i;
     assign ctrlstat_reg[7] = sysclk_rst_o;
     assign ctrlstat_reg[9:8] = crate_conf;
-    assign ctrlstat_reg[15:10] = {6{1'b0}};
+    assign ctrlstat_reg[10] = calsel;
+    assign ctrlstat_reg[11] = calpwdn;
+    assign ctrlstat_reg[15:12] = {4{1'b0}};
     assign ctrlstat_reg[16 +: 8]= hskbus_rx_bytes_i;
     assign ctrlstat_reg[31:24] = {8{1'b0}};
     
@@ -216,6 +227,11 @@ module tio_id_ctrl(
         if (sel_ctrlstat && wb_we_i && wb_ack_o && wb_sel_i[0]) begin
             sysclk_rst <= wb_dat_i[7];
         end            
+        
+        if (sel_ctrlstat && wb_we_i && wb_ack_o && wb_sel_i[1]) begin
+            calsel <= wb_dat_i[10];
+            calpwdn <= wb_dat_i[11];
+        end            
 
         // the alignment here lets you just write the desired address here unless you're
         // trying to burst or something
@@ -273,6 +289,9 @@ module tio_id_ctrl(
 
     assign enable_crate_o = enable_crate;
     assign enable_3v3_o = enable_3v3;
+
+    assign calsel_o = calsel;
+    assign calpwdn_o = calpwdn;
 
     assign burst_size_o = boardman_burst_size;
     assign upper_addr_o = boardman_upper_addr;
