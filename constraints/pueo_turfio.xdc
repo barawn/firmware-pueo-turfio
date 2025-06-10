@@ -241,6 +241,9 @@ set_property -dict {PACKAGE_PIN A3} [get_ports MGTRX_N]
 set_property -dict {PACKAGE_PIN F2} [get_ports MGTTX_P]
 set_property -dict {PACKAGE_PIN F1} [get_ports MGTTX_N]
 
+set_property -dict {PACKAGE_PIN E16 IOSTANDARD LVCMOS25} [get_ports CALPWDN]
+set_property -dict {PACKAGE_PIN D16 IOSTANDARD LVCMOS25} [get_ports CALSEL]
+
 set_property PACKAGE_PIN B17 [get_ports SYS_RESET_B]
 set_property IOSTANDARD LVCMOS25 [get_ports SYS_RESET_B]
 set_property PULLUP true [get_ports SYS_RESET_B]
@@ -280,7 +283,6 @@ set_property -dict {BEL IDELAYE2 LOC IDELAY_X1Y19} [get_cells {u_surfturf/LP[4].
 set_property -dict {BEL IDELAYE2 LOC IDELAY_X1Y17} [get_cells {u_surfturf/LP[5].SURFS.u_surf/u_surf_coutif/u_phy/u_cout_delay_N}]
 set_property -dict {BEL IDELAYE2 LOC IDELAY_X1Y35} [get_cells {u_surfturf/LP[6].SURFS.u_surf/u_surf_coutif/u_phy/u_cout_delay_N}]
 set_property -dict {BEL IDELAYE2 LOC IDELAY_X1Y41} [get_cells {u_surfturf/LP[7].SURFS.u_surf/u_surf_coutif/u_phy/u_cout_delay_N}]
-
 
 
 
