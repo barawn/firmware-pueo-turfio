@@ -13,7 +13,7 @@ module pueo_turfio #( parameter NSURF=7,
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
                       parameter [3:0] VER_MINOR = 4'd4,
-                      parameter [7:0] VER_REV =   8'd1,
+                      parameter [7:0] VER_REV =   8'd3,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -160,6 +160,11 @@ module pueo_turfio #( parameter NSURF=7,
         input CLKDIV2_N,
         output CLK_SYNC,
         output DBG_LED,
+        
+        // SPARE_P/N are now the forwarded GPIO
+        output SPARE_P,     // F18 (n)
+        output SPARE_N,     // G17 (p)
+        
         // GPIOs
         input [1:0] GPI,
         output [1:0] GPO,
@@ -660,6 +665,7 @@ module pueo_turfio #( parameter NSURF=7,
                        .COUT_INV(COUT_INV),
                        .CIN_INV(CIN_INV),
                        .DOUT_INV(DOUT_INV),
+                       .USE_TURF_TXCLK("FALSE"),
                        .WB_CLK_TYPE(WB_CLK_TYPE))
         u_surfturf(.wb_clk_i(wb_clk),
                .wb_rst_i(1'b0),
@@ -688,6 +694,8 @@ module pueo_turfio #( parameter NSURF=7,
                 .m_s5_tlast(s5_tlast),
                 `CONNECT_AXI4S_MIN_IF( m_s6_ , s6_ ),
                 .m_s6_tlast(s6_tlast),
+                
+                .gpi_i(GPI[0]),
                 
                .rxclk_o(rxclk),
                .rxclk_ok_i(rxclk_ok),
@@ -840,6 +848,9 @@ module pueo_turfio #( parameter NSURF=7,
                                   .MGTTX_P(MGTTX_P),
                                   .MGTTX_N(MGTTX_N));
     
+    assign GPOE_B[0] = 1'b1;
+    OBUFDS u_spare_obuf(.I(~GPI[0]),.O(SPARE_N),.OB(SPARE_P));
+
 
     // this is dumbass-edly inverted with no hint in the name
     assign INITCLKSTDBY = 1'b1;
