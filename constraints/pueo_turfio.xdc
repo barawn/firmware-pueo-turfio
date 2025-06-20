@@ -213,8 +213,10 @@ set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN E17} [get_ports {T_COUT_N[6]}
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN D18} [get_ports {T_COUT_P[6]}]
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN C17} [get_ports {T_COUT_P[4]}]
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN C18} [get_ports {T_COUT_N[4]}]
-#set_property -dict { IOSTANDARD LVDS_25 PACKAGE_PIN G17     } [get_ports {T_SPARE_N  }]
-#set_property -dict { IOSTANDARD LVDS_25 PACKAGE_PIN F18     } [get_ports {T_SPARE_P  }]
+
+set_property -dict { IOSTANDARD LVDS_25 PACKAGE_PIN G17     } [get_ports {SPARE_N  }]
+set_property -dict { IOSTANDARD LVDS_25 PACKAGE_PIN F18     } [get_ports {SPARE_P  }]
+
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN F17} [get_ports {T_COUT_N[5]}]
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN E18} [get_ports {T_COUT_P[5]}]
 set_property IOSTANDARD LVDS_25 [get_ports {TXCLK_P[6]}]
