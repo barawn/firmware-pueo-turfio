@@ -10,6 +10,7 @@ module surfturf_wrapper_v2 #(
         parameter T_CIN_INV = 1'b0,
         parameter [31:0] TRAIN_SEQUENCE = 32'hA55A6996,
         parameter WB_CLK_TYPE = "INITCLK",
+        parameter USE_TURF_TXCLK = "FALSE",
         parameter [6:0] RXCLK_INV = {6{1'b0}},
         parameter [6:0] CIN_INV = {6{1'b0}},
         parameter [6:0] COUT_INV = {6{1'b0}},
@@ -47,6 +48,9 @@ module surfturf_wrapper_v2 #(
         output          command_valid_o,
         // response inputs, I don't know if I'll ever use this
         input [31:0]    response_i,
+        
+        // for when we don't send the TURF transmit clock
+        input gpi_i,
         
         // datapaths. still in sysclk!!
         `HOST_NAMED_PORTS_AXI4S_MIN_IF( m_s0_ , 8 ),
@@ -223,6 +227,7 @@ module surfturf_wrapper_v2 #(
                                  .COUTTIO_INV( T_COUTTIO_INV ),
                                  .CIN_INV( T_CIN_INV ),
                                  .TRAIN_SEQUENCE(TRAIN_SEQUENCE),
+                                 .USE_TXCLK(USE_TURF_TXCLK),
                                  .WB_CLK_TYPE(WB_CLK_TYPE))
                     u_turf( .wb_clk_i(wb_clk_i),
                               .wb_rst_i(wb_rst_i),
@@ -239,6 +244,9 @@ module surfturf_wrapper_v2 #(
                               .command_locked_o(command_locked_o),
                               .response_i(response_i),
                               .surf_response_i(surf_response),
+                              
+                              .gpi_i(gpi_i),
+                              
                               .RXCLK_P(T_RXCLK_P),
                               .RXCLK_N(T_RXCLK_N),
                               .TXCLK_P(T_TXCLK_P),

@@ -24,6 +24,9 @@ module turf_cout_interface(
         // always immediately reclocked out
         input [27:0] surf_response_i,
         
+        // if we don't use TXCLK, plumb in the GPIO
+        input gpi_i,
+        
         output [6:0] T_COUT_P,
         output [6:0] T_COUT_N,
         output COUTTIO_P,
@@ -35,6 +38,8 @@ module turf_cout_interface(
     parameter COUTTIO_INV = 1'b0;
     parameter TXCLK_INV = 1'b0;
     parameter [6:0] T_COUT_INV = {7{1'b0}};
+    
+    parameter USE_TXCLK = "FALSE";
     
     localparam NUM_SURF = 7;
     
@@ -91,19 +96,23 @@ module turf_cout_interface(
                            .OQ(couttio_out));
     OBUFDS u_couttio_obufds(.I(couttio_out),.O(couttio_out_p),.OB(couttio_out_n));
     
-    // This clock selection is not right, it should be sysclk based
-    ODDR #(.DDR_CLK_EDGE("SAME_EDGE"),.INIT(TXCLK_INV),.SRTYPE("SYNC"))
-        u_txclk_oddr(.C(sysclk_i),
-                     .CE(1'b1),
-                     .D1(~TXCLK_INV),
-                     .D2(TXCLK_INV),
-                     .R(1'b0),
-                     .S(1'b0),
-                     .Q(txclk_in));
     OBUFDS u_txclk_obuf(.I(txclk_in),.O(txclk_out_p),.OB(txclk_out_n));
     
     generate
         genvar i;
+        if (USE_TXCLK == "TRUE") begin : TXC
+            // This clock selection is not right, it should be sysclk based
+            ODDR #(.DDR_CLK_EDGE("SAME_EDGE"),.INIT(TXCLK_INV),.SRTYPE("SYNC"))
+                u_txclk_oddr(.C(sysclk_i),
+                             .CE(1'b1),
+                            .D1(~TXCLK_INV),
+                            .D2(TXCLK_INV),
+                            .R(1'b0),
+                            .S(1'b0),
+                            .Q(txclk_in));
+        end else begin : TXGP
+            assign txclk_in = gpi_i ^ TXCLK_INV;
+        end                                    
         for (i=0;i<NUM_SURF;i=i+1) begin : SL
             // dumbass, this needs to be a *part select*
             wire [3:0] surf_cin = (train_i) ? response_hold[3:0] : surf_response_i[4*i +: 4];

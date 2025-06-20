@@ -44,6 +44,7 @@ module turf_interface #(
         parameter CIN_INV = 1'b0,
         parameter [31:0] TRAIN_SEQUENCE = 32'hA55A6996,
         parameter WB_CLK_TYPE = "INITCLK",
+        parameter USE_TXCLK = "FALSE",
         parameter DEBUG = `TURF_INTERFACE_DEBUG
     )
     (   input wb_clk_i,
@@ -72,6 +73,10 @@ module turf_interface #(
         // SURF inputs to forward when not training -
         // WHY WOULD WE ENTER TRAINING YOU IDIOT - JUST KEEP THE SURFS ON
         input  [27:0] surf_response_i,
+        
+        // for gp usage back at turf
+        input gpi_i,
+        
         input RXCLK_P,
         input RXCLK_N,
         output TXCLK_P,
@@ -204,7 +209,8 @@ module turf_interface #(
 
     turf_cout_interface #(.COUTTIO_INV(COUTTIO_INV),
                           .TXCLK_INV(TXCLK_INV),
-                          .T_COUT_INV(COUT_INV))
+                          .T_COUT_INV(COUT_INV),
+                          .USE_TXCLK(USE_TXCLK))
         u_turf_cout(.sysclk_i(sysclk_i),
                     .sysclk_x2_i(sysclk_x2_i),
                     .oserdes_rst_i(oserdes_rst_sysclk),
@@ -212,6 +218,9 @@ module turf_interface #(
                     .sync_i(sync_i),
                     .response_i(response_i),
                     .surf_response_i(surf_response_i),
+                    
+                    .gpi_i(gpi_i),
+                    
                     .T_COUT_P(T_COUT_P),
                     .T_COUT_N(T_COUT_N),
                     .COUTTIO_P(COUTTIO_P),
