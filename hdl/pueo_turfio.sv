@@ -12,8 +12,8 @@ module pueo_turfio #( parameter NSURF=7,
                       parameter SIMULATION="FALSE",
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
-                      parameter [3:0] VER_MINOR = 4'd4,
-                      parameter [7:0] VER_REV =   8'd3,
+                      parameter [3:0] VER_MINOR = 4'd5,
+                      parameter [7:0] VER_REV =   8'd0,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
