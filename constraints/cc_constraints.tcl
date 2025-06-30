@@ -1,3 +1,13 @@
+# DUMBASS TESTING
+
+set curname [get_property NAME [current_design]]
+if {$curname eq "impl_1"} {
+    puts "In implementation"
+}
+if {$curname eq "synth_1"} {
+    puts "In synthesis"
+}
+
 ######## CONVENIENCE FUNCTIONS
 # These all have escape clauses because clocks sometimes don't exist in the elaboration/synthesis
 # steps.
