@@ -2,6 +2,9 @@
 // The SURF live detector works by keeping track of the state of the COUTs and DOUTs
 // from each SURF.
 //
+// Our original hope for this may have been a bit aggressive, so we're adding a
+// live detector reset as well as running off not okay.
+//
 // The outputs from this feed into the autostartup module (used by the TURF brains)
 //
 // SURFs start off as not ready. We power on way faster than them so at startup this is good,
@@ -26,6 +29,7 @@ module surf_live_detector(
         input sys_clk_i,
         input sys_clk_ok_i,
         input wb_clk_i,
+        input livedet_reset_i,
         // vector of all 7x4 = 28 COUT inputs
         input [27:0] cout_i,
         // vector of all 7x8 = 56 DOUT inputs
@@ -54,6 +58,15 @@ module surf_live_detector(
     parameter COUT_COUNTER = 16;
     parameter WBCLKTYPE = "NONE";
     parameter SYSCLKTYPE = "NONE";        
+
+    (* CUSTOM_CC_DST = SYSCLKTYPE *)
+    reg [1:0] livedet_reset_sysclk = {2{1'b0}};
+    always @(posedge sys_clk_i) begin
+        livedet_reset_sysclk <= {livedet_reset_sysclk[0], livedet_reset_i };
+    end
+    
+    wire livedet_reset = livedet_reset_sysclk[1];       
+    
     generate
         genvar i;
         for (i=0;i<7;i=i+1) begin : SL
@@ -95,24 +108,22 @@ module surf_live_detector(
                 surf_train_complete <= { surf_train_complete[0], train_complete_i[i] };
             end
             always @(posedge sys_clk_i or negedge sys_clk_ok_i) begin : LWR
-                if (!sys_clk_ok_i) surf_misaligned <= 0;
-                else if (dout_out_of_train && !dout_is_null) surf_misaligned <= 1;
-            
-                // surf_live requires surf train complete and dout_out_of_train.
-                // surf_live and !surf_misaligned means you can enable the DOUT interface.
-                if (!sys_clk_ok_i) surf_live <= 0;
-                else begin
-                    if (cout_counter[4])
-                        surf_live <= 0;
-                    else if (surf_train_complete[1] && dout_out_of_train)
-                        surf_live <= 1;
-                end
-                // this only matters at startup, it's a once-and-done
-                if (!sys_clk_ok_i) boot_seen <= 0;
-                else if (cout_counter[4]) boot_seen <= 1;
-                                        
-                if (!sys_clk_ok_i) cout_counter <= {5{1'b0}};
-                else begin
+                if (!sys_clk_ok_i) begin
+                    surf_misaligned <= 0;
+                    surf_live <= 0;
+                    boot_seen <= 0;
+                    cout_counter <= {4{1'b0}};
+                    train_in_req <= 0;
+                end else begin
+                    if (livedet_reset) surf_misaligned <= 0;
+                    else if (dout_out_of_train && !dout_is_null) surf_misaligned <= 1;
+
+                    if (livedet_reset || cout_counter[4]) surf_live <= 0;
+                    else if (surf_train_complete[1] && dout_out_of_train) surf_live <= 1;
+                    
+                    if (livedet_reset) boot_seen <= 0;
+                    else if (cout_counter[4]) boot_seen <= 1;
+                    
                     if (surf_live || !boot_seen) begin
                         if (cout_i[4*i +: 4] == {4{1'b1}})
                             cout_counter <= cout_counter[3:0] + 1;
@@ -121,29 +132,27 @@ module surf_live_detector(
                     end else begin
                         cout_counter <= {5{1'b0}};
                     end
-                end
-                
-                // whenever we see DOUT drop after boot seen and !surf_live,
-                // that's a training request. If the SURF comes live AFTER we're
-                // already live we don't have to wait for boot seen because
-                // surf_live dropping already counts as boot_seen
-                // (it'd just set it again)
-                if (!sys_clk_ok_i) train_in_req <= 0;
-                else begin
+                    
+                    // whenever we see DOUT drop after boot seen and !surf_live,
+                    // that's a training request. If the SURF comes live AFTER we're
+                    // already live we don't have to wait for boot seen because
+                    // surf_live dropping already counts as boot_seen
+                    // (it'd just set it again)
+    
+                    // train in req doesn't need the livedet reset
+                    // it'll pick it up automatically
                     if (cout_counter[4])
                         train_in_req <= 0;
                     else if (dout_i[8*i +: 8] == 8'h00 && boot_seen)
                         train_in_req <= 1;
-                end                    
-                // whenever we see COUT drop after we're in training, that's
-                // train out ready.
-                if (!sys_clk_ok_i) train_out_rdy <= 0;
-                else begin
+
+                    // whenever we see COUT drop after we're in training, that's
+                    // train out ready.                        
                     if (cout_counter[4]) 
                         train_out_rdy <= 0;
                     else if (train_in_req && cout_i[4*i +: 4] != {4{1'b1}}) 
-                        train_out_rdy <= 1;
-                end                    
+                        train_out_rdy <= 1;                                            
+                end
             end
             
             always @(posedge wb_clk_i) begin

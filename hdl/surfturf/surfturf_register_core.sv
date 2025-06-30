@@ -164,10 +164,16 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
                              .clkA(wb_clk_i),.clkB(sysclk_i));
     flag_sync u_trig_valid(.in_clkA(trig_is_valid_wbclk),.out_clkB(trig_is_valid_sysclk),
                            .clkA(wb_clk_i),.clkB(sysclk_i));                             
+
+    // Reset the live detector. It's usually pretty smart to do this once you've spun the
+    // TURF - it makes sure to clear any of the false assertions caused by spinning the SURFs.
+    (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
+    reg        livedet_reset = 0;
+    
     wire [6:0] surf_boot_seen;
     wire [6:0] surf_live;
     wire [6:0] surf_misaligned;
-    wire [31:0] surf_live_register = {  {9{1'b0}}, surf_misaligned, {9{1'b0}}, surf_live };
+    wire [31:0] surf_live_register = {  livedet_reset, {8{1'b0}}, surf_misaligned, {9{1'b0}}, surf_live };
     wire [6:0] surf_trainin_req;
     reg [6:0] surf_autotrain = {7{1'b0}};    
     wire [31:0] surf_trainin_register = { {9{1'b0}}, surf_autotrain, {9{1'b0}}, surf_trainin_req };
@@ -176,6 +182,7 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
     (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
     reg  [6:0] surf_train_complete = {7{1'b0}};
     wire [31:0] surf_complete_register = { {9{1'b0}}, surf_boot_seen, {9{1'b0}}, surf_train_complete };
+
     
     wire [31:0] coutctrl_register = { {8{1'b0}},
                                       {8{1'b0}},
@@ -216,6 +223,7 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
          u_livedet(.sys_clk_i(sysclk_i),
                    .sys_clk_ok_i(sysclk_ok_i),
                    .wb_clk_i(wb_clk_i),
+                   .livedet_reset_i(livedet_reset),
                    .cout_i(surf_cout_i),
                    .dout_i(surf_dout_i),
                    .surf_boot_o(surf_boot_seen),
@@ -276,6 +284,10 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
         fw_empty_wbclk <= {fw_empty_wbclk[0], fw_empty_sysclk};
 
         ack <= wb_cyc_i && wb_stb_i;
+        
+        if (wb_cyc_i && wb_stb_i && wb_we_i && wb_adr_i[ADDR_BITS-1:0] == LIVE_ADDR) begin
+            if (wb_sel_i[3]) livedet_reset <= wb_dat_i[31];
+        end
         
         if (wb_cyc_i && wb_stb_i && wb_we_i && wb_adr_i[ADDR_BITS-1:0] == TRAININ_ADDR) begin
             if (wb_sel_i[2]) surf_autotrain <= wb_dat_i[16 +: 7];
