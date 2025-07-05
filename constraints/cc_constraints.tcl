@@ -1,12 +1,7 @@
 # DUMBASS TESTING
 
-set curname [get_property NAME [current_design]]
-if {$curname eq "impl_1"} {
-    puts "In implementation"
-}
-if {$curname eq "synth_1"} {
-    puts "In synthesis"
-}
+set we_are_synthesis [info exists are_we_synthesis]
+puts "we are synthesis: $we_are_synthesis"
 
 ######## CONVENIENCE FUNCTIONS
 # These all have escape clauses because clocks sometimes don't exist in the elaboration/synthesis
@@ -94,82 +89,86 @@ set clktypelist [array get clktypes]
 
 ###### END CLOCK DEFINITIONS
 
-# autoignore the flag_sync module guys
-set sync_flag_regs [get_cells -hier -filter {NAME =~ *FlagToggle_clkA_reg*}]
-set sync_sync_regs [get_cells -hier -filter {NAME =~ *SyncA_clkB_reg*}]
-set sync_syncB_regs [get_cells -hier -filter {NAME =~ *SyncB_clkA_reg*}]
-set_max_delay -datapath_only -from $sync_flag_regs -to $sync_sync_regs 10.000
-set_max_delay -datapath_only -from $sync_sync_regs -to $sync_syncB_regs 10.000
+# THESE ARE ALL IMPLEMENTATION ONLY YOU JERKS
 
-# ignore the initclk/sysclk path. I need to make these automagic or something
-# no no no, let's *actually* find all of the damn paths
-#set_max_delay -datapath_only -from $sysclk -to $initclk 25.000
-#set_max_delay -datapath_only -from $initclk -to $sysclk 25.000
+if { $we_are_synthesis != 1 } {
 
-# These pretty much get automatically satisfied. It should work because CLK_SYNC is definitively after the input clock,
-# and this adds a pretty significant delay.
-set_output_delay -clock $sysclk -min 0.7 [get_ports CLK_SYNC]
-set_output_delay -clock $sysclk -max 1.5   [get_ports CLK_SYNC]
-
-# grab ALL the dumb clockmon regs.
-set clockmon_level_regs [ get_cells -hier -filter {NAME =~ *u_clockmon/*clk_32x_level_reg*} ]
-set clockmon_cc_regs [ get_cells -hier -filter {NAME =~ *u_clockmon/*level_cdc_ff1_reg*}]
-set clockmon_run_reset_regs [ get_cells -hier -filter {NAME =~ *u_clockmon/clk_running_reset_reg*}]
-set clockmon_run_regs [get_cells -hier -filter {NAME=~ *u_clockmon/*u_clkmon*}]
-set clockmon_run_cc_regs [get_cells -hier -filter {NAME=~ *u_clockmon/clk_running_status_cdc1_reg*}]
-set clockmon_run_cc2_regs [get_cells -hier -filter {NAME=~ *u_clockmon/clk_running_status_cdc2_reg*}]
-set_max_delay -datapath_only -from $clockmon_level_regs -to $clockmon_cc_regs 10.000
-set_max_delay -datapath_only -from $clockmon_run_reset_regs -to $clockmon_run_regs 10.000
-set_max_delay -datapath_only -from $clockmon_run_regs -to $clockmon_run_cc_regs 10.000
-
-set live_regs [get_cells -hier -filter {NAME=~ "u_surfturf/u_st_core/*reg*"}]
-set_max_delay -datapath_only -from $clockmon_run_cc2_regs -to $live_regs 10.000
-
-# These all now get automatically set by the CUSTOM_CC_SRC/DST attributes.
-# the TURF module has a bajillion clock-crosses to deal with. This is our first set...
-#set wb_static_regs [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_core/*static_reg*}]
-#set wb_static_targets [get_cells -hier -filter {NAME =~ u_surfturf/*u_turf/u_turfcin/u_cin_idelay*}]
-#lappend wb_static_targets [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_core/u_cin_biterr/u_dsp}]
-#lappend wb_static_targets [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_cin_sync/cin_capture*}]
-#lappend wb_static_targets [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_turfcin/u_cin_iserdes*}]
-#set_max_delay -datapath_only -from $wb_static_regs -to $wb_static_targets 10.000
-
-# I really should add an optional CLKTYPE attribute to the DSP here to automate this
-#set biterr_count_rxclk [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_core/u_cin_biterr/u_dsp}]
-#set biterr_count_wbclk [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_core/bit_error_count_wbclk_reg*}]
-#set_max_delay -datapath_only -from $biterr_count_rxclk -to $biterr_count_wbclk 10.000
-
-#set wb_dat_regs [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_core/dat_reg_reg*}]
-#set wb_dat_sources [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_cin_sync/cin_capture*}]
-#lappend wb_dat_sources [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_turfcin/u_cin_idelay*}]
-#set_max_delay -datapath_only -from $wb_dat_sources -to $wb_dat_regs 10.000
-
-# RXCLK/SYSCLK registers. Here we set a *min* delay. I should probably change this
-# and just set them up in an RLOC with some distance from each other. This does what
-# I want but it's not great because it still thinks it has to like, get from sysclk
-# to rxclk in 2.4 ns (which is *not* what I want, it's the *opposite* of what I want)
-set rxsys_xfr_src_regs [get_cells -hier -filter {CUSTOM_SYSCLK_SOURCE=="TRUE"}]
-set rxsys_xfr_tgt_regs [get_cells -hier -filter {CUSTOM_SYSCLK_TARGET=="TRUE"}]
-if { [llength $rxsys_xfr_src_regs] != 0 } {
-    if { [llength $rxsys_xfr_tgt_regs] != 0 } {
-        # quiet is necessary here to shut up errors pre-implementation
-        set_min_delay -quiet -from $rxsys_xfr_src_regs -to $rxsys_xfr_tgt_regs 0.0
+    # autoignore the flag_sync module guys
+    set sync_flag_regs [get_cells -hier -filter {NAME =~ *FlagToggle_clkA_reg*}]
+    set sync_sync_regs [get_cells -hier -filter {NAME =~ *SyncA_clkB_reg*}]
+    set sync_syncB_regs [get_cells -hier -filter {NAME =~ *SyncB_clkA_reg*}]
+    set_max_delay -datapath_only -from $sync_flag_regs -to $sync_sync_regs 10.000
+    set_max_delay -datapath_only -from $sync_sync_regs -to $sync_syncB_regs 10.000
+    
+    # ignore the initclk/sysclk path. I need to make these automagic or something
+    # no no no, let's *actually* find all of the damn paths
+    #set_max_delay -datapath_only -from $sysclk -to $initclk 25.000
+    #set_max_delay -datapath_only -from $initclk -to $sysclk 25.000
+    
+    # These pretty much get automatically satisfied. It should work because CLK_SYNC is definitively after the input clock,
+    # and this adds a pretty significant delay.
+    set_output_delay -clock $sysclk -min 0.7 [get_ports CLK_SYNC]
+    set_output_delay -clock $sysclk -max 1.5   [get_ports CLK_SYNC]
+    
+    # grab ALL the dumb clockmon regs.
+    set clockmon_level_regs [ get_cells -hier -filter {NAME =~ *u_clockmon/*clk_32x_level_reg*} ]
+    set clockmon_cc_regs [ get_cells -hier -filter {NAME =~ *u_clockmon/*level_cdc_ff1_reg*}]
+    set clockmon_run_reset_regs [ get_cells -hier -filter {NAME =~ *u_clockmon/clk_running_reset_reg*}]
+    set clockmon_run_regs [get_cells -hier -filter {NAME=~ *u_clockmon/*u_clkmon*}]
+    set clockmon_run_cc_regs [get_cells -hier -filter {NAME=~ *u_clockmon/clk_running_status_cdc1_reg*}]
+    set clockmon_run_cc2_regs [get_cells -hier -filter {NAME=~ *u_clockmon/clk_running_status_cdc2_reg*}]
+    set_max_delay -datapath_only -from $clockmon_level_regs -to $clockmon_cc_regs 10.000
+    set_max_delay -datapath_only -from $clockmon_run_reset_regs -to $clockmon_run_regs 10.000
+    set_max_delay -datapath_only -from $clockmon_run_regs -to $clockmon_run_cc_regs 10.000
+    
+    set live_regs [get_cells -hier -filter {NAME=~ "u_surfturf/u_st_core/*reg*"}]
+    set_max_delay -datapath_only -from $clockmon_run_cc2_regs -to $live_regs 10.000
+    
+    # These all now get automatically set by the CUSTOM_CC_SRC/DST attributes.
+    # the TURF module has a bajillion clock-crosses to deal with. This is our first set...
+    #set wb_static_regs [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_core/*static_reg*}]
+    #set wb_static_targets [get_cells -hier -filter {NAME =~ u_surfturf/*u_turf/u_turfcin/u_cin_idelay*}]
+    #lappend wb_static_targets [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_core/u_cin_biterr/u_dsp}]
+    #lappend wb_static_targets [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_cin_sync/cin_capture*}]
+    #lappend wb_static_targets [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_turfcin/u_cin_iserdes*}]
+    #set_max_delay -datapath_only -from $wb_static_regs -to $wb_static_targets 10.000
+    
+    # I really should add an optional CLKTYPE attribute to the DSP here to automate this
+    #set biterr_count_rxclk [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_core/u_cin_biterr/u_dsp}]
+    #set biterr_count_wbclk [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_core/bit_error_count_wbclk_reg*}]
+    #set_max_delay -datapath_only -from $biterr_count_rxclk -to $biterr_count_wbclk 10.000
+    
+    #set wb_dat_regs [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_core/dat_reg_reg*}]
+    #set wb_dat_sources [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_cin_sync/cin_capture*}]
+    #lappend wb_dat_sources [get_cells -hier -filter {NAME=~ u_surfturf/*u_turf/u_turfcin/u_cin_idelay*}]
+    #set_max_delay -datapath_only -from $wb_dat_sources -to $wb_dat_regs 10.000
+    
+    # RXCLK/SYSCLK registers. Here we set a *min* delay. I should probably change this
+    # and just set them up in an RLOC with some distance from each other. This does what
+    # I want but it's not great because it still thinks it has to like, get from sysclk
+    # to rxclk in 2.4 ns (which is *not* what I want, it's the *opposite* of what I want)
+    set rxsys_xfr_src_regs [get_cells -hier -filter {CUSTOM_SYSCLK_SOURCE=="TRUE"}]
+    set rxsys_xfr_tgt_regs [get_cells -hier -filter {CUSTOM_SYSCLK_TARGET=="TRUE"}]
+    if { [llength $rxsys_xfr_src_regs] != 0 } {
+        if { [llength $rxsys_xfr_tgt_regs] != 0 } {
+            # quiet is necessary here to shut up errors pre-implementation
+            set_min_delay -quiet -from $rxsys_xfr_src_regs -to $rxsys_xfr_tgt_regs 0.0
+        }
     }
-}
-# These guys are properly tagged.
-set_cc_paths $initclk $rxclk $clktypelist
-set_cc_paths $rxclk $initclk $clktypelist
-
-set_cc_paths $initclk $sysclk $clktypelist
-set_cc_paths $sysclk $initclk $clktypelist
-
-set_cc_paths $userclk $initclk $clktypelist
-set_cc_paths $initclk $userclk $clktypelist
-
-set bitslip_src_regs [get_cells -hier -filter { CUSTOM_CC_SRC =~ "INITCLK"}]
-set bitslip_dbg_reg [get_cells -hier -filter { NAME =~ "u_surfturf/LP[0].TURF.u_turf/u_bitslip_sync/A_POS_POL.FlagToggle_clkA_reg" }]
-set_max_delay -quiet -datapath_only -from $bitslip_src_regs -to $bitslip_dbg_reg 10.00
-
+    # These guys are properly tagged.
+    set_cc_paths $initclk $rxclk $clktypelist
+    set_cc_paths $rxclk $initclk $clktypelist
+    
+    set_cc_paths $initclk $sysclk $clktypelist
+    set_cc_paths $sysclk $initclk $clktypelist
+    
+    set_cc_paths $userclk $initclk $clktypelist
+    set_cc_paths $initclk $userclk $clktypelist
+    
+    set bitslip_src_regs [get_cells -hier -filter { CUSTOM_CC_SRC =~ "INITCLK"}]
+    set bitslip_dbg_reg [get_cells -hier -filter { NAME =~ "u_surfturf/LP[0].TURF.u_turf/u_bitslip_sync/A_POS_POL.FlagToggle_clkA_reg" }]
+    set_max_delay -quiet -datapath_only -from $bitslip_src_regs -to $bitslip_dbg_reg 10.00
+}    
 
 set_param iconstr.diffPairPulltype opposite
 

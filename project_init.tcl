@@ -25,5 +25,8 @@ set_post_implementation_init_tcl [file join [get_repo_dir] "post_implementation_
 # set post write bitstream script
 set post_write_bitstream_tcl [file join [get_repo_dir] "post_write_bitstream.tcl"]
 
+# no timing constraints on elaboration what the hell
+set_property elab_load_timing_constraints false [get_fileset sources_1]
+
 # And check if everything's loaded.
 check_all
