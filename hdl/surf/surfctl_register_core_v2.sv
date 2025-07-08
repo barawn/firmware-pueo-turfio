@@ -178,10 +178,11 @@ module surfctl_register_core_v2(
     
     // iserdes reset is common
     (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
-    reg iserdes_reset = 0;
+    reg iserdes_reset = 1;
     
+    // START IN RESET
     (* ASYNC_REG = "TRUE", CUSTOM_CC_DST = "SYSCLK" *)
-    reg [1:0] iserdes_reset_resync = {2{1'b0}};
+    reg [1:0] iserdes_reset_resync = {2{1'b1}};
 
     // oserdes reset. This STARTS OUT high
     // to force keep COUT into a known state until
