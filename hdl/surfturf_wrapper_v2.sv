@@ -91,7 +91,7 @@ module surfturf_wrapper_v2 #(
         output [6:0] RXCLK_N                
     );
     
-    localparam [6:0] SURF_DEBUG = 7'b0000001;
+    localparam [6:0] SURF_DEBUG = 7'b0001001;
 
     // output datapath vector.
     `DEFINE_AXI4S_MIN_IFV( dout_ , 8, [6:0] );
