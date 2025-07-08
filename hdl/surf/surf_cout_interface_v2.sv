@@ -53,7 +53,7 @@ module surf_cout_interface_v2 #(parameter COUT_INV = 1'b0,
     wire dout_sync;
 
     surf_cout_phy_v3 #(.COUT_INV(COUT_INV),.DOUT_INV(DOUT_INV),
-                    .DEBUG(DEBUG == "PHY" ? "TRUE" : "FALSE"))
+                    .DEBUG("FALSE"))
         u_phy(.sysclk_i(sysclk_i),
               .sysclk_x2_i(sysclk_x2_i),
               .sync_i(sync_i),
