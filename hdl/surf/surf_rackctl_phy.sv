@@ -14,6 +14,8 @@
 // Because we control the rackctl process, we don't need an ack flag,
 // we just don't issue another transaction.
 module surf_rackctl_phy #(parameter INV=1'b0, 
+                          parameter USE_IDELAY = "FALSE",
+                          parameter IDELAY_VALUE = 0,
                           parameter DEBUG = "FALSE")(
         input sysclk_i,
         input mode_i,
@@ -37,7 +39,7 @@ module surf_rackctl_phy #(parameter INV=1'b0,
     // data FROM rackctl monitor FF
     wire rackctl_mon_inb;
 
-    rackctl_bidir_phy #(.INV(INV)) 
+    rackctl_bidir_phy #(.INV(INV),.USE_IDELAY(USE_IDELAY), .IDELAY_VALUE(IDELAY_VALUE))
         u_phy(.clk_i(sysclk_i),
               .rack_tri_i(rackctl_tri),
               .rack_out_i(rackctl_out),

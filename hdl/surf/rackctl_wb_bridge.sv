@@ -4,6 +4,8 @@
 // Just mode 0 for now, but the ports support mode 1.
 module rackctl_wb_bridge #(parameter INV = 1'b0,
                            parameter WB_CLK_TYPE = "INITCLK",
+                           parameter USE_IDELAY = "FALSE",
+                           parameter IDELAY_VALUE = 0,
                            parameter DEBUG = "FALSE")(
         input wb_clk_i,
         input wb_rst_i,
@@ -134,7 +136,9 @@ module rackctl_wb_bridge #(parameter INV = 1'b0,
     flag_sync u_err_sync(.clkA(sysclk_i),.clkB(wb_clk_i),
                          .in_clkA(txn_err_flag_sysclk),.out_clkB(txn_err_flag_wbclk));                                      
     
-    surf_rackctl_phy #(.INV(INV),.DEBUG((DEBUG == "PHY" || DEBUG == "FULL") ? "TRUE" : "FALSE"))
+    surf_rackctl_phy #(.USE_IDELAY(USE_IDELAY),
+                       .IDELAY_VALUE(IDELAY_VALUE),
+                       .INV(INV),.DEBUG((DEBUG == "PHY" || DEBUG == "FULL") ? "TRUE" : "FALSE"))
         u_phy( .sysclk_i(sysclk_i),.mode_i(mode_sysclk[1]),
                .txn_addr_i(txn_address_full),
                .txn_data_i(txn_data),
