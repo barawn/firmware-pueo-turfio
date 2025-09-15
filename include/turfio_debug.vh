@@ -2,7 +2,7 @@
 `define TURFIO_DEBUG_VH
 // what a mess
 `define TURF_INTERFACE_DEBUG "FALSE"
-`define TURF_CIN_PARALLEL_SYNC_DEBUG "TRUE"
+`define TURF_CIN_PARALLEL_SYNC_DEBUG "FALSE"
 `define HSKI2C_DEBUG "TRUE"
 
 `endif
