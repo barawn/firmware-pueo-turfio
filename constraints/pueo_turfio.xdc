@@ -137,18 +137,6 @@ set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN J4} [get_ports {CIN_N[6]}]
 
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN P15 DIFF_TERM 1} [get_ports CLKDIV2_P]
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN P16 DIFF_TERM 1} [get_ports CLKDIV2_N]
-set_property IOSTANDARD LVDS_25 [get_ports {TXCLK_P[2]}]
-set_property PULLDOWN true [get_ports {TXCLK_P[2]}]
-set_property PACKAGE_PIN P14 [get_ports {TXCLK_P[2]}]
-set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN R15} [get_ports {TXCLK_N[2]}]
-set_property IOSTANDARD LVDS_25 [get_ports {TXCLK_P[1]}]
-set_property PULLDOWN true [get_ports {TXCLK_P[1]}]
-set_property PACKAGE_PIN T14 [get_ports {TXCLK_P[1]}]
-set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN T15} [get_ports {TXCLK_N[1]}]
-set_property IOSTANDARD LVDS_25 [get_ports {TXCLK_P[0]}]
-set_property PULLDOWN true [get_ports {TXCLK_P[0]}]
-set_property PACKAGE_PIN R16 [get_ports {TXCLK_P[0]}]
-set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN R17} [get_ports {TXCLK_N[0]}]
 
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN V12 DIFF_TERM 1} [get_ports {DOUT_P[0]}]
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN V13 DIFF_TERM 1} [get_ports {DOUT_N[0]}]
@@ -219,22 +207,6 @@ set_property -dict { IOSTANDARD LVDS_25 PACKAGE_PIN F18     } [get_ports {SPARE_
 
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN F17} [get_ports {T_COUT_N[5]}]
 set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN E18} [get_ports {T_COUT_P[5]}]
-set_property IOSTANDARD LVDS_25 [get_ports {TXCLK_P[6]}]
-set_property PULLDOWN true [get_ports {TXCLK_P[6]}]
-set_property PACKAGE_PIN N3 [get_ports {TXCLK_P[6]}]
-set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN N2} [get_ports {TXCLK_N[6]}]
-set_property IOSTANDARD LVDS_25 [get_ports {TXCLK_P[5]}]
-set_property PULLDOWN true [get_ports {TXCLK_P[5]}]
-set_property PACKAGE_PIN P4 [get_ports {TXCLK_P[5]}]
-set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN P3} [get_ports {TXCLK_N[5]}]
-set_property IOSTANDARD LVDS_25 [get_ports {TXCLK_N[4]}]
-set_property PULLDOWN true [get_ports {TXCLK_N[4]}]
-set_property PACKAGE_PIN R2 [get_ports {TXCLK_N[4]}]
-set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN R1} [get_ports {TXCLK_P[4]}]
-set_property IOSTANDARD LVDS_25 [get_ports {TXCLK_P[3]}]
-set_property PULLDOWN true [get_ports {TXCLK_P[3]}]
-set_property PACKAGE_PIN R3 [get_ports {TXCLK_P[3]}]
-set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN T2} [get_ports {TXCLK_N[3]}]
 
 set_property -dict {PACKAGE_PIN D6} [get_ports F_LCLK_P]
 set_property -dict {PACKAGE_PIN D5} [get_ports F_LCLK_N]
@@ -286,7 +258,36 @@ set_property -dict {BEL IDELAYE2 LOC IDELAY_X1Y17} [get_cells {u_surfturf/LP[5].
 set_property -dict {BEL IDELAYE2 LOC IDELAY_X1Y35} [get_cells {u_surfturf/LP[6].SURFS.u_surf/u_surf_coutif/u_phy/u_cout_delay_N}]
 set_property -dict {BEL IDELAYE2 LOC IDELAY_X1Y41} [get_cells {u_surfturf/LP[7].SURFS.u_surf/u_surf_coutif/u_phy/u_cout_delay_N}]
 
+# TXCLK 0 R16 R17
+# TXCLK 1 T14 T15
+# TXCLK 2 P14 R15
+# TXCLK 3 R3 T2
+# TXCLK 4 R1 R2 (inverted)
+# TXCLK 5 P4 P3
+# TXCLK 6 N3 N2
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN R16} [get_ports {TXCLK_P[0]}]
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN R17} [get_ports {TXCLK_N[0]}]
 
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN T14} [get_ports {TXCLK_P[1]}]
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN T15} [get_ports {TXCLK_N[1]}]
+
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN P14} [get_ports {TXCLK_P[2]}]
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN R15} [get_ports {TXCLK_N[2]}]
+
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN R3} [get_ports {TXCLK_P[3]}]
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN T2} [get_ports {TXCLK_N[3]}]
+
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN R2} [get_ports {TXCLK_P[4]}]
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN R1} [get_ports {TXCLK_P[4]}]
+
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN P4} [get_ports {TXCLK_P[5]}]
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN P3} [get_ports {TXCLK_N[5]}]
+
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN N3} [get_ports {TXCLK_P[6]}]
+set_property -dict {IOSTANDARD LVDS_25 PACKAGE_PIN N2} [get_ports {TXCLK_N[6]}]
+
+set_property DIFF_TERM TRUE [get_ports {TXCLK_P[*]}]
+set_property PULLTYPE PULLDOWN [get_ports {TXCLK_P[*]}]
 
 set_property C_CLK_INPUT_FREQ_HZ 300000000 [get_debug_cores dbg_hub]
 set_property C_ENABLE_CLK_DIVIDER false [get_debug_cores dbg_hub]
