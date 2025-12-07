@@ -3,6 +3,9 @@
 module surf_merger(
         input aclk,
         input aresetn,
+        
+        input [7:0] err_i,
+        
         `TARGET_NAMED_PORTS_AXI4S_MIN_IF( s_s0_ , 8 ),
         input s_s0_tlast,
         `TARGET_NAMED_PORTS_AXI4S_MIN_IF( s_s1_ , 8 ),
@@ -31,7 +34,7 @@ module surf_merger(
     // with this later    
     `DEFINE_AXI4S_MIN_IF( fake_ , 8 );
     wire fake_tlast;
-    assign fake_tdata = {8{1'b0}};
+    assign fake_tdata = err_i;
     assign fake_tvalid = 1'b1;
     assign fake_tlast = 1'b0;
     

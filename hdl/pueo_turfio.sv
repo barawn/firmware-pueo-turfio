@@ -12,8 +12,8 @@ module pueo_turfio #( parameter NSURF=7,
                       parameter SIMULATION="FALSE",
                       parameter IDENT="TFIO",
                       parameter [3:0] VER_MAJOR = 4'd0,
-                      parameter [3:0] VER_MINOR = 4'd5,
-                      parameter [7:0] VER_REV =   8'd5,
+                      parameter [3:0] VER_MINOR = 4'd6,
+                      parameter [7:0] VER_REV =   8'd0,
                       parameter [15:0] FIRMWARE_DATE = {16{1'b0}} )(
         // 40 MHz constantly on clock. Which we need to goddamn *boost*, just freaking BECAUSE
         input INITCLK,
@@ -332,6 +332,12 @@ module pueo_turfio #( parameter NSURF=7,
     wire sys_rst_b = sys_rst_b_reg;
     wire sys_rst = !sys_rst_b;
     always @(posedge init_clk) sys_rst_b_reg <= SYS_RESET_B;
+
+    //////////////////////////////////////////////////////////////////////////////////
+    //                          ERRORS                                              //
+    //////////////////////////////////////////////////////////////////////////////////
+
+    wire [7:0] event_errors;
     
     //////////////////////////////////////////////////////////////////////////////////
     //                              HOUSEKEEPING                                    //
@@ -679,6 +685,8 @@ module pueo_turfio #( parameter NSURF=7,
                 .trigtime_valid_i(turf_trigtime_valid),
                 .runrst_i(turf_runreset),
                 .runstop_i(turf_runstop),
+
+                .err_o(event_errors),
                 
                 `CONNECT_AXI4S_MIN_IF( m_s0_ , s0_ ),
                 .m_s0_tlast(s0_tlast),
@@ -804,6 +812,9 @@ module pueo_turfio #( parameter NSURF=7,
     surf_merger #(.DEBUG("FALSE")) u_merger( .aclk( sysclk ),
                           // uhhhhhh figure this out
                           .aresetn( sysclk_resetn ),
+                          
+                          .err_i(event_errors),
+                          
                           `CONNECT_AXI4S_MIN_IF( s_s0_ , s0_ ),
                           .s_s0_tlast( s0_tlast ),
                           `CONNECT_AXI4S_MIN_IF( s_s1_ , s1_ ),
@@ -827,6 +838,7 @@ module pueo_turfio #( parameter NSURF=7,
     // ok here we go
     turf_aurora_wrapper u_aurora( .wb_clk_i(wb_clk),
                                   .wb_rst_i(1'b0),
+                                  .pps_i(turf_cmdpps),
                                   `CONNECT_WBS_IFM( wb_ , aurora_ ),
                                   `CONNECT_AXI4S_MIN_IF( m_cmd_addr_ , cmd_addr_ ),
                                   `CONNECT_AXI4S_MIN_IF( m_cmd_data_ , cmd_data_ ),

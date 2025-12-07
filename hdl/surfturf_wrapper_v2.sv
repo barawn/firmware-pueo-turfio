@@ -53,6 +53,8 @@ module surfturf_wrapper_v2 #(
         input gpi_i,
         
         // datapaths. still in sysclk!!
+        output [7:0] err_o,
+        
         `HOST_NAMED_PORTS_AXI4S_MIN_IF( m_s0_ , 8 ),
         output m_s0_tlast,
         `HOST_NAMED_PORTS_AXI4S_MIN_IF( m_s1_ , 8 ),
@@ -285,6 +287,7 @@ module surfturf_wrapper_v2 #(
                             .trig_i(trig),
                             .event_reset_i(event_reset),
                             .mask_ce_i(mask_ce),
+                            .dout_overflow_o(err_o[0]),                            
                             `CONNECT_AXI4S_MIN_IFV( m_dout_ , dout_ , [i-1]),
                             .m_dout_tlast(dout_tlast[i-1]),
                             
@@ -308,4 +311,6 @@ module surfturf_wrapper_v2 #(
     assign wb_dat_o = wb_adr_i[11] ? surfturf_dat_i : wbvec_dat_i[ wb_adr_i[6 +: 3] ];
     assign wb_err_o = 1'b0;
     assign wb_rty_o = 1'b0;
+
+    assign err_o[7:1] = {6{1'b0}};
 endmodule
