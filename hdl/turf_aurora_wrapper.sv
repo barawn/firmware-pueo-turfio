@@ -29,7 +29,7 @@ module turf_aurora_wrapper(
         // sysclk. regular data path is in sysclk domain
         input sys_clk_i,
         input sys_rst_i,
-                
+        input pps_i,
         // regular input data path.
         output aurora_clk,
         `TARGET_NAMED_PORTS_AXI4S_MIN_IF( s_axis_ , 32 ),
@@ -48,6 +48,10 @@ module turf_aurora_wrapper(
         output MGTTX_N
     );
     parameter DEBUG = "FALSE";
+
+    wire pps_auroraclk;
+    flag_sync u_pps(.in_clkA(pps_i),.out_clkB(pps_auroraclk),
+                    .clkA(sys_clk_i),.clkB(aurora_clk));
         
     // sigh, ok, let's do this.
     
@@ -328,20 +332,46 @@ module turf_aurora_wrapper(
     assign gt_drpdi = wb_dat_i[15:0];
     assign gt_drpwe = wb_we_i;
     assign gt_drpen = (state == IDLE && wb_cyc_i && wb_stb_i && gt_drpaccess);
-    
+
+    // livetime register
+    (* USE_DSP = "YES" *)
+    reg [31:0] uptime = {32{1'b0}};
+    (* CUSTOM_CC_SRC = "USERCLK" *)
+    reg [31:0] uptime_last_pps = {32{1'b0}};
+    reg new_uptime = 0;
+    wire new_uptime_wbclk;
+    flag_sync u_new_uptime(.in_clkA(new_uptime),.out_clkB(new_uptime_wbclk),
+                           .clkA(user_clk),.clkB(wb_clk_i));
+    (* CUSTOM_CC_DST = "INITCLK" *)
+    reg [31:0] uptime_wbclk = {32{1'b0}};    
+
+    always @(posedge user_clk) begin
+        if (pps_auroraclk) uptime <= {32{1'b0}};
+        else if (muxed_tx_tready) uptime <= uptime + 1;
+        if (pps_auroraclk) uptime_last_pps <= uptime;
+        
+        new_uptime <= pps_auroraclk;
+    end
+    always @(posedge wb_clk_i) begin
+        if (new_uptime_wbclk) uptime_wbclk <= uptime_last_pps;
+    end    
     // individual control/stat register
-    wire [31:0] ctrlstat[3:0];
+    wire [31:0] ctrlstat[7:0];
     assign ctrlstat[0] = link_control;
     assign ctrlstat[1] = link_status;
     assign ctrlstat[2] = link_eyescan;
     assign ctrlstat[3] = link_dmonitor;
+    assign ctrlstat[4] = uptime_wbclk;
+    assign ctrlstat[5] = ctrlstat[1];
+    assign ctrlstat[6] = ctrlstat[2];
+    assign ctrlstat[7] = ctrlstat[3];
 
     // demux register
     (* CUSTOM_CC_DST = "INITCLK" *)
     reg [31:0] wb_dat_reg = {32{1'b0}};
 
     // dumb alias to ensure we don't look at bottom 2 bits but we're still talking about proper offsets
-    wire [3:0] ctrlstat_addr = {wb_adr_i[2 +: 2], 2'b00 };
+    wire [4:0] ctrlstat_addr = {wb_adr_i[2 +: 3], 2'b00 };
 
     // ok, logic first
     always @(posedge wb_clk_i) begin
@@ -351,7 +381,7 @@ module turf_aurora_wrapper(
     
         // demux wishbone register output
         if (state == IDLE && wb_cyc_i && wb_stb_i && !gt_drpaccess && !wb_we_i) begin
-            wb_dat_reg <= ctrlstat[ wb_adr_i[2 +: 2] ];
+            wb_dat_reg <= ctrlstat[ wb_adr_i[2 +: 3] ];
         end else if (state == DRP_WAIT && gt_drprdy && !wb_we_i) begin
             wb_dat_reg <= { {16{1'b0}}, gt_drpdo };
         end
@@ -370,7 +400,7 @@ module turf_aurora_wrapper(
         end
         // reset is both register path and housekeeping
         if (wb_cyc_i && wb_stb_i && wb_we_i && wb_ack_o) begin
-            if (!gt_drpaccess && ctrlstat_addr == 4'h0) begin
+            if (!gt_drpaccess && ctrlstat_addr == 5'h0) begin
                 if (wb_sel_i[0]) begin
                     reset_in <= wb_dat_i[0];
                 end
@@ -381,7 +411,7 @@ module turf_aurora_wrapper(
         
         // register capture
         if (wb_cyc_i && wb_stb_i && wb_we_i && wb_ack_o) begin
-            if (!gt_drpaccess && ctrlstat_addr == 4'h0) begin
+            if (!gt_drpaccess && ctrlstat_addr == 5'h0) begin
                 if (wb_sel_i[0]) begin
                     gt_reset_in <= wb_dat_i[1];
                     gt_powerdown_wbclk <= wb_dat_i[3];
@@ -391,7 +421,7 @@ module turf_aurora_wrapper(
                     linkerr_reset <= wb_dat_i[31];
                 end
             end
-            if (!gt_drpaccess && ctrlstat_addr == 4'h8) begin
+            if (!gt_drpaccess && ctrlstat_addr == 5'h8) begin
                 if (wb_sel_i[0]) gt_txdiffctrl <= wb_dat_i[0 +: 4];
                 if (wb_sel_i[1]) gt_txprecursor <= wb_dat_i[8 +: 5];
                 if (wb_sel_i[2]) gt_txpostcursor <= wb_dat_i[16 +: 5];
