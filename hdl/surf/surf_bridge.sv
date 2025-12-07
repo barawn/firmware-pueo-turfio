@@ -78,7 +78,7 @@ module surf_bridge #(parameter [6:0] RACKCTL_INV=7'h00,
                                 .DEBUG((i==6 || i == 0) ? "PHY" : "FALSE"),
                                 // sleazy sleazy
                                 .USE_IDELAY( (i>3) ? "TRUE" : "FALSE" ),
-                                .IDELAY_VALUE(18),
+                                .IDELAY_VALUE(i > 4 ? 31 : 5),
                                 .WB_CLK_TYPE(WB_CLK_TYPE))
                 u_bridge(.wb_clk_i(wb_clk_i),
                          .wb_rst_i(wb_rst_i),
