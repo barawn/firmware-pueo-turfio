@@ -7,6 +7,8 @@ module masked_dout_splice(
         input trig_i,
         input mask_i,
         input mask_ce_i,
+        // Read holdoff. This HAS TO MATCH THE SURFs!!!
+        input [23:0] rdholdoff_i,
         // this is an overflow error
         output err_o,
         // input is a fake AXI4-stream
@@ -17,6 +19,7 @@ module masked_dout_splice(
     );
     
     parameter DEBUG = "FALSE";
+    parameter CLKTYPE = "NONE";
     
     // 8 ch, 1536 bytes per ch, plus 4 bytes for headers
     localparam NUM_BYTES = 8*1536 + 4;
@@ -65,6 +68,7 @@ module masked_dout_splice(
     localparam [FSM_BITS-1:0] IDLE = 0;
     localparam [FSM_BITS-1:0] START = 1;
     localparam [FSM_BITS-1:0] COUNT = 2;
+    localparam [FSM_BITS-1:0] PAUSE = 3;
     reg [FSM_BITS-1:0] state = IDLE;
 
     reg        last_byte = 1'b0;
@@ -78,8 +82,17 @@ module masked_dout_splice(
 
     wire       start_event = (mask_i) ? fake_event_needed : (s_dout_tdata[7] != 0 && s_dout_tvalid);
 
+    (* CUSTOM_CC_DST = CLKTYPE *)
+    reg [24:0] rd_holdoff_counter = 25'd0;
+    wire rd_holdoff_reset = (state == IDLE);
+    wire rd_holdoff_load = (state == COUNT) && fifo_write && last_byte;
+    wire rd_holdoff_count = (state == PAUSE) && mask_ce_i;
     
     always @(posedge aclk) begin
+        if (rd_holdoff_reset) rd_holdoff_counter <= 25'd0;
+        else if (rd_holdoff_load) rd_holdoff_counter <= rdholdoff_i;
+        else if (rd_holdoff_count) rd_holdoff_counter <= rd_holdoff_counter[23:0] - 1;
+
         if (!aresetn) latched_overflow <= 1'b0;
         else if (fifo_overflow) latched_overflow <= 1'b1;
     
@@ -138,7 +151,8 @@ module masked_dout_splice(
             case (state)
                 IDLE: if (start_event) state <= START;
                 START: state <= COUNT;
-                COUNT: if (fifo_write && last_byte) state <= IDLE;
+                COUNT: if (fifo_write && last_byte) state <= PAUSE;
+                PAUSE: if (rd_holdoff_counter[24]) state <= IDLE;
             endcase
         end
     end

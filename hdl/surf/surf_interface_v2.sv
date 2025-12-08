@@ -8,6 +8,7 @@ module surf_interface_v2 #(parameter RXCLK_INV = 1'b0,
                         parameter DOUT_INV = 1'b0,
                         parameter [31:0] TRAIN_SEQUENCE = 32'hA55A6996,
                         parameter WB_CLK_TYPE = "INITCLK",
+                        parameter SYS_CLK_TYPE = "SYSCLK",
                         parameter DEBUG = "FALSE")(
         input wb_clk_i,
         input wb_rst_i,
@@ -18,6 +19,8 @@ module surf_interface_v2 #(parameter RXCLK_INV = 1'b0,
 
         input disable_rxclk_i,
         input [3:0] cout_offset_i,
+        
+        input [23:0] rdholdoff_i,
         
         input [31:0] command_i,
         input sync_i,
@@ -78,10 +81,12 @@ module surf_interface_v2 #(parameter RXCLK_INV = 1'b0,
     
     
     wire        surf_mask;
-    masked_dout_splice #(.DEBUG(DEBUG != "FALSE" ? "TRUE" : "FALSE"))
+    masked_dout_splice #(.DEBUG(DEBUG != "FALSE" ? "TRUE" : "FALSE"),
+                         .CLKTYPE(SYS_CLK_TYPE))
                        u_splice( .aclk(sysclk_i),
                                  .aresetn( !event_reset_i ),
                                  .trig_i(trig_i),
+                                 .rdholdoff_i(rdholdoff_i),
                                  .err_o(dout_overflow_o),
                                  .mask_i(surf_mask),
                                  .mask_ce_i(mask_ce_i),

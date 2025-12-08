@@ -28,6 +28,8 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
         
         output [7:0] disable_rxclk_o,
         output [3:0] cout_offset_o,
+
+        output [23:0] rdholdoff_o,
         // FW update output port stuff
         `HOST_NAMED_PORTS_AXI4S_MIN_IF( fw_ , 8),
         output [1:0] fw_mark_o,
@@ -35,6 +37,9 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
         `HOST_NAMED_PORTS_AXI4S_MIN_IF( runcmd_ , `RACKBUS_RUNCMD_BITS ),
         `HOST_NAMED_PORTS_AXI4S_MIN_IF( trig_ , `RACKBUS_TRIG_BITS )       
     );
+    
+    (* CUSTOM_CC_SRC = WB_CLK_TYPE *)
+    reg [23:0] read_holdoff = 24'd16384;
     
     localparam ADDR_BITS = 6;
     localparam [3:0] COUT_OFFSET_DEFAULT = 4'd3;
@@ -53,6 +58,7 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
     localparam [ADDR_BITS-1:0] TRAINCMPL_ADDR = 6'h1C;
     // and now we need YET ANOTHER group for... uh... something
     localparam [ADDR_BITS-1:0] COUTCTRL_ADDR  = 6'h20;    
+    localparam [ADDR_BITS-1:0] RDHOLDOFF_ADDR = 6'h24;
                 
     reg update_disable_rxclk = 1'b0;
     wire do_update_disable_rxclk = wb_cyc_i && wb_stb_i && wb_we_i && wb_adr_i[ADDR_BITS-1:0] == CONTROL_ADDR && wb_sel_i[3] && wb_ack_o;
@@ -284,7 +290,13 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
         fw_empty_wbclk <= {fw_empty_wbclk[0], fw_empty_sysclk};
 
         ack <= wb_cyc_i && wb_stb_i;
-        
+
+        if (wb_cyc_i && wb_stb_i && wb_we_i && wb_adr_i[ADDR_BITS-1:0] == RDHOLDOFF_ADDR) begin
+            if (wb_sel_i[0]) read_holdoff[0 +: 8] <= wb_dat_i[0 +: 8];
+            if (wb_sel_i[1]) read_holdoff[8 +: 8] <= wb_dat_i[8 +: 8];
+            if (wb_sel_i[2]) read_holdoff[16 +: 8] <= wb_dat_i[16 +: 8];
+        end
+                
         if (wb_cyc_i && wb_stb_i && wb_we_i && wb_adr_i[ADDR_BITS-1:0] == LIVE_ADDR) begin
             if (wb_sel_i[3]) livedet_reset <= wb_dat_i[31];
         end
@@ -339,10 +351,12 @@ module surfturf_register_core #(parameter WB_CLK_TYPE = "NONE",
                         {7{1'b0}}, event_reset, 
                         {6{1'b0}}, fw_mark1_wbclk, fw_mark0_wbclk, 
                         {4{1'b0}}, !trig_holding_valid_wbclk[1], !runcmd_holding_valid_wbclk[1], fw_empty_wbclk[1], fwupdate_fifo_reset };
-
+    wire [31:0] rdholdoff_register = { {8{1'b0}}, read_holdoff };    
+    
     wire [31:0] lower_registers = (wb_adr_i[4]) ? live_registers[wb_adr_i[2 +: 2]] : ctrl_register;
-    wire [31:0] upper_registers = coutctrl_register;
+    wire [31:0] upper_registers = (wb_adr_i[2]) ? rdholdoff_register : coutctrl_register;
         
+    assign rdholdoff_o = read_holdoff;       
     assign wb_err_o = 1'b0;
     assign wb_rty_o = 1'b0;
     assign wb_dat_o = (wb_adr_i[5]) ? upper_registers : lower_registers;

@@ -172,6 +172,7 @@ module surfturf_wrapper_v2 #(
     // the surfturf register core also includes
     // the live detector and automatic train stuff now
     // for the startup sequencer on the TURF
+    wire [23:0] read_holdoff;
     surfturf_register_core #(.WB_CLK_TYPE(WB_CLK_TYPE),.SYS_CLK_TYPE("SYSCLK"),.DEBUG("FALSE"))
             u_st_core(.wb_clk_i(wb_clk_i),
                       .wb_rst_i(wb_rst_i),
@@ -179,6 +180,8 @@ module surfturf_wrapper_v2 #(
                       .sysclk_i(sysclk_i),
                       // live detector needs sysclk_ok_i
                       .sysclk_ok_i(sysclk_ok_i),
+                      
+                      .rdholdoff_o(read_holdoff),
                       .surf_cout_i(surf_cout),
                       .surf_dout_i(surf_dout),
                       .surf_autotrain_en_o(surf_autotrain_en),
@@ -282,6 +285,7 @@ module surfturf_wrapper_v2 #(
 
                             .disable_rxclk_i(disable_rxclk[i-1]),
                             .cout_offset_i(cout_offset),
+                            .rdholdoff_i(read_holdoff),
                             
                             .sync_i(sync_i),
                             .trig_i(trig),
