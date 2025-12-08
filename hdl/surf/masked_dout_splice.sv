@@ -75,7 +75,7 @@ module masked_dout_splice(
     
     // a single FIFO per SURF should be fine, we shouldn't need to absorb
     // virtually any delay.
-    wire       fifo_write = (state != IDLE) && (mask_i ? mask_ce_i : s_dout_tvalid);
+        wire       fifo_write = ((state != IDLE) && (state != PAUSE)) && (mask_i ? mask_ce_i : s_dout_tvalid);
     wire       fifo_overflow;
     reg        latched_overflow = 0;
     wire       fifo_valid;
