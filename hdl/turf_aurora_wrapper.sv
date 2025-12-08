@@ -49,8 +49,16 @@ module turf_aurora_wrapper(
     );
     parameter DEBUG = "FALSE";
 
+    // fuck the PPS
+    wire fake_pps;
+    dsp_counter_terminal_count #(.FIXED_TCOUNT("TRUE"),
+                                 .FIXED_TCOUNT_VALUE(48'd80000000))
+                                 u_fake_pps(.clk_i(wb_clk_i),
+                                            .rst_i(1'b0),
+                                            .count_i(1'b1),
+                                            .tcount_reached_o(fake_pps));
     wire pps_auroraclk;
-    flag_sync u_pps(.in_clkA(pps_i),.out_clkB(pps_auroraclk),
+    flag_sync u_pps(.in_clkA(fake_pps),.out_clkB(pps_auroraclk),
                     .clkA(sys_clk_i),.clkB(aurora_clk));
         
     // sigh, ok, let's do this.
