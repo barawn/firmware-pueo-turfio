@@ -59,7 +59,7 @@ module turf_aurora_wrapper(
                                             .tcount_reached_o(fake_pps));
     wire pps_auroraclk;
     flag_sync u_pps(.in_clkA(fake_pps),.out_clkB(pps_auroraclk),
-                    .clkA(sys_clk_i),.clkB(aurora_clk));
+                    .clkA(wb_clk_i),.clkB(aurora_clk));
         
     // sigh, ok, let's do this.
     
